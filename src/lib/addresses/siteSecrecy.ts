@@ -1,6 +1,7 @@
 import { countedLabel, pluralNoun } from '../batchWords'
 import { type BookPaperRow, type PickablePaper, pickablePapers, shortDay } from '../jobs/jobPapers'
 import { val } from '../valuesInPlace'
+import type { PaperSite } from './paperSite'
 
 /**
  * Secrecy on a site (punch list #439, piece 4): the words and the rules of the block **Secrecy on this site**. Pure.
@@ -13,6 +14,13 @@ import { val } from '../valuesInPlace'
 
 /** A site: a development by its id, or an address as it is written. */
 export type SecrecySite = { developmentId: string } | { address: string }
+
+/**
+ * Where the block stands. `door` offers the presses: a development's page, a lone job's Documents tab. `reads` draws
+ * the on state alone: a job in a development. `offer` is Send a paper (4d): while the picked site is off it asks once,
+ * **Turn on secrecy for this site** or **Only send this one**, and while it is on it says so in two lines.
+ */
+export type SecrecyMode = 'door' | 'reads' | 'offer'
 
 /** One row of `site_secrecy`, as the block reads it. */
 export interface SiteSecrecyRow {
@@ -102,6 +110,10 @@ export const SITE_SECRECY_WORDS = {
   leadAddress: 'Turn it on and every job at this address stays shut to our own people until they sign one paper. Each person signs once for the whole site.',
   /** On a job in a development: the block reads, and the presses are on the development's page. */
   onDevelopment: 'This job’s development has secrecy on. Turn it off on the development’s page.',
+  /** In Send a paper, under a picked site that is off: what sending this one paper does and does not do. */
+  offerLead: 'Secrecy is not on for this site. This paper is sent and kept with the site. Nothing is held, and our own people are not asked to sign.',
+  /** The other press of that offer: go on with the one paper, and the offer goes. */
+  onlySend: 'Only send this one',
   turnOn: 'Turn on secrecy for this site',
   turnOff: 'Turn it off…',
   panelTitle: 'Turn on secrecy for this site',
@@ -136,6 +148,28 @@ export function jobSecrecyDoor(job: { development_id?: string | null; job_addres
   if (job.development_id) return { site: { developmentId: job.development_id }, mode: 'reads' }
   const address = (job.job_address ?? '').trim()
   return address ? { site: { address }, mode: 'door' } : null
+}
+
+/**
+ * The site a paper names, as the block takes it (4d). A paper that names no site has none, and neither has an address
+ * with nothing in it.
+ */
+export function paperSecrecySite(site: PaperSite | null | undefined): SecrecySite | null {
+  if (!site) return null
+  if (site.kind === 'development') return site.developmentId ? { developmentId: site.developmentId } : null
+  const address = site.address.trim()
+  return address ? { address } : null
+}
+
+/**
+ * Whether the block draws at all, once its first read is back. A block that only reads says nothing of a site that is
+ * off or a read that failed. The offer in Send a paper is for whoever can turn secrecy on: it says nothing to anyone
+ * else, nothing of a read that failed, and nothing more of a site that is off once **Only send this one** was pressed.
+ */
+export function secrecyDraws(input: { mode: SecrecyMode; on: boolean; failed: boolean; canTurn: boolean; passed: boolean }): boolean {
+  if (input.mode === 'reads') return input.on
+  if (input.mode === 'offer') return input.canTurn && !input.failed && (input.on || !input.passed)
+  return true
 }
 
 /** The last press of the Turn on panel: it names the act and how many people it asks. Dead until a paper is picked. */

@@ -235,6 +235,27 @@ The box can be grey, with a reason under it. Then the signer's page cannot show 
 
 Whether a paper may print the address is your attorney's call. Leave the box off until they say so.
 
+## Turn on secrecy for the site from the email window
+
+Secrecy on a site asks our own people to sign one paper before a job there opens. You can turn secrecy on while you send a paper for the site.
+
+Name the site, as above. When secrecy is not on for that site, **Secrecy on this site** shows under the site's line. The block reads *Secrecy is not on for this site.*
+
+The block gives you two presses.
+
+- **Turn on secrecy for this site** opens a panel in the same window. Pick the paper our own people sign and read the count. Then press the blue button.
+- **Only send this one** sends this paper alone. The block goes away and nothing else changes.
+
+Turning secrecy on does not send your paper. Press **Send email** when you are ready.
+
+:::example What secrecy does not do yet
+Secrecy asks our own people to sign. A paper to an outside company is still sent at once.
+:::
+
+When secrecy is already on for the site, the block says since when and names the paper. The block has no press then. To turn secrecy off, open the development's page or the job's Documents tab.
+
+The whole of it is in [require papers before a job opens](/help/require-papers-before-a-job-opens#ask-for-one-paper-across-a-whole-site).
+
 ## See a site's papers on its jobs
 
 A paper that names a site shows on every job at that address.

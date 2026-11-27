@@ -184,6 +184,65 @@ describe('SiteSecrecy', () => {
     expect(container.querySelector('[data-testid="job-site-secrecy"]')).toBeNull()
   })
 
+  it('in Send a paper, a site that is off is one question, and Only send this one ends it for that site', async () => {
+    const io = fakeIo()
+    const { rerender, container } = renderWithProviders(<SiteSecrecy site={{ address: '12 Sample St' }} mode="offer" role="assistant" io={io} testId="send-secrecy" />)
+    const block = await screen.findByTestId('send-secrecy')
+    expect(within(block).getByText(/^Secrecy is not on for this site\./)).toBeTruthy()
+    // The offer says it once: no Off line above the sentence.
+    expect(within(block).queryByText('Off')).toBeNull()
+    expect(within(block).getAllByRole('button').map((b) => b.textContent)).toEqual(['Turn on secrecy for this site', 'Only send this one'])
+    fireEvent.click(within(block).getByRole('button', { name: 'Only send this one' }))
+    await waitFor(() => expect(container.querySelector('[data-testid="send-secrecy"]')).toBeNull())
+    expect(io.turnOn).not.toHaveBeenCalled()
+    // Another site is another question.
+    rerender(<SiteSecrecy site={{ address: '40 Other Rd' }} mode="offer" role="assistant" io={io} testId="send-secrecy" />)
+    expect(await screen.findByRole('button', { name: 'Only send this one' })).toBeTruthy()
+    expect(io.readLive).toHaveBeenLastCalledWith({ address: '40 Other Rd' })
+  })
+
+  it('in Send a paper, Turn on opens the same panel in place, and Not yet goes back to the question', async () => {
+    const lone = { address: '12 Sample St' }
+    const readLive = vi.fn<SiteSecrecyIo['readLive']>(async () => null)
+    const io = fakeIo({ readLive })
+    renderWithProviders(<SiteSecrecy site={lone} mode="offer" role="assistant" io={io} testId="send-secrecy" />)
+    const block = await screen.findByTestId('send-secrecy')
+    fireEvent.click(within(block).getByRole('button', { name: 'Turn on secrecy for this site' }))
+    const panel = await screen.findByTestId('send-secrecy-panel')
+    expect(within(block).queryByRole('button', { name: 'Only send this one' })).toBeNull()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Not yet' }))
+    expect(await within(block).findByRole('button', { name: 'Only send this one' })).toBeTruthy()
+    fireEvent.click(within(block).getByRole('button', { name: 'Turn on secrecy for this site' }))
+    fireEvent.click((await screen.findAllByRole('radio'))[1]!)
+    readLive.mockResolvedValue({ ...ON, development_id: null, address_key: '12 sample street', address: '12 Sample St' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn it on and ask 12 people to sign' }))
+    await waitFor(() => expect(io.turnOn).toHaveBeenCalledWith(lone, 'book-sec'))
+    // On, the offer says so in two lines, counts nothing and offers no press.
+    await waitFor(() => expect(screen.getByTestId('send-secrecy').getAttribute('data-secrecy')).toBe('on'))
+    const on = screen.getByTestId('send-secrecy')
+    expect(within(on).getByText('ZZ Test site secrecy paper')).toBeTruthy()
+    expect(within(on).queryByRole('button')).toBeNull()
+    expect(within(on).queryByText(/carry the paper/)).toBeNull()
+    expect(io.readCounts).not.toHaveBeenCalled()
+  })
+
+  it('in Send a paper, the offer says nothing to an estimator, nothing of a failed read, and nothing before the push', async () => {
+    const estimator = fakeIo()
+    const first = renderWithProviders(<SiteSecrecy site={SITE} mode="offer" role="estimator" io={estimator} testId="send-secrecy" />)
+    await waitFor(() => expect(estimator.readLive).toHaveBeenCalled())
+    expect(first.container.querySelector('[data-testid="send-secrecy"]')).toBeNull()
+    first.unmount()
+    const failing = fakeIo({ readLive: vi.fn(async () => Promise.reject(new Error('offline'))) })
+    const second = renderWithProviders(<SiteSecrecy site={SITE} mode="offer" role="assistant" io={failing} testId="send-secrecy" />)
+    await waitFor(() => expect(failing.readLive).toHaveBeenCalled())
+    expect(second.container.querySelector('[data-testid="send-secrecy"]')).toBeNull()
+    second.unmount()
+    const early = fakeIo({ readLive: vi.fn(async () => 'not-there' as const) })
+    const third = renderWithProviders(<SiteSecrecy site={SITE} mode="offer" role="assistant" io={early} testId="send-secrecy" />)
+    await waitFor(() => expect(early.readLive).toHaveBeenCalled())
+    expect(third.container.querySelector('[data-testid="send-secrecy"]')).toBeNull()
+  })
+
   it('anyone else sees nothing, and nothing is read for them', async () => {
     for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', null]) {
       const io = fakeIo()

@@ -5,6 +5,9 @@
  * address on file. A company holds a paper once for each site and once for none: a copy for another site is never
  * reused, a copy out for the picked site is offered again, and a signature for it stops the send with the reason.
  * The site is written with the row at Send, and never before. Every name and address here is made up.
+ *
+ * Since piece 4 (part 4d) a named site whose secrecy is off draws one question under its line, **Turn on secrecy for
+ * this site** or **Only send this one**, and a database that has no site secrecy yet draws none.
  */
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -29,6 +32,26 @@ const io = vi.hoisted(() => ({
   failAnswers: false,
   /** What the signer's page answers when asked whether it can show an address: yes, no, or no answer at all. */
   showsSite: true as boolean | 'fail',
+  /** The site's secrecy as the block reads it: not there yet (the default, so the older cases draw no block), off, or on. */
+  secrecy: 'not-there' as 'not-there' | null | Record<string, unknown>,
+  secrecyAsked: [] as unknown[],
+}))
+vi.mock('../../lib/addresses/siteSecrecyIo', () => ({
+  supabaseSiteSecrecyIo: {
+    readLive: async (site: unknown) => {
+      io.secrecyAsked.push(site)
+      return io.secrecy
+    },
+    readCounts: async () => ({ jobs: 2, signed: null }),
+    preview: async () => ({ jobs: 2, people: 5 }),
+    readBook: async () => [{ id: 'book-sec', document_name: 'Sample site secrecy paper', book_body_html: '<p>Say nothing.</p>', book_body_format: 'html', audience: 'staff' }],
+    turnOn: async (site: unknown, bookDocumentId: string) => {
+      io.wrote.push(`secrecy on ${JSON.stringify(site)} ${bookDocumentId}`)
+      io.secrecy = { id: 's1', development_id: null, address_key: 'k', address: 'a', book_document_id: bookDocumentId, paper_name: 'Sample site secrecy paper', turned_on_at: '2026-11-27T18:00:00Z', turned_off_at: null }
+      return { id: 's1', jobs: 2 }
+    },
+    turnOff: async () => undefined,
+  },
 }))
 vi.mock('../../lib/contracts/sitePrintReadyIo', () => ({
   readSignerPageShowsSite: async () => {
@@ -124,6 +147,8 @@ beforeEach(() => {
   io.answers = []
   io.failAnswers = false
   io.showsSite = true
+  io.secrecy = 'not-there'
+  io.secrecyAsked = []
   io.addressRows = [
     { kind: 'job', id: 'j1', address: QUARRY, developmentId: 'd1', label: 'J1340' },
     { kind: 'job', id: 'j2', address: QUARRY, developmentId: 'd1', label: 'J1352' },
@@ -416,5 +441,72 @@ describe('Send a paper · the box that prints the site’s address', () => {
     await waitFor(() => expect(box().disabled).toBe(false))
     fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
     await waitFor(() => expect(io.wrote).toEqual(['print at-quarry off', 'sends at-quarry']))
+  })
+})
+
+describe('Send a paper · secrecy on the picked site (piece 4, part 4d)', () => {
+  const offer = () => screen.queryByTestId('contract-send-site-secrecy')
+
+  it('a paper that names no site asks nothing, and nothing is read', async () => {
+    io.secrecy = null
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    expect(siteLine().textContent).toBe('This paper names no site.Name a site…')
+    expect(offer()).toBeNull()
+    expect(io.secrecyAsked).toEqual([])
+  })
+
+  it('a named site whose secrecy is off draws the question under its line, and Only send this one sends the one paper', async () => {
+    io.secrecy = null
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    const block = await screen.findByTestId('contract-send-site-secrecy')
+    expect(io.secrecyAsked).toEqual([{ address: QUARRY }])
+    expect(block.textContent).toContain('Secrecy is not on for this site.')
+    fireEvent.click(screen.getByRole('button', { name: 'Only send this one' }))
+    await waitFor(() => expect(offer()).toBeNull())
+    // The site stays on the paper, and the send writes the paper alone.
+    expect(siteLine().textContent).toBe(`For the site at ${QUARRY}.Change the site…Take the site off`)
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toEqual([`wrote insert ${JSON.stringify({ site_development_id: null, site_address_key: KEY_QUARRY, site_address: QUARRY, site_prints_address: false })}`, 'sends new-row']))
+  })
+
+  it('Turn on secrecy for this site turns the picked site on, writes nothing of the paper, and then says it is on', async () => {
+    io.secrecy = null
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await screen.findByTestId('contract-send-site-secrecy')
+    fireEvent.click(screen.getByRole('button', { name: 'Turn on secrecy for this site' }))
+    fireEvent.click(await screen.findByRole('radio', { name: /^Sample site secrecy paper/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn it on and ask 5 people to sign' }))
+    await waitFor(() => expect(io.wrote).toEqual([`secrecy on ${JSON.stringify({ address: QUARRY })} book-sec`]))
+    await waitFor(() => expect(offer()?.getAttribute('data-secrecy')).toBe('on'))
+    expect(screen.queryByRole('button', { name: 'Only send this one' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Turn it off…' })).toBeNull()
+  })
+
+  it('taking the site off takes the question away, and once the row is written the question is gone', async () => {
+    io.secrecy = null
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await screen.findByTestId('contract-send-site-secrecy')
+    fireEvent.click(screen.getByRole('button', { name: 'Take the site off' }))
+    await waitFor(() => expect(offer()).toBeNull())
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await screen.findByTestId('contract-send-site-secrecy')
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toContain('sends new-row'))
+    await waitFor(() => expect(offer()).toBeNull())
+  })
+
+  it('before the site secrecy migration is pushed the email window is as it was', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(io.secrecyAsked).toEqual([{ address: QUARRY }]))
+    expect(offer()).toBeNull()
   })
 })

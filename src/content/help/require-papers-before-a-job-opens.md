@@ -193,7 +193,13 @@ A job in no development has the same block on its own Documents tab. Find **Secr
 
 Turn it on the same way. Every job at that address takes the paper. So does a job at another spelling of the address, once the two are answered **Same place**.
 
-A job in a development shows the block only while its development has secrecy on. It has no press there. Open the development's page to turn it off.
+A job in a development shows the block only while its development has secrecy on. The block has no press there. Open the development's page to turn it off.
+
+### While you send a paper
+
+**Send a paper** offers the same press. Name a site in the email window. When secrecy is not on for that site, **Secrecy on this site** shows under the site's line.
+
+Press **Turn on secrecy for this site** to turn it on there. Press **Only send this one** to send the one paper and leave secrecy off. More is in [find an agreement we sent or signed](/help/find-an-agreement-we-sent-or-signed#turn-on-secrecy-for-the-site-from-the-email-window).
 
 ## Change a paper's words
 
