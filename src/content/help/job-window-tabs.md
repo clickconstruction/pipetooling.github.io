@@ -91,6 +91,8 @@ The tab only shows the map. To set a place, press {{button:outline|Photo of a sp
 
 The middle of the Edit tab is a compact list. Its rows are **Account man, Team, Customer, Phone, Email, GC/Builder, Date met, Folders, Project, Plans, Bid, Development**. GC means the general contractor. Each row shows the current value at a glance, with a *—* where nothing is set. You tap a row or its ✎ to open the familiar editor for just that field. You tap again to fold it away. On a phone the rows read under five titles. They are **The people**, **The folders**, **The customer**, **The GC and the site** and **The paper**. Each row is 44 px tall and a chevron sits at its right. The status rail is not on the Edit tab on a phone. The bar's **Status ▾** is the same rail. The **Folders** and **Plans** rows keep their Drive links clickable right on the row. So opening the customer's files never requires expanding anything.
 
+A job marked as waiting on the Bridge shows a **Waits** row above that list. The row says since when, why and who marked it. The office presses {{button:outline|Lift the wait}} there to end the wait. The row leaves, and the job's Activity gets a line. The Build desk counts the job again.
+
 :::example Fixing a phone number
 Edit tab → tap the **Phone** row → retype the number → tap the row again to fold it. Autosave takes it from there.
 :::

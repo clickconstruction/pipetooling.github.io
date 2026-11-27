@@ -216,10 +216,12 @@ import { JobFormHeaderRow } from './JobFormHeaderRow'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
 import { JobFormLinksSection } from './JobFormLinksSection'
 import { JobFormCustomerSection } from './JobFormCustomerSection'
+import { JobBuildWaitFactRow } from './JobBuildWaitFactRow'
 import { JobFormEditFactRows } from './JobFormEditFactRows'
 import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { afterDeleteJobFolder, makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 import { JOB_FOLDER_TRASH_CONFIRM_LINE, jobFolderTrashOffered } from '../../lib/jobs/deletedJobFolderOffer'
@@ -2762,6 +2764,8 @@ export default function JobFormModal({
                   onChanged={() => onSavedRef.current?.()}
                 />
               </div>
+              {/* Punch list #192, write A (v2.8726): a Build job that waits says so under its status, with Lift the wait for the office. Nothing on a job that does not wait. */}
+              <JobBuildWaitFactRow jobId={editing.id} jobLabel={[editing.hcp_number || editing.click_number, editing.job_name].map((v) => (v ?? '').trim()).filter(Boolean).join(' · ') || 'this job'} canLift={isOfficeRole(authRole)} />
             <JobFormEditFactRows
               contractJob={initialJob ?? editing}
               workOrderJob={initialJob ?? editing}

@@ -1,7 +1,8 @@
 /**
  * The chip a waiting job wears on its Stages card and table row (punch list #192, write A, v2.8723): *Waits · the GC
  * is not ready for us · since Oct 26*. A label, not a press: dispatch reads why the job has no crew before anyone
- * asks. The wait is lifted from the Bridge's Build desk. The words are `buildWaitChipWords`.
+ * asks. The wait is lifted from the Bridge's Build desk, or from the job window's Waits row (`JobBuildWaitFactRow`,
+ * v2.8726). The words are `buildWaitChipWords`.
  */
 import { buildWaitChipWords, type BuildWait } from '../../lib/bridge/build/buildWaits'
 
@@ -11,7 +12,7 @@ export function BuildWaitChip({ wait, compact = false }: { wait: BuildWait | nul
   return (
     <span
       data-testid="build-wait-chip"
-      title={`This job is marked as waiting${who ? ` by ${who}` : ''}. The Build desk does not count it against the crew. Lift the wait on the Bridge's Build desk.`}
+      title={`This job is marked as waiting${who ? ` by ${who}` : ''}. The Build desk does not count it against the crew. The office lifts the wait on the job's Edit tab.`}
       style={{
         display: 'inline-block',
         maxWidth: '100%',
