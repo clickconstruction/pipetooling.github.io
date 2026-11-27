@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { FixSizes } from '../../lib/bridge/fixSizes'
+import { RULE_ASK_DRAWN, ruleAskPress } from '../../lib/bridge/ruleAskPress'
 import type { Reflex, ReflexId, ReflexLine } from '../../lib/bridge/waits'
 
 /**
@@ -14,9 +15,16 @@ import type { Reflex, ReflexId, ReflexLine } from '../../lib/bridge/waits'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
+/**
+ * The circle the ? is drawn in, 24 px at a desk and on a phone alike. The press around it is `ruleAskPress`'s, as the
+ * rule line's ? has it since v2.8683: the circle itself at a desk, a thumb's square on a phone (finding 316).
+ */
+const ASK_CIRCLE: CSSProperties = { boxSizing: 'border-box', width: RULE_ASK_DRAWN, height: RULE_ASK_DRAWN, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
 
-export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset, sizes }: { reflexes: Reflex[]; activeId: ReflexId | null; line: ReflexLine | null; levers: Array<{ id: string; name: string; lever: string }>; onPress: (id: ReflexId) => void; onReset: () => void; sizes?: FixSizes | null }) {
+export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset, sizes, phone = false }: { reflexes: Reflex[]; activeId: ReflexId | null; line: ReflexLine | null; levers: Array<{ id: string; name: string; lever: string }>; onPress: (id: ReflexId) => void; onReset: () => void; sizes?: FixSizes | null; /** The page's own narrow screen: the ? takes a thumb's press. */ phone?: boolean }) {
   const [leversOpen, setLeversOpen] = useState(false)
+  // On a phone the press around the ? stands a thumb square, and the row is as tall as it was (finding 316).
+  const ask = ruleAskPress(phone)
   return (
     <div style={{ position: 'relative', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }} data-testid="bridge-waits">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -28,9 +36,12 @@ export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset
           onClick={() => setLeversOpen((o) => !o)}
           aria-label="The other links' levers"
           aria-expanded={leversOpen}
-          style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          data-testid="bridge-waits-ask"
+          style={{ marginLeft: 'auto', ...ask.press, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
         >
-          ?
+          <span aria-hidden="true" style={ASK_CIRCLE} data-testid="bridge-waits-ask-circle">
+            ?
+          </span>
         </button>
       </div>
       {leversOpen && (
