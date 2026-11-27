@@ -9,7 +9,7 @@ summary: >
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The swipe back and the sign held in the lens frame on 2026-11-26, in light and in dark, and Recent Reports' swipe held through View as. Left for a simulator on a quiet Mac: Reduce Motion, the keyboard and the sign's feel. The signed-in checks stay with the person's own phone, since a swipe a person makes ends the sign for that account for good. Two small faults that walk met are mended (v2.8653, v2.8654) and want a look. Then retire the card.
+next: The swipe back and the sign held in the lens frame on 2026-11-26, in light and in dark, and Recent Reports' swipe held through View as. Left for a simulator on a quiet Mac: Reduce Motion, the keyboard and the sign's feel. The signed-in checks stay with the person's own phone, since a swipe a person makes ends the sign for that account for good. Two small faults that walk met are mended (v2.8653, v2.8654) and were seen on the live site on 2026-11-27, in the pane and not in a simulator: both hold. Then retire the card.
 size: L as a train of six (S · M · M · M · S · S); left: the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
@@ -455,6 +455,14 @@ simulator, never a real phone, on a Mac under heavy load, so what drew stands an
   (`phoneFolds.ts`). Since v2.8654 (PR #9959) the head stacks on a phone: the name and the ✕ on the first line, **Copy
   for text** and **Edit bid** under them. Since v2.8653 (PR #9958) the fold reads *15 new of 15*, or *15 reports · all
   read*. Neither is seen in a simulator yet.
+- **Both seen on the live site on 2026-11-27** (the walkers' sitting 30, in the pane, never a phone or a
+  simulator). v2.8654, in the Phone 375 lens frame on Settings → What everyone sees: a made-up bid with a five-word
+  name took two lines with no word broken, the ✕ at its right on the first line at 44 by 44, and **Copy for text**
+  and **Edit bid** side by side on a line of their own, each 44 px tall, that line not wrapping. In the Desk 1280
+  frame the name and the three presses stood on one row. v2.8653, as the sample assistant through View as at
+  375 px: the folded line read *Recent reports · 14 new of 14*, and the word *listed* was nowhere on the page. The
+  fold was not opened, so the rows and the foot press were not counted, and nothing was swiped. That look wrote one
+  more View as row, which is card #443's to list.
 - **Not made:** Reduce Motion, the keyboard, the sign's feel and timing, check 5 in dark, and two cards on one
   Dashboard, since the sample assistant's draws no My Bids card.
 
