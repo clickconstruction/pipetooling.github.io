@@ -1710,6 +1710,39 @@ button:focus-visible {
    whose test holds this rule: one line, set nowhere else. */
 @media (max-width: 640px) { :root { --phone-press-min: 44px; } }
 
+/* The trade partner's portal on a phone (finding 290 of the walks, v2.8700: the walk of 2026-11-27 read presses 30 px
+   tall on the sample portal). A trade opens the portal from an email, most often on a phone, and it draws the office's
+   own `Btn`, its links, its ticks and its fields at their desk size. Inside the portal's page (`TRADE_PORTAL_PAGE_CLASS`
+   in src/lib/phonePressFloor.ts, on the page's <main>) every one of them stands a fingertip tall at phone width. The
+   office's GC pages draw the same `Btn` outside that page, so they stay as drawn. `!important`, because many of these
+   carry their desk height in their own style. A link is drawn as a box so the height can hold. A fold's line and the
+   file picker take the room as padding, so their words sit in the middle. `phonePressFloor.test.ts` holds this rule. */
+@media (max-width: 640px) {
+  .tradePortalPage button,
+  .tradePortalPage select,
+  .tradePortalPage summary,
+  .tradePortalPage input:not([type='checkbox']):not([type='radio']),
+  .tradePortalPage label:has(input[type='checkbox']),
+  .tradePortalPage label:has(input[type='radio']) {
+    min-height: 44px !important;
+  }
+  .tradePortalPage a[href] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  /* A link in a table's row gives back what it grew by, so the row stays as tall as it was and the link keeps to the
+     line of the day beside it. */
+  .tradePortalPage td a[href] {
+    margin-block: -12px;
+  }
+  .tradePortalPage summary,
+  .tradePortalPage input[type='file'] {
+    box-sizing: border-box;
+    padding-block: 0.7rem;
+  }
+}
+
 /* The Job Mode press bar on one row (the new phone layout, `lib/phoneLayout`): the buttons stay on one line, and
    the compact ones fold a two-word label before the day's press gives up room. A row that wraps would never fold
    them, since an item moves to the next line before it shrinks. Under 350 px the five do not fit on one line with

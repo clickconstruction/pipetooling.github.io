@@ -27,3 +27,21 @@ export function phoneTall(desk: number): string {
 export function phoneGiveBack(desk: number): string {
   return `min(0px, calc((${desk}px - var(${PHONE_PRESS_FLOOR_VAR}, 0px)) / 2))`
 }
+
+/**
+ * The trade partner's portal (finding 290 of the walks, v2.8700): the class on its page's `<main>`. `index.css` grows
+ * every press inside it to a fingertip at phone width: a `Btn`, a plain button, a link, a tick's label, a fold's line,
+ * a pick list and a field. The portal draws the office's own `Btn`, which takes no fact about the screen, so the page
+ * says it. The office's GC pages draw the same `Btn` outside this class and keep their desk size.
+ */
+export const TRADE_PORTAL_PAGE_CLASS = 'tradePortalPage'
+
+/** What stands a fingertip tall inside the portal's page at phone width, as `index.css` selects it. */
+export const TRADE_PORTAL_PRESS_SELECTORS = [
+  'button',
+  'select',
+  'summary',
+  "input:not([type='checkbox']):not([type='radio'])",
+  "label:has(input[type='checkbox'])",
+  "label:has(input[type='radio'])",
+] as const

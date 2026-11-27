@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { PHONE_PRESS_FLOOR_MAX_WIDTH_PX, PHONE_PRESS_FLOOR_PX, PHONE_PRESS_FLOOR_VAR, phoneGiveBack, phoneTall } from './phonePressFloor'
+import { PHONE_PRESS_FLOOR_MAX_WIDTH_PX, PHONE_PRESS_FLOOR_PX, PHONE_PRESS_FLOOR_VAR, TRADE_PORTAL_PAGE_CLASS, TRADE_PORTAL_PRESS_SELECTORS, phoneGiveBack, phoneTall } from './phonePressFloor'
 
 const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
 
@@ -32,5 +32,24 @@ describe('phonePressFloor', () => {
     const rule = `@media (max-width: ${PHONE_PRESS_FLOOR_MAX_WIDTH_PX}px) { :root { ${PHONE_PRESS_FLOOR_VAR}: ${PHONE_PRESS_FLOOR_PX}px; } }`
     expect(css).toContain(rule)
     expect(css.split(`${PHONE_PRESS_FLOOR_VAR}:`)).toHaveLength(2)
+  })
+
+  // Finding 290: the trade partner's portal draws the office's Btn, which knows nothing of the screen, so the page's
+  // class and one rule of the stylesheet grow its presses on a phone. A browser proves the heights; this holds the
+  // rule to the class and to the fingertip, and holds it inside the phone's own width.
+  it('has the stylesheet grow every press inside the trade portal page to a fingertip at phone width', () => {
+    expect(TRADE_PORTAL_PAGE_CLASS).toBe('tradePortalPage')
+    const scope = `.${TRADE_PORTAL_PAGE_CLASS}`
+    const grown = `${TRADE_PORTAL_PRESS_SELECTORS.map((sel) => `  ${scope} ${sel}`).join(',\n')} {\n    min-height: ${PHONE_PRESS_FLOOR_PX}px !important;\n  }`
+    const block = `@media (max-width: ${PHONE_PRESS_FLOOR_MAX_WIDTH_PX}px) {\n${grown}\n`
+    expect(css).toContain(block)
+    // A link is no box by itself, so it is drawn as one and then stands as tall.
+    expect(css).toContain(`  ${scope} a[href] {\n    display: inline-flex;\n    align-items: center;\n    min-height: ${PHONE_PRESS_FLOOR_PX}px;\n  }`)
+    // Every use of the class sits in that one block: nothing outside the phone's width reads it.
+    const from = css.indexOf(block)
+    const to = css.indexOf('\n}\n', from)
+    const inside = css.slice(from, to)
+    expect(css.split(scope).length - 1).toBe(inside.split(scope).length - 1)
+    expect(inside.split('@media')).toHaveLength(2)
   })
 })

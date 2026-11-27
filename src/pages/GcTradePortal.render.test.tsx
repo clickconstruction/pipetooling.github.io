@@ -14,6 +14,7 @@ import { gcTradePortalSample, gcTradePortalSampleFlow } from '../../supabase/fun
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
 import GcTradePortal from './GcTradePortal'
+import { TRADE_PORTAL_PAGE_CLASS } from '../lib/phonePressFloor'
 
 const TODAY = '2026-10-08'
 const urls: string[] = []
@@ -44,6 +45,18 @@ const open = (path = '/t/sample') =>
 const block = (name: RegExp | string) => within(screen.getByRole('region', { name }))
 
 describe('GcTradePortal', () => {
+  // Finding 290: the page's own class is what the stylesheet reads to grow every press to a fingertip on a phone.
+  it('draws its page under the class that grows its presses on a phone', async () => {
+    const { container } = open()
+    await screen.findByText('Hello, Dana Ortiz.')
+    const main = container.querySelector('main')
+    expect(main?.className).toBe(TRADE_PORTAL_PAGE_CLASS)
+    expect(main?.getAttribute('data-theme')).toBe('light')
+    // Every press of the page sits inside it.
+    expect(container.querySelectorAll('button').length).toBeGreaterThan(5)
+    expect(container.querySelectorAll(`button:not(.${TRADE_PORTAL_PAGE_CLASS} button)`).length).toBe(0)
+  })
+
   it('opens on the link alone and draws the company’s home', async () => {
     open()
     expect(await screen.findByText('Hello, Dana Ortiz.')).toBeTruthy()

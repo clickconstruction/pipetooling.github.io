@@ -13,6 +13,7 @@ import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { INK, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
+import { TRADE_PORTAL_PAGE_CLASS } from '../lib/phonePressFloor'
 
 /**
  * GC mode, the trade partner portal (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md): the no-password page a company
@@ -20,6 +21,7 @@ import { INK, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
  * maps the company's slice into the prototype's shapes (`tradePortalState.ts`) and draws it read only. The
  * presses come with the submit function (P2b). Pinned light like every page that opens without a sign-in, and
  * in the company's language once Spanish is on (`portalShownLang`).
+ * Its `<main>` carries `TRADE_PORTAL_PAGE_CLASS`, under which every press stands 44 px tall on a phone (finding 290).
  */
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -126,7 +128,7 @@ export default function GcTradePortal() {
   )
 
   return (
-    <main data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: PORTAL_FONT, padding: '16px 16px 32px', boxSizing: 'border-box' }}>
+    <main className={TRADE_PORTAL_PAGE_CLASS} data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: PORTAL_FONT, padding: '16px 16px 32px', boxSizing: 'border-box' }}>
       {page.kind === 'loading' ? (
         <p style={{ textAlign: 'center', marginTop: '3rem' }}>{pt(lang, 'portalOpening')}</p>
       ) : page.kind === 'error' ? (
