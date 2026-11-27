@@ -202,15 +202,15 @@ The site is kept when **Send email** is pressed, and not before. Someone on your
 
 ## Print the site's address on the paper
 
-A paper that names a site says nothing about the site to the person who signs. That is how it starts.
+A paper that names a site says nothing about the site to the person who signs. Every paper starts that way.
 
-Under the site's line sits the box **Print the site’s address on the paper**. It is not ticked. The words under it read *The signer reads nothing about the site.*
+Under the site's line sits the box **Print the site’s address on the paper**. The box is not ticked. The words under the box read *The signer reads nothing about the site.*
 
 Tick the box when the signer should read the address before they sign.
 
 1. Name the site, as above.
 2. Tick **Print the site’s address on the paper**.
-3. Read the words under the box. They say the line the signer will read.
+3. Read the words under the box. The words say the line the signer will read.
 4. Press **Send email**.
 
 :::example What the signer reads
@@ -221,9 +221,9 @@ Here is what the tick changes.
 
 - The signer's page shows the address on its own line, above the paper.
 - A signed paper's PDF prints the same line above its words. The copy the signer is emailed has it too.
-- A form's PDF is the form itself. It prints no address.
+- A form's PDF is the form itself. A form prints no address.
 
-The signer reads only the address. They do not read which jobs are there, or the development's name.
+The signer reads only the address. The signer does not read which jobs are there, or the development's name.
 
 Naming another site takes the tick off. Tick the box again for the new address.
 
