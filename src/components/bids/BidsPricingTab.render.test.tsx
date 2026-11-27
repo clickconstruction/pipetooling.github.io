@@ -20,6 +20,8 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 const db = vi.hoisted(() => ({
   tables: {} as Record<string, Array<Record<string, unknown>>>,
   writes: [] as Array<{ table: string; op: string; payload: unknown }>,
+  /** Which rows each write was aimed at: the `in` and `eq` it carried, in order. Kept apart, so `writes` reads as it did. */
+  aimed: [] as Array<{ table: string; op: string; by: string; args: unknown[] }>,
 }))
 // The shared stub, with `from` answering a table's rows and recording a write once it is awaited.
 // A table with no rows answers as the shared stub does: an empty list, or null for a single row.
@@ -53,6 +55,7 @@ vi.mock('../../lib/supabase', async () => {
                   payload = args[0]
                 }
                 if (prop === 'single' || prop === 'maybeSingle') single = true
+                if (op && (prop === 'in' || prop === 'eq')) db.aimed.push({ table, op, by: String(prop), args })
                 return builder
               }
             },
@@ -274,6 +277,7 @@ beforeEach(() => {
   smoke.robotPrice = []
   db.tables = {}
   db.writes = []
+  db.aimed = []
   window.localStorage.clear()
   window.sessionStorage.clear()
 })
@@ -1193,6 +1197,49 @@ describe('BidsPricingTab render smoke', () => {
     fireEvent.click(screen.getByText('Save'))
     await settle()
     expect(offerBox()).toBeNull()
+  })
+
+  it('the update is aimed at the copy’s own entry and at the other price’s entry that follows it', async () => {
+    await openBookOver({ priceBookEntries: BID_COPY, priceBookVersions: TWO_PRICES }, [...(BOOK_ENTRIES as unknown as Array<Record<string, unknown>>), SIBLING])
+    await saveFirstBookEdit('200')
+    db.aimed = []
+    fireEvent.click(within(offerBox() as HTMLElement).getByText(moneyText('Use $200.00 on this bid')))
+    await settle()
+    expect(db.aimed).toEqual([{ table: 'price_book_entries', op: 'update', by: 'in', args: ['id', ['be-wc', 'se-wc']] }])
+  })
+
+  it('a bid with one price asks about no other price, whatever the table holds', async () => {
+    // The same rows as the case above, on a bid whose only price is the open one: there is no other price to carry to.
+    await openBookOver({ priceBookEntries: BID_COPY }, [...(BOOK_ENTRIES as unknown as Array<Record<string, unknown>>), SIBLING])
+    await saveFirstBookEdit('200')
+    expect(offerText()).toBe('This bid still prices Water closet at $165.00 — it holds its own copy of the book, taken when it was first priced.Use $200.00 on this bidLeave this bid alone')
+    db.aimed = []
+    fireEvent.click(within(offerBox() as HTMLElement).getByText(moneyText('Use $200.00 on this bid')))
+    await settle()
+    expect(db.aimed).toEqual([{ table: 'price_book_entries', op: 'update', by: 'in', args: ['id', ['be-wc']] }])
+  })
+
+  it('a book edit that brings the book back to the copy’s price takes the standing offer away', async () => {
+    await openBookOver({ priceBookEntries: BID_COPY })
+    await saveFirstBookEdit('200')
+    expect(offerBox()).not.toBeNull()
+    // $165.00 with the other two stages as they are is the copy's own $90, $50 and $25: nothing is left to carry.
+    await saveFirstBookEdit('165')
+    expect(offerBox()).toBeNull()
+  })
+
+  it('on a sent bid the offer is drawn and its press is refused: nothing is written and the offer stays', async () => {
+    db.tables = { price_book_entries: BOOK_ENTRIES as unknown as Array<Record<string, unknown>> }
+    renderWithProviders(<BidsPricingTab {...pricedProps({ templatePriceBookVersions: BOOKS, defaultPriceBookTemplateId: 'tpl-1', priceBookEntries: BID_COPY }, makeBid({ bid_date_sent: '2026-06-02', bid_value: 6500 }))} />)
+    await settle()
+    fireEvent.click(button(/Base price · \d+ entr/))
+    await settle()
+    await saveFirstBookEdit('200')
+    expect(offerBox()).not.toBeNull()
+    fireEvent.click(within(offerBox() as HTMLElement).getByText(moneyText('Use $200.00 on this bid')))
+    await settle()
+    expect(db.writes).toEqual([])
+    expect(offerBox()).not.toBeNull()
   })
 
   it('an offer goes away when the open price changes', async () => {
