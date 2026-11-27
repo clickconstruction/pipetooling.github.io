@@ -33,7 +33,8 @@ export const BANK_CHECK_WINDOW_DAYS = 60
 /**
  * Who may act on a check before the bank has cleared it (punch list #437, call 4, the owner's answer of 2026-11-25:
  * *a leader, a controller, or a dev*, and *the same three* for every early press on a held check). One list, read by
- * the release tab's *Release it anyway…* on a check that has not cleared (v2.8735) and by Payoffs' *The bank
+ * the release tab's *Release it anyway…*, on a check that has not cleared (v2.8735) and with money still open
+ * (v2.8740, `canReleaseAnyway`), and by Payoffs' *The bank
  * confirmed the funds* (`canConfirmFunds`). A leader is the owner's role. The controller is named by itself: the
  * assistant is not one of the three.
  */

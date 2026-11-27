@@ -99,7 +99,9 @@ A job with two filed liens asks **Which lien** first. Pick the one that was paid
 
 ## Release a lien with money still open
 
-Sometimes a lien is settled for less than the bills. The red line holds the buttons. Press **Release it anyway…** and type why. The buttons wake, and the reason is saved with the release.
+Sometimes a lien is settled for less than the bills. The red line holds the buttons. A leader, a controller or a dev presses **Release it anyway…** and types why. The buttons wake, and the reason is saved with the release.
+
+Anyone else sees no press there. A grey line says who can release it. Ask one of them, or record the payment first.
 
 ## Release a lien before its check clears
 

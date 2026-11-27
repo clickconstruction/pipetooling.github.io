@@ -119,8 +119,21 @@ describe('Release of record: money holds the release', () => {
     expect(writes.inserts).toEqual([])
   })
 
-  it('lets it go once a reason is typed, and saves the reason and the affidavit it names', async () => {
+  it('offers an assistant no release with money still open, and says who can (v2.8740)', () => {
+    draw({})
+    expect(money().dataset.lienReleaseMoney).toBe('red')
+    expect(document.querySelector('[data-lien-release-anyway]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-reason]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-who]')?.textContent).toBe('A leader, a controller or a dev can release it with money still open.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+    fireEvent.click(actions()[2]!)
+    expect(writes.inserts).toEqual([])
+  })
+
+  it.each(['master_technician', 'controller', 'dev'])('lets a %s release it once a reason is typed, and saves the reason and the affidavit it names', async (role) => {
+    auth.role = role
     const { onChanged } = draw({})
+    expect(document.querySelector('[data-lien-release-anyway-who]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Release it anyway…' }))
     expect(actions().every((b) => b.disabled)).toBe(true)
     fireEvent.change(document.querySelector<HTMLInputElement>('[data-lien-release-anyway-reason]')!, { target: { value: 'settled for less, per the owner' } })
