@@ -148,3 +148,39 @@ describe('the Add a part sheet', () => {
     expect(screen.queryByTestId('add-part-another')).toBeNull()
   })
 })
+
+describe('the quantity step in the room a small phone’s number pad leaves (finding 310)', () => {
+  const room = (phone: boolean, height: number | null) => {
+    window.matchMedia = ((query: string) => ({ matches: phone && query.includes('max-width'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    if (height != null) Object.defineProperty(window, 'visualViewport', { value: { height, offsetTop: 0, addEventListener: () => {}, removeEventListener: () => {} }, configurable: true })
+    else delete (window as unknown as { visualViewport?: unknown }).visualViewport
+  }
+  afterEach(() => {
+    delete (window as unknown as { visualViewport?: unknown }).visualViewport
+    delete (window as unknown as { matchMedia?: unknown }).matchMedia
+  })
+  const pickHangers = () => fireEvent.click(within(screen.getByTestId('add-part-box-says')).getByRole('button'))
+  const number = () => screen.getByRole('spinbutton', { name: 'How many' }) as HTMLInputElement
+
+  it('with the keys up the number’s field stands as tall as its − and +, so the chips fit over the blue press', () => {
+    room(true, 320)
+    open()
+    pickHangers()
+    expect([number().style.height, number().style.paddingTop, number().style.paddingBottom]).toEqual(['56px', '0px', '0px'])
+    expect(screen.getByRole('group', { name: 'Add to the number' })).toBeTruthy()
+    expect(screen.getByTestId('add-part-primary').textContent).toBe('Add 1 to G101')
+  })
+
+  it('with the keys away, and at a desk, the field is as it was', () => {
+    room(true, 553)
+    const phone = open()
+    pickHangers()
+    expect(number().style.height).toBe('')
+    expect(phone).toBeTruthy()
+    cleanup()
+    room(false, null)
+    open()
+    pickHangers()
+    expect(number().style.height).toBe('')
+  })
+})
