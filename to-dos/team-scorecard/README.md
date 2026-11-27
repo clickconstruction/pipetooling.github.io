@@ -51,9 +51,13 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 ## Calls the owner makes
 
 1. **Earned, not invoiced.** The field score earns by hours (contract × the window's share of expected hours), as the app does everywhere. The prompt said invoiced.
+   **Asked 2026-11-27, not answered.**
 2. **Burden on actuals.** Bids price labor at the average wage × 1.20, but the job's burn, the Costs tab and the team-labor reads price clocked hours at raw wages; only the superintendent scoreboard applies the factor. The scorecard applies it. Whether the Costs tab and the burn should too is a separate card.
+   **Asked 2026-11-27, not answered.** Taunya asked first where the burden adds into the app, where 1.20 came from, and whether office labor already split out to overhead makes it a double count. The read of the code went back to her the same day: office labor is in the hurdle's overhead pool and the burden is on field wages, so the two do not overlap, and 1.20 is a seeded round estimate.
 3. **Where the target lives.** On the Bid Board's Pricing rules beside the difficulty price list since v2.7361, set by the owner. Whether that is the home he wants is still his call.
+   **Answered 2026-11-27 by Taunya:** *ok*. The target stays on the Bid Board's Pricing rules.
 4. **Hours reasons.** The field score needs none. If the owner wants the drive / shop / waiting / callback drill-down, drive and shop can be inferred (travel stamps, the office job); only waiting and callback would need a press from the tech.
+   **Asked 2026-11-27, not answered.**
 
 ## The train
 
