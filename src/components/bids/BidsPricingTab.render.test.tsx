@@ -1082,6 +1082,47 @@ describe('BidsPricingTab render smoke', () => {
     expect(formsOpen()).toEqual([])
   })
 
+  // The book-edit offer (punch list #46 row 1, the fourth medium cut, not yet moved): after a book entry is saved,
+  // the drawer offers to carry the edit into the bid's own copy. Pinned on the tab as it stands, before any move.
+  const offerSays = () => {
+    const m = /(This bid still prices[^.]*\.|[^.✕]*isn’t in this bid’s copy[^.]*\.)/.exec(bookDrawer().textContent ?? '')
+    return m ? m[1]! : null
+  }
+  async function saveBookEdit(total: string) {
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    fireEvent.change(stageBoxes()[0]!, { target: { value: total } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    db.writes = []
+  }
+
+  it('a book entry the bid’s copy lacks is offered to it: Add it to this bid too writes it to the bid’s own price', async () => {
+    await openBook()
+    expect(offerSays()).toBeNull()
+    await saveBookEdit('200')
+    expect(offerSays()).toBe('Water closet isn’t in this bid’s copy of the book, so it won’t come up when you assign a row.')
+    fireEvent.click(within(bookDrawer()).getByText('Add it to this bid too'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'insert', payload: { version_id: 'price-base', fixture_type_id: 'ft-1', rough_in_price: 125, top_out_price: 50, trim_set_price: 25, total_price: 200, sequence_order: 1 } }])
+    expect(offerSays()).toBeNull()
+    expect(await screen.findByText(/^Water closet added to this bid.s book — it will come up when you assign\.$/)).toBeTruthy()
+  })
+
+  it('Leave this bid alone puts the offer away and writes nothing, and closing the drawer retires an offer', async () => {
+    await openBook()
+    await saveBookEdit('200')
+    fireEvent.click(within(bookDrawer()).getByText('Leave this bid alone'))
+    expect(offerSays()).toBeNull()
+    expect(db.writes).toEqual([])
+    await saveBookEdit('210')
+    expect(offerSays()).not.toBeNull()
+    fireEvent.click(within(bookDrawer()).getByLabelText('Close the price book'))
+    await settle()
+    fireEvent.click(button(/Base price · 0 entries/))
+    await settle()
+    expect(offerSays()).toBeNull()
+  })
+
   it('a sent bid refuses ＋ Percent row with the lock\'s words', async () => {
     renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS }, makeBid({ bid_date_sent: '2026-07-01', bid_value: 6800 }))} />)
     await settle()
