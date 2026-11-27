@@ -11,7 +11,7 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board read this way since PRs 1 to 3
   (v2.6973, v2.6975, v2.6977). The page's own Market and Sales cards, the slowest-step reading, the weekly email
   and the guide followed with PRs 4 to 6 (v2.6979, v2.6983, v2.6988). This card holds every rule and what is left, which is the owner's calls.
-next: the owner answers the seven calls still open at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word
+next: the owner answers the seven calls still open at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word Checked 2026-11-27: the email of Monday 2026-11-16 has passed, and the two PRs the blocker names, #7948 and #7893, both merged on 2026-11-13. The record does not say whether `bridge-weekly-sheet` was redeployed after them then; it was deployed again on 2026-11-27.
 size: L as a train of six (M · S · M · M · M · S), all shipped; left: the owner's calls (XS)
 blocker: None for the build. Monday's email matches the page only once #7948 and #7893 are merged and `bridge-weekly-sheet` is redeployed, and both belong to #334.
 opinion: your call — nothing is left to build; retire it after Monday's email is read, because no real send has shown the Market amount yet.
