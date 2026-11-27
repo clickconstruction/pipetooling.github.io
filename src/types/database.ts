@@ -22586,6 +22586,9 @@ export type Database = {
           status: string
           submitted_at: string | null
           updated_at: string
+          void_of_filing_ids: string[] | null
+          void_prior_sent_at: string | null
+          void_stamped_at: string | null
           voided_at: string | null
           word_channel: string
           word_note: string
@@ -22631,6 +22634,9 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           updated_at?: string
+          void_of_filing_ids?: string[] | null
+          void_prior_sent_at?: string | null
+          void_stamped_at?: string | null
           voided_at?: string | null
           word_channel?: string
           word_note?: string
@@ -22676,6 +22682,9 @@ export type Database = {
           status?: string
           submitted_at?: string | null
           updated_at?: string
+          void_of_filing_ids?: string[] | null
+          void_prior_sent_at?: string | null
+          void_stamped_at?: string | null
           voided_at?: string | null
           word_channel?: string
           word_note?: string
@@ -45468,6 +45477,60 @@ export type Database = {
           },
         ]
       }
+      voided_test_bills: {
+        Row: {
+          bill: Json
+          id: string
+          invoice_id: string
+          job_id: string | null
+          sends: Json
+          stripe_action: string | null
+          stripe_invoice_id: string | null
+          voided_at: string
+          voided_by: string | null
+          voided_by_name: string | null
+        }
+        Insert: {
+          bill: Json
+          id?: string
+          invoice_id: string
+          job_id?: string | null
+          sends?: Json
+          stripe_action?: string | null
+          stripe_invoice_id?: string | null
+          voided_at?: string
+          voided_by?: string | null
+          voided_by_name?: string | null
+        }
+        Update: {
+          bill?: Json
+          id?: string
+          invoice_id?: string
+          job_id?: string | null
+          sends?: Json
+          stripe_action?: string | null
+          stripe_invoice_id?: string | null
+          voided_at?: string
+          voided_by?: string | null
+          voided_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voided_test_bills_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voided_test_bills_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       watched_box_opens: {
         Row: {
           at: string
@@ -50515,6 +50578,7 @@ export type Database = {
       }
       lien_retainage_deadline: { Args: { p_ended_on: string }; Returns: string }
       lien_sign_code_status: { Args: { p_user_id: string }; Returns: Json }
+      lien_void_memory_since: { Args: never; Returns: string }
       link_hazmat_fee_incident_to_invoice: {
         Args: { p_incident_id: string; p_invoice_id: string }
         Returns: Json
@@ -53306,6 +53370,10 @@ export type Database = {
         Args: { p_dry_run?: boolean; p_group_key: string }
         Returns: Json
       }
+      restore_deleted_test_person: {
+        Args: { p_dry_run?: boolean; p_group_key: string }
+        Returns: Json
+      }
       restore_labor_job_payment: {
         Args: { p_event_id: string }
         Returns: string
@@ -54507,6 +54575,7 @@ export type Database = {
         }[]
       }
       team_prospect_trial_tally: { Args: never; Returns: Json }
+      throw_away_test_painted_map: { Args: { p_map_id: string }; Returns: Json }
       tie_message: {
         Args: { p_job_id: string; p_job_kind: string; p_message_id: string }
         Returns: undefined
@@ -54617,6 +54686,7 @@ export type Database = {
         Returns: Json
       }
       untake_robot_fixtures: { Args: { p_pull_id: string }; Returns: Json }
+      unvoid_test_lien_filing: { Args: { p_filing_id: string }; Returns: Json }
       update_bids_count_rows_order:
         | {
             Args: { p_bid_id: string; p_ordered_ids: string[] }
