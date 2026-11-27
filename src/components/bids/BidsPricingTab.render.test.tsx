@@ -875,6 +875,211 @@ describe('BidsPricingTab render smoke', () => {
     expect(within(win).getByRole('button', { name: 'Set Floor drain to $900.00' })).toBeTruthy()
   })
 
+  // The three price-book forms (punch list #46 row 1, the third medium cut): the version form, the delete window and
+  // the entry form. Pinned on the tab as it stood, before their state and their open and close handlers moved to
+  // `usePriceBookForms`. Every name here is made up.
+  const BOOKS = [
+    { id: 'tpl-1', name: 'ZZ Standard book', bid_id: null, bid_version_id: null, sort_order: 0, source_template_id: null, is_offered: false },
+    { id: 'tpl-2', name: 'ZZ Second book', bid_id: null, bid_version_id: null, sort_order: 1, source_template_id: null, is_offered: false },
+  ] as unknown as Props['templatePriceBookVersions']
+  const BOOK_ENTRIES = [{ id: 'e-wc', version_id: 'tpl-1', fixture_type_id: 'ft-wc', rough_in_price: 100, top_out_price: 50, trim_set_price: 25, total_price: 175, sequence_order: 0, fixture_types: { name: 'Water closet' } }]
+  /** Each form on screen: its title, what its boxes hold, and its presses with the dead ones marked. */
+  const formsOpen = () =>
+    [...document.querySelectorAll('[role="dialog"]')]
+      .filter((d) => d.getAttribute('aria-label') !== 'Price book' && d.querySelector('h3'))
+      .map((d) => `${d.querySelector('h3')?.textContent ?? ''} ${[...d.querySelectorAll('input')].map((x) => `[${(x as HTMLInputElement).value}]`).join('')} ${[...d.querySelectorAll('button')].map((b) => (b.textContent ?? '') + ((b as HTMLButtonElement).disabled ? '(dead)' : '')).join('|')}`)
+  const bookDrawer = () => screen.getByRole('dialog', { name: 'Price book' })
+  const formNamed = (title: string) => [...document.querySelectorAll('[role="dialog"]')].find((d) => d.querySelector('h3')?.textContent === title) as HTMLElement
+  const stageBoxes = () => [...document.querySelectorAll('[role="dialog"] input[type="number"]')] as HTMLInputElement[]
+  async function openBook(over: Partial<Props> = {}) {
+    db.tables = { price_book_entries: BOOK_ENTRIES as unknown as Array<Record<string, unknown>> }
+    const view = renderWithProviders(<BidsPricingTab {...pricedProps({ templatePriceBookVersions: BOOKS, defaultPriceBookTemplateId: 'tpl-1', ...over })} />)
+    await settle()
+    fireEvent.click(button(/Base price · 0 entries/))
+    await settle()
+    db.writes = []
+    return view
+  }
+
+  it('Add book opens the version form empty, Cancel clears what was typed, and Save writes a new book', async () => {
+    await openBook()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByText('Add book'))
+    expect(formsOpen()).toEqual(['New template [] Cancel|Save'])
+    fireEvent.change(screen.getByPlaceholderText('e.g. 2025 Standard'), { target: { value: 'ZZ New book' } })
+    expect(formsOpen()).toEqual(['New template [ZZ New book] Cancel|Save'])
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(formsOpen()).toEqual([])
+    // Opened again it is empty: the name typed before is gone.
+    fireEvent.click(within(bookDrawer()).getByText('Add book'))
+    expect(formsOpen()).toEqual(['New template [] Cancel|Save'])
+    fireEvent.change(screen.getByPlaceholderText('e.g. 2025 Standard'), { target: { value: 'ZZ New book' } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_versions', op: 'insert', payload: { name: 'ZZ New book', service_type_id: 'st-1', bid_id: null } }])
+    expect(formsOpen()).toEqual([])
+  })
+
+  it('the pencil on a book opens the version form on its name, and Save renames it', async () => {
+    await openBook()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    expect(formsOpen()).toEqual(['Edit template name [ZZ Standard book] Delete version|Cancel|Save'])
+    fireEvent.change(screen.getByPlaceholderText('e.g. 2025 Standard'), { target: { value: 'ZZ Renamed' } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_versions', op: 'update', payload: { name: 'ZZ Renamed' } }])
+    expect(formsOpen()).toEqual([])
+    // Opened again it starts from the book's name, not from what was typed.
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    expect(formsOpen()).toEqual(['Edit template name [ZZ Standard book] Delete version|Cancel|Save'])
+  })
+
+  it('Delete version asks for the name: a wrong one is refused in words, Cancel forgets it, and the right one deletes', async () => {
+    await openBook()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    fireEvent.click(screen.getByText('Delete version'))
+    expect(formsOpen()).toEqual(['Edit template name [ZZ Standard book] Delete version|Cancel|Save', 'Delete price option [] Cancel|Delete(dead)'])
+    fireEvent.change(screen.getByPlaceholderText('ZZ Standard book'), { target: { value: 'wrong' } })
+    fireEvent.click(within(formNamed('Delete price option')).getByText('Delete'))
+    await settle()
+    expect(db.writes).toEqual([])
+    expect(formNamed('Delete price option').textContent).toContain('Name does not match. Type the scenario name exactly to confirm.')
+    // Typing again takes the refusal away.
+    fireEvent.change(screen.getByPlaceholderText('ZZ Standard book'), { target: { value: 'wrongx' } })
+    expect(formNamed('Delete price option').textContent).not.toContain('Name does not match.')
+    fireEvent.click(within(formNamed('Delete price option')).getByText('Cancel'))
+    expect(formsOpen()).toEqual(['Edit template name [ZZ Standard book] Delete version|Cancel|Save'])
+    // Opened again the box is empty and the press is dead.
+    fireEvent.click(screen.getByText('Delete version'))
+    expect(formsOpen()[1]).toBe('Delete price option [] Cancel|Delete(dead)')
+    fireEvent.change(screen.getByPlaceholderText('ZZ Standard book'), { target: { value: 'ZZ Standard book' } })
+    fireEvent.click(within(formNamed('Delete price option')).getByText('Delete'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_versions', op: 'delete' }])
+    expect(formNamed('Delete price option')).toBeUndefined()
+  })
+
+  it('Add entry in Stage price adds the three stages up as they are typed, and Save writes them to the book being browsed', async () => {
+    await openBook()
+    fireEvent.click(within(bookDrawer()).getByText('Stage price'))
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(formsOpen()).toEqual(['New entry [][][][][] Cancel|Save'])
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '100' } })
+    fireEvent.change(stageBoxes()[1]!, { target: { value: '40.5' } })
+    fireEvent.change(stageBoxes()[2]!, { target: { value: '10' } })
+    await settle()
+    expect(formsOpen()).toEqual(['New entry [][100][40.5][10][150.50] Cancel|Save'])
+    fireEvent.change(screen.getByPlaceholderText('Type or select fixture type...'), { target: { value: 'ZZ Test sink' } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'insert', payload: { version_id: 'tpl-1', fixture_type_id: 'ft-1', rough_in_price: 100, top_out_price: 40.5, trim_set_price: 10, total_price: 150.5, sequence_order: 1 } }])
+    expect(formsOpen()).toEqual([])
+    // Opened again every box is empty.
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(formsOpen()).toEqual(['New entry [][][][][] Cancel|Save'])
+    fireEvent.click(screen.getByText('Cancel'))
+    // The pencil on an entry opens the form on each stage's own price.
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    expect(formsOpen()).toEqual(['Edit entry [Water closet][100][50][25][175] Delete|Cancel|Save'])
+  })
+
+  it('every door that opens a form clears the tab’s error line, and so does closing the entry form', async () => {
+    const setError = vi.fn()
+    await openBook({ setError })
+    const cleared = () => {
+      const n = setError.mock.calls.filter((c) => c[0] === null).length
+      setError.mockClear()
+      return n
+    }
+    cleared()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByText('Add book'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    // Closing the version form leaves the line alone, and so does the pencil on a book.
+    expect(cleared()).toBe(0)
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    expect(cleared()).toBe(0)
+    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(cleared()).toBe(1)
+  })
+
+  it('in Combined price a new entry lands in Rough In, and an edited one moves Rough In by the difference', async () => {
+    await openBook()
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(formsOpen()).toEqual(['New entry [][] Cancel|Save'])
+    fireEvent.change(screen.getByPlaceholderText('Type or select fixture type...'), { target: { value: 'ZZ Test sink' } })
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '21' } })
+    expect(formsOpen()).toEqual(['New entry [ZZ Test sink][21] Cancel|Save'])
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'insert', payload: { version_id: 'tpl-1', fixture_type_id: 'ft-1', rough_in_price: 21, top_out_price: 0, trim_set_price: 0, total_price: 21, sequence_order: 1 } }])
+    // The pencil on an entry opens the form on that entry's name and price, with Delete.
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    expect(formsOpen()).toEqual(['Edit entry [Water closet][175] Delete|Cancel|Save'])
+    // $175 was 100 + 50 + 25. At $200 the other two stages keep theirs and Rough In takes the rest.
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '200' } })
+    db.writes = []
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'update', payload: { fixture_type_id: 'ft-1', rough_in_price: 125, top_out_price: 50, trim_set_price: 25, total_price: 200 } }])
+    expect(formsOpen()).toEqual([])
+    // Cancel on an edit forgets it: the next Add entry is empty.
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(formsOpen()).toEqual([])
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(formsOpen()).toEqual(['New entry [][] Cancel|Save'])
+  })
+
+  it('the assign search’s Add opens the entry form on the term, closes the search, and saves to the bid’s own price', async () => {
+    await openBook()
+    fireEvent.click(screen.getAllByTitle("Assign a price-book entry — the book's price fills the row")[0]!)
+    await settle()
+    fireEvent.change(screen.getByPlaceholderText('Search the book…'), { target: { value: ' ZZ urinal ' } })
+    await settle()
+    fireEvent.click(screen.getByText(/Add "ZZ urinal" to the book/))
+    await settle()
+    expect(formsOpen()).toEqual(['New entry [ZZ urinal][] Cancel|Save'])
+    expect(screen.queryByPlaceholderText('Search the book…')).toBeNull()
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '90' } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    // The bid's own price, not the book being browsed: this is the set the assign search reads.
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'insert', payload: { version_id: 'price-base', fixture_type_id: 'ft-1', rough_in_price: 90, top_out_price: 0, trim_set_price: 0, total_price: 90, sequence_order: 1 } }])
+    // The next Add entry from the drawer goes to the book again.
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    fireEvent.change(screen.getByPlaceholderText('Type or select fixture type...'), { target: { value: 'ZZ Test sink' } })
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '5' } })
+    db.writes = []
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect((db.writes[0]!.payload as { version_id: string }).version_id).toBe('tpl-1')
+  })
+
+  it('a change of service type closes all three forms and forgets what they held', async () => {
+    const view = await openBook()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    fireEvent.click(screen.getByText('Delete version'))
+    fireEvent.change(screen.getByPlaceholderText('ZZ Standard book'), { target: { value: 'ZZ' } })
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    fireEvent.change(screen.getByPlaceholderText('Type or select fixture type...'), { target: { value: 'ZZ Test sink' } })
+    expect(formsOpen()).toHaveLength(3)
+    view.rerender(<BidsPricingTab {...pricedProps({ templatePriceBookVersions: BOOKS, defaultPriceBookTemplateId: 'tpl-1', selectedServiceTypeId: 'st-2' })} />)
+    await settle()
+    expect(formsOpen()).toEqual([])
+  })
+
   it('a sent bid refuses ＋ Percent row with the lock\'s words', async () => {
     renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS }, makeBid({ bid_date_sent: '2026-07-01', bid_value: 6800 }))} />)
     await settle()
