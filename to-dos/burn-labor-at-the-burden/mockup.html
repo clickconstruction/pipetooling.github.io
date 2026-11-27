@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The burn at the burden (#448)</title>
+<style>
+  :root { --bg:#eef0f4; --surface:#fff; --subtle:#f6f7f9; --text:#111827; --muted:#6b7280; --faint:#9ca3af; --border:#d8dce3; --strong:#b6bcc7; --green:#15803d; --green-bg:#ecfdf3; --green-bd:#16a34a; --red:#b91c1c; --moved:#fef3c7; --moved-bd:#f59e0b; --new:#dbeafe; --new-bd:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system, "Inter", "Segoe UI", sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:4px 0 2px; }
+  .tags { display:flex; gap:8px 14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin:6px 0 18px; align-items:center; }
+  .key { display:inline-block; padding:0 6px; border-radius:4px; font-weight:600; color:var(--text); }
+  .key.moved, .mv { background:var(--moved); box-shadow:inset 0 -2px 0 var(--moved-bd); }
+  .key.new { background:var(--new); box-shadow:inset 0 -2px 0 var(--new-bd); }
+  .mv { padding:0 3px; border-radius:3px; }
+  h2 { font-size:14px; margin:22px 0 8px; display:flex; gap:8px; align-items:baseline; }
+  h2 small { font-weight:500; color:var(--muted); }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap:16px; align-items:start; }
+  .cols.two { grid-template-columns:repeat(auto-fit, minmax(min(540px, 100%), 1fr)); }
+  .cols.one { grid-template-columns:minmax(0, 1fr); }
+  .frame { background:var(--surface); border:1px solid var(--strong); border-radius:12px; padding:12px; display:grid; gap:10px; min-width:0; }
+  .frame > .cap { font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--muted); display:flex; justify-content:space-between; gap:8px; }
+  .frame.pick { border:2px solid var(--new-bd); }
+  .frame.pick > .cap { color:var(--new-bd); }
+  .top { font-size:12px; color:var(--muted); }
+  .tiles { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+  .tile { background:var(--subtle); border:1px solid var(--border); border-radius:8px; padding:9px 11px; min-width:0; }
+  .tile.hero { grid-column:1 / -1; background:var(--green-bg); border-color:var(--green-bd); position:relative; }
+  .tile.hero .by { position:absolute; right:9px; top:7px; font-size:10.5px; font-weight:600; color:var(--muted); }
+  .lab { font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .big { font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px; line-height:1.2; }
+  .big.g { color:var(--green); font-size:24px; }
+  .sub { font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.35; }
+  .sub b { color:var(--text); font-variant-numeric:tabular-nums; }
+  /* The one new line: values in a row, words in grey. */
+  .line { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border); font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .line b { color:var(--text); font-size:13px; }
+  .line .nw { background:var(--new); box-shadow:inset 0 -2px 0 var(--new-bd); border-radius:3px; padding:1px 5px; display:inline-flex; gap:2px 6px; align-items:baseline; flex-wrap:wrap; }
+  .line .nw i { font-style:normal; white-space:nowrap; }
+  .chip { background:var(--new); box-shadow:inset 0 -2px 0 var(--new-bd); border-radius:3px; padding:0 4px; white-space:nowrap; }
+  .chip b { color:var(--text); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .tbl { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .tbl .hd { display:flex; justify-content:space-between; align-items:baseline; padding:6px 9px; background:var(--subtle); font-size:12px; gap:8px; }
+  .tbl .hd span { color:var(--muted); font-size:11px; }
+  th { text-align:left; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:5px 9px; border-top:1px solid var(--border); }
+  td { padding:6px 9px; border-top:1px solid var(--border); vertical-align:baseline; }
+  th.n, td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td.m, td .m { color:var(--muted); }
+  td .s { font-size:11px; color:var(--muted); }
+  tr.t td { background:var(--subtle); font-weight:600; }
+  tr.g td { background:var(--green-bg); font-weight:700; }
+  .scroll { overflow-x:auto; }
+  .money { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .money .r { display:flex; justify-content:space-between; gap:10px; padding:7px 10px; font-size:13px; border-top:1px solid var(--border); }
+  .money .r:first-child { border-top:none; background:var(--subtle); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .money .r span { color:var(--muted); font-size:12px; }
+  .money .r b { font-variant-numeric:tabular-nums; }
+  .same { font-size:11px; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:0 8px; font-weight:600; text-transform:none; letter-spacing:0; }
+  .c { font-size:.7em; }
+  .phone { width:343px; max-width:100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The burn at the burden <span style="font-weight:500;color:var(--muted)">· punch list #448</span></h1>
+  <div class="tags">
+    <span>A job's window → Costs</span>
+    <span>made-up job: <b>$20,000</b> price · <b>100 h</b> at a <b>$30</b> wage · <b>$4,000</b> parts · <b>50%</b> done</span>
+    <span><i class="key moved">$0</i> a number that moved</span>
+    <span><i class="key new">$0</i> the one new line</span>
+  </div>
+
+  <h2>1 · The tiles <small>the first thing on the Costs tab</small></h2>
+  <div class="cols two">
+
+    <div class="frame">
+      <div class="cap">Before <span>today</span></div>
+      <div class="top">$20,000 · 50% done · report of Nov 24</div>
+      <div class="tiles">
+        <div class="tile hero"><span class="by">by section ▾</span>
+          <div class="lab">True margin at completion</div>
+          <div class="big g">$4,400 · 22%</div>
+          <div class="sub">at today's pace: $14,000 direct + $1,600 overhead share. Direct margin alone $6,000 · 30%.</div>
+        </div>
+        <div class="tile"><div class="lab">Spent so far</div><div class="big">$7,000</div><div class="sub">35% of the price · 100 h team · $4,000 materials</div></div>
+        <div class="tile"><div class="lab">Earned so far</div><div class="big">$10,000</div><div class="sub">50% of $20,000 · $3,000 ahead on direct</div></div>
+        <div class="tile"><div class="lab">Time left</div><div class="big">≈ 6 working days</div><div class="sub">8.3% of the work a day · spending $1,167 a field day</div></div>
+      </div>
+    </div>
+
+    <div class="frame pick">
+      <div class="cap">After · A <span>the line on the tile</span></div>
+      <div class="top">$20,000 · 50% done · report of Nov 24</div>
+      <div class="tiles">
+        <div class="tile hero"><span class="by">by section ▾</span>
+          <div class="lab">True margin at completion</div>
+          <div class="big g"><span class="mv">$3,200 · 16%</span></div>
+          <div class="sub">at today's pace: <span class="mv">$15,200</span> direct + $1,600 overhead share. Direct margin alone <span class="mv">$4,800 · 24%</span>.</div>
+        </div>
+        <div class="tile"><div class="lab">Spent so far</div><div class="big"><span class="mv">$7,600</span></div><div class="sub"><span class="mv">38%</span> of the price · 100 h team · $4,000 materials</div>
+          <div class="line"><span class="nw"><i>labor <b>$3,000</b> wages</i> <i>× <b>1.20</b></i> <i>= <b>$3,600</b></i></span></div>
+        </div>
+        <div class="tile"><div class="lab">Earned so far</div><div class="big">$10,000</div><div class="sub">50% of $20,000 · <span class="mv">$2,400</span> ahead on direct</div></div>
+        <div class="tile"><div class="lab">Time left</div><div class="big">≈ 6 working days</div><div class="sub">8.3% of the work a day · spending <span class="mv">$1,267</span> a field day</div></div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="cap">After · B <span>no line on the tile</span></div>
+      <div class="top">$20,000 · 50% done · report of Nov 24</div>
+      <div class="tiles">
+        <div class="tile hero"><span class="by">by section ▾</span>
+          <div class="lab">True margin at completion</div>
+          <div class="big g"><span class="mv">$3,200 · 16%</span></div>
+          <div class="sub">at today's pace: <span class="mv">$15,200</span> direct + $1,600 overhead share. Direct margin alone <span class="mv">$4,800 · 24%</span>.</div>
+        </div>
+        <div class="tile"><div class="lab">Spent so far</div><div class="big"><span class="mv">$7,600</span></div><div class="sub"><span class="mv">38%</span> of the price · 100 h team · $4,000 materials</div></div>
+        <div class="tile"><div class="lab">Earned so far</div><div class="big">$10,000</div><div class="sub">50% of $20,000 · <span class="mv">$2,400</span> ahead on direct</div></div>
+        <div class="tile"><div class="lab">Time left</div><div class="big">≈ 6 working days</div><div class="sub">8.3% of the work a day · spending <span class="mv">$1,267</span> a field day</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>2 · By section <small>one press on the margin tile · the same in A and B</small></h2>
+  <div class="cols one">
+    <div class="frame">
+      <div class="cap">Before <span>today</span></div>
+      <div class="tbl">
+        <div class="hd"><b>How $4,400 builds — by section, at today's pace</b><span>bid figures: ◆ bid</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Section</th><th class="n">Spent so far</th><th class="n">At completion</th><th class="n">Bid figure</th><th>Read</th></tr></thead>
+          <tbody>
+            <tr><td><b>Labor</b> <span class="s">100 h · team hours × wages</span></td><td class="n">$3,000</td><td class="n">$6,000</td><td class="n">190 h · $6,840</td><td class="m">$30<span class="c">.00</span>/h · 5.0 h per $1k so far · 44% of the bid figure · behind the work</td></tr>
+            <tr><td><b>Materials</b> <span class="s">parts and invoices</span></td><td class="n">$4,000</td><td class="n">$8,000</td><td class="n">$7,500</td><td class="m">20% of the price · 53% of the bid figure · with the work</td></tr>
+            <tr class="t"><td>Direct cost</td><td class="n">$7,000</td><td class="n">$14,000</td><td class="n"></td><td class="m" style="font-weight:400">spent ÷ 50% done</td></tr>
+            <tr><td><b>Overhead share</b></td><td class="n">$800</td><td class="n">$1,600</td><td class="n m">—</td><td class="m">$133 a field day × 6 days left</td></tr>
+            <tr class="t"><td>True cost</td><td class="n">$7,800</td><td class="n">$15,600</td><td></td><td></td></tr>
+            <tr><td><b>Price</b></td><td></td><td class="n">$20,000</td><td class="n m">= bid value</td><td></td></tr>
+            <tr class="g"><td>True margin</td><td class="n">$2,200 · 22% so far</td><td class="n">$4,400 · 22%</td><td class="n m" style="font-weight:400">30% target</td><td class="m" style="font-weight:400">direct margin $6,000 · 30%</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="frame pick">
+      <div class="cap">After <span>A and B</span></div>
+      <div class="tbl">
+        <div class="hd"><b>How <span class="mv">$3,200</span> builds — by section, at today's pace</b><span>bid figures: ◆ bid</span></div>
+        <div class="scroll"><table>
+          <thead><tr><th>Section</th><th class="n">Spent so far</th><th class="n">At completion</th><th class="n">Bid figure</th><th>Read</th></tr></thead>
+          <tbody>
+            <tr><td><b>Labor</b> <span class="s">100 h · <span class="chip"><b>$3,000</b> wages × <b>1.20</b></span></span></td><td class="n"><span class="mv">$3,600</span></td><td class="n"><span class="mv">$7,200</span></td><td class="n">190 h · $6,840</td><td class="m"><span class="mv">$36<span class="c">.00</span>/h</span> · 5.0 h per $1k so far · <span class="mv">53%</span> of the bid figure · <span class="mv">with the work</span></td></tr>
+            <tr><td><b>Materials</b> <span class="s">parts and invoices</span></td><td class="n">$4,000</td><td class="n">$8,000</td><td class="n">$7,500</td><td class="m">20% of the price · 53% of the bid figure · with the work</td></tr>
+            <tr class="t"><td>Direct cost</td><td class="n"><span class="mv">$7,600</span></td><td class="n"><span class="mv">$15,200</span></td><td class="n"></td><td class="m" style="font-weight:400">spent ÷ 50% done</td></tr>
+            <tr><td><b>Overhead share</b></td><td class="n">$800</td><td class="n">$1,600</td><td class="n m">—</td><td class="m">$133 a field day × 6 days left</td></tr>
+            <tr class="t"><td>True cost</td><td class="n"><span class="mv">$8,400</span></td><td class="n"><span class="mv">$16,800</span></td><td></td><td></td></tr>
+            <tr><td><b>Price</b></td><td></td><td class="n">$20,000</td><td class="n m">= bid value</td><td></td></tr>
+            <tr class="g"><td>True margin</td><td class="n"><span class="mv">$1,600 · 16% so far</span></td><td class="n"><span class="mv">$3,200 · 16%</span></td><td class="n m" style="font-weight:400">30% target</td><td class="m" style="font-weight:400">direct margin <span class="mv">$4,800 · 24%</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <h2>3 · Where the money went <small>lower on the same tab</small></h2>
+  <div class="cols">
+    <div class="frame">
+      <div class="cap">Before and after <span class="same">does not move</span></div>
+      <div class="money">
+        <div class="r">Where the money went <span></span></div>
+        <div class="r">Team labor <span>100 h · 3 people</span> <b>$3,000</b></div>
+        <div class="r">Supply house invoices <span>4 bills</span> <b>$4,000</b></div>
+      </div>
+    </div>
+    <div class="frame pick phone">
+      <div class="cap">After · A <span>on a phone, 375 px</span></div>
+      <div class="tile"><div class="lab">Spent so far</div><div class="big"><span class="mv">$7,600</span></div><div class="sub"><span class="mv">38%</span> of the price · 100 h team · $4,000 materials</div>
+        <div class="line"><span class="nw"><i>labor <b>$3,000</b> wages</i> <i>× <b>1.20</b></i> <i>= <b>$3,600</b></i></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
