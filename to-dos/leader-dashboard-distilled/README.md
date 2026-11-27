@@ -14,7 +14,7 @@ summary: >
   to Short.
 next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
 size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
-blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
+blocker: None in the code. Setting the leader to Short is the owner's or the office's press. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7568, v2.8581, v2.8600, v2.8616
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---

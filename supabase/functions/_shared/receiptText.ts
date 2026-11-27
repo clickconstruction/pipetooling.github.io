@@ -261,6 +261,101 @@ export function receiptReminderBody(a: { charges: readonly ReceiptTextCharge[]; 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// Text again: the office's press for one more text on a charge texted twice with no receipt (v2.8697).
+
+/** The most texts the office sends by Text again on one charge, beside the first text and the reminder. */
+export const RECEIPT_AGAIN_MAX = 2
+/** A charge rests this long after the reminder, and after each Text again, before the office can press. */
+export const RECEIPT_AGAIN_REST_HOURS = 12
+
+export interface ReceiptAgainRequest {
+  no_text_why: string | null
+  texted_at: string | null
+  reminded_at: string | null
+  answered_at: string | null
+  closed_at: string | null
+  closes_at: string
+  again_at?: string | null
+  again_count?: number | null
+}
+
+/** Why the rule holds a Text again back. */
+export type ReceiptAgainHold = 'answered' | 'closed' | 'held' | 'not_twice' | 'cap' | 'resting'
+
+/**
+ * Whether the office may text a charge again, by the request alone: null when it may, else the first reason that
+ * holds. The charge was texted and reminded, twelve hours have passed since the reminder and since the last Text
+ * again, the receipt has not come, the link is open, and the office has pressed fewer than `RECEIPT_AGAIN_MAX` times.
+ * The function asks this before it sends; the office's list shows a row only when the first five are so.
+ */
+export function receiptAgainHold(r: ReceiptAgainRequest, nowMs: number): ReceiptAgainHold | null {
+  if (r.answered_at) return 'answered'
+  if (r.closed_at || !(Date.parse(r.closes_at) > nowMs)) return 'closed'
+  if (r.no_text_why) return 'held'
+  const rest = RECEIPT_AGAIN_REST_HOURS * 60 * 60 * 1000
+  const reminded = r.reminded_at ? Date.parse(r.reminded_at) : NaN
+  if (!r.texted_at || !Number.isFinite(reminded) || nowMs - reminded < rest) return 'not_twice'
+  if ((r.again_count ?? 0) >= RECEIPT_AGAIN_MAX) return 'cap'
+  const again = r.again_at ? Date.parse(r.again_at) : NaN
+  if (Number.isFinite(again) && nowMs - again < rest) return 'resting'
+  return null
+}
+
+/**
+ * The text a Text again sends. It says who is asking, so it does not read as the reminder a second time.
+ *
+ *   The office still needs the receipt for $228.58 at Ridgeway Supply. Snap it here: <link>
+ */
+export function receiptAgainBody(a: { charge: ReceiptTextCharge; url: string }): string {
+  return `The office still needs the receipt for ${chargeWords(a.charge)}. Snap it here: ${a.url}`
+}
+
+/** Every reason a Text again sends nothing: the rule's, the two switches', the charge's, the holder's and the caller's. */
+export type ReceiptAgainRefusal = ReceiptAgainHold | 'off' | 'texts_off' | 'not_in_trial' | 'gone' | 'dead' | 'has_ticket' | 'no_holder' | 'no_cell' | 'opted_out' | 'taken' | 'not_office' | 'training'
+
+/** What the office reads when a Text again sent nothing. `who` is the holder's first name, or empty. */
+export function receiptAgainRefusalWords(why: ReceiptAgainRefusal, who: string): string {
+  const name = who.trim() || 'The holder'
+  switch (why) {
+    case 'answered':
+    case 'has_ticket':
+      return 'That charge has its receipt now, so no text went.'
+    case 'closed':
+      return 'The link for that charge has closed, so no text went.'
+    case 'held':
+      return 'No text can go for that charge. Its row says why.'
+    case 'not_twice':
+      return 'Text again comes twelve hours after the reminder. No text went.'
+    case 'cap':
+      return `The office has texted ${who.trim() || 'the holder'} again ${RECEIPT_AGAIN_MAX === 2 ? 'twice' : `${RECEIPT_AGAIN_MAX} times`} about this charge. Ask for the receipt another way.`
+    case 'resting':
+      return `${name} was texted again less than twelve hours ago. No text went.`
+    case 'off':
+      return 'Receipt texts are off in Settings, so no text went.'
+    case 'texts_off':
+      return 'Send texts is off in Settings, so no text went.'
+    case 'not_in_trial':
+      return `Receipt texts are on for a trial, and ${who.trim() || 'the holder'} is not in it. No text went.`
+    case 'gone':
+      return 'That request is gone, so no text went.'
+    case 'dead':
+      return 'The bank took that charge back, so there is no receipt to ask for.'
+    case 'no_holder':
+      return 'The person who held that card has left, so no text went.'
+    case 'no_cell':
+      return `${name} has no cell on file now, so no text went. Add the cell on People.`
+    case 'opted_out':
+      return `${name} replied STOP, so no text went. Ask for the receipt another way.`
+    case 'taken':
+      return 'Someone else pressed Text again on this charge a moment ago. One text went.'
+    case 'not_office':
+      return 'Only the office can text a card holder again.'
+    case 'training':
+      return 'This is a training account, so no text went.'
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The charge's line in the office's Team queue.
 
 export interface ReceiptRequestState {

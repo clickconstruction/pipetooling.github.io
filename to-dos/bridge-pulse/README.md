@@ -12,7 +12,7 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records.
+next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records. Checked 2026-11-27: the send of Monday 2026-11-16 has passed, and no read of a weekly email is on the record.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
 blocker: None. The code is all on `main` and nothing is owed on the live database or the functions.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.

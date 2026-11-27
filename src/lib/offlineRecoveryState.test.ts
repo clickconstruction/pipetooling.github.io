@@ -3,7 +3,9 @@ import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 import { plainWordsFailures } from './plainWords'
 import { AUTH_LOCK_ERROR_MESSAGE, DatabaseError, OperationTimeoutError } from '../utils/errorHandling'
 import {
+  AUTO_TRY_WAIT_MS,
   BACK_ONLINE_AUTO_MESSAGE,
+  BACK_ONLINE_TRIED_MESSAGE,
   BACK_ONLINE_MESSAGE,
   OFFLINE_AUTO_RETRY_CAP,
   offlineRecoveryState,
@@ -79,6 +81,23 @@ describe('offlineRecoveryState', () => {
     expect(s.message).toBe(BACK_ONLINE_MESSAGE)
     expect(s.showRetry).toBe(true)
     expect(s.autoRetry).toBe(false)
+  })
+
+  it('back online, the automatic try spent: the line stops saying it is trying and hands the press back (finding 308)', () => {
+    const spent = offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 1, idempotent: true, reconnected: true, autoTrySpent: true })
+    expect(spent.phase).toBe('back-online')
+    expect(spent.message).toBe(BACK_ONLINE_TRIED_MESSAGE)
+    expect(spent.message).not.toContain('trying')
+    expect(spent.showRetry).toBe(true)
+    // No second try by itself for the same return of the signal.
+    expect(spent.autoRetry).toBe(false)
+    // Not spent, it still tries by itself and says so.
+    const trying = offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 1, idempotent: true, reconnected: true, autoTrySpent: false })
+    expect(trying.autoRetry).toBe(true)
+    expect(trying.message).toBe(BACK_ONLINE_AUTO_MESSAGE)
+    // A write never tried by itself, so nothing of its line changes.
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, reconnected: true, autoTrySpent: false }).message).toBe(BACK_ONLINE_MESSAGE)
+    expect(AUTO_TRY_WAIT_MS).toBe(8000)
   })
 
   it('back online + idempotent read: retries by itself, up to the cap', () => {

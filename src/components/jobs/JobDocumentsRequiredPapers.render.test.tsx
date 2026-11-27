@@ -213,6 +213,33 @@ describe('JobDocumentsRequiredPapers', () => {
     await waitFor(() => expect(io.removePaper).toHaveBeenCalledWith('site'))
   })
 
+  it('a site’s paper has no Take off, and a sub who is not asked it reads not asked with no link owed', async () => {
+    const atSite = parseJobPapersRoster({
+      job_number: 'J2391',
+      papers: [
+        { id: 'site', paper_name: 'Site rules and photo policy', is_form: false, book_document_id: 'book-site', site_secrecy_id: null },
+        { id: 'sec', paper_name: 'ZZ Test site secrecy paper', is_form: false, book_document_id: 'book-sec', site_secrecy_id: 'site-1' },
+      ],
+      people: [
+        { ...people[1], papers: [{ required_paper_id: 'site', document_id: 'd1', status: 'signed', signed_at: '2026-11-16', asked: true }, { required_paper_id: 'sec', document_id: null, status: 'none', signed_at: null, asked: true }] },
+        { key: 'p4', person_id: 'p4', user_id: 'u4', name: 'ZZ Test Sub Company', role: 'subcontractor', ways: ['sub'], has_login: true, linked: true, papers: [{ required_paper_id: 'site', document_id: 'd4', status: 'signed', signed_at: '2026-11-15', asked: true }, { required_paper_id: 'sec', document_id: null, status: 'none', signed_at: null, asked: false }] },
+      ],
+    })
+    const io = fakeIo({ readRoster: vi.fn(async () => atSite) })
+    const { container } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    await screen.findByText('ZZ Test Sub Company')
+    // The job's own paper keeps its press. The site's says where it comes off.
+    expect(screen.getByRole('button', { name: 'Take Site rules and photo policy off' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Take ZZ Test site secrecy paper off' })).toBeNull()
+    expect(container.querySelector('[data-job-paper-site]')?.textContent).toBe('The site’s paper. It comes off when secrecy is turned off for the site.')
+    const sub = screen.getByText('ZZ Test Sub Company').closest('tr')!
+    expect(within(sub).getByText('not asked')).toBeTruthy()
+    expect(within(sub).queryByRole('button')).toBeNull()
+    const luis = screen.getByText('Luis Ortega').closest('tr')!
+    expect(within(luis).getByRole('button', { name: 'Copy the signing link' })).toBeTruthy()
+    expect(screen.getByTestId('job-papers-summary').textContent).toBe('1 of 2 have signed. 1 still owes a paper.')
+  })
+
   it('a read that fails draws the retry panel', async () => {
     const io = fakeIo({ readRoster: vi.fn(async () => Promise.reject(new Error('Only the office reads who has signed a job’s papers.'))) })
     renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)

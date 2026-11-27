@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Pencil, ChevronUp, ChevronRight } from 'lucide-react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { recordJobEditRowOpened } from '../../lib/navClickViewer'
 
 /**
  * One row of the Edit-tab fact list (v2.1681): collapsed it reads
@@ -9,6 +10,9 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
  * icon-button toggle — not one big <button> — so values can carry their own
  * interactive elements (the Folders row's inline links); those must
  * stopPropagation to avoid also toggling the row.
+ *
+ * Opening a row's editor writes one press row under the row's name (v2.8704, punch list #190), by the
+ * row's body or its pencil alike. Closing it writes none, and a read-only row has no press.
  */
 export function JobFormFactRow({
   label,
@@ -37,10 +41,16 @@ export function JobFormFactRow({
 }) {
   // Punch list #355 E (v2.7283): on a phone a row stands 44 px, the whole row is the press, and a chevron stands for the pencil.
   const phone = useNarrowViewport640()
+  const toggle = onToggle
+    ? () => {
+        if (!expanded) recordJobEditRowOpened(label)
+        onToggle()
+      }
+    : undefined
   return (
     <>
       <div
-        onClick={onToggle}
+        onClick={toggle}
         data-fact-row={label}
         style={{
           display: 'flex',
@@ -50,7 +60,7 @@ export function JobFormFactRow({
           minHeight: phone ? 44 : undefined,
           padding: phone ? '0.4rem 0.15rem' : '0.5rem 0.15rem',
           borderBottom: !last || expanded ? '1px solid var(--border)' : 'none',
-          cursor: onToggle ? 'pointer' : 'default',
+          cursor: toggle ? 'pointer' : 'default',
         }}
       >
         <span
@@ -86,14 +96,14 @@ export function JobFormFactRow({
           {value == null && valueTail == null ? <span style={{ color: 'var(--text-faint)' }}>—</span> : null}
           {valueTail}
         </span>
-        {onToggle ? (
+        {toggle ? (
         <button
           type="button"
           aria-expanded={expanded}
           aria-label={expanded ? `Close ${label} editor` : `Edit ${label}`}
           onClick={(e) => {
             e.stopPropagation()
-            onToggle()
+            toggle()
           }}
           style={{
             display: 'inline-flex',

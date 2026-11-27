@@ -49,6 +49,56 @@ export const ONE_ROW_PILLS = {
   fadeSlack: 6,
 } as const
 
+/** The width at and under which a screen is a phone's: the app's 640 px line (`useIsMobile`). */
+export const PHONE_SCREEN_MAX_WIDTH = 640
+
+/** How tall a press drawn as words in a line of words stands: one line of the portal's 0.85rem words. */
+export const IN_LINE_PRESS_DRAWN = 18
+
+/** The shortest a link drawn as words stands: one line of 0.75rem words. Its padding is worked out from this. */
+export const IN_LINE_LINK_DRAWN = 14
+
+/** The padding over and under a fold's line (`summary`), which stands about 17 px as drawn: its words sit in the middle of 44. */
+export const FOLD_LINE_PAD = 13
+
+/** The padding over and under a file picker, which stands about 21 px as drawn. */
+export const FILE_PICKER_PAD = 11
+
+/**
+ * One style rule that makes every press inside a shell stand a fingertip tall on a phone, and changes nothing at a
+ * desk (finding 290, the walk of 2026-11-27: the trade portal's presses stood about 30 px at every width). `shell` is
+ * the selector of the element that wraps the page, so a press outside it is left as it is.
+ *
+ *   - A button stands 44 px tall. The rule is marked important because a button that sets its own smaller height in
+ *     its style would win otherwise.
+ *   - A button that sits in a line of words carries `data-press-in-line`: it grows the same, and its margin gives the
+ *     growth back, as `thumbInLine` does, so the line stays as tall as it was drawn.
+ *   - A link drawn as words (*Call*, *Open ↗*) is drawn as it was. Its padding grows what a finger can hit to 44 px
+ *     or more, and its margin gives the padding back where the link is a block, so nothing around it moves.
+ *
+ * The four presses that are not buttons or links (the follow-up, 2026-11-27, on a read of the portal at 375 px that
+ * found them at 17 to 32 px): each stands 44 px tall too.
+ *   - A tick or a radio is pressed by its label, so the label grows. The box itself keeps its size.
+ *   - A pick (`select`).
+ *   - A fold's line (`summary`). It takes padding and never a flex, which would lose its marker.
+ *   - A file picker.
+ * A field a person types in is not a press, and it is left as it is.
+ */
+export function phoneThumbPressesCss(shell: string): string {
+  const back = thumbInLine(IN_LINE_PRESS_DRAWN).marginTop
+  const pad = -thumbInLine(IN_LINE_LINK_DRAWN).marginTop
+  return (
+    `@media (max-width: ${PHONE_SCREEN_MAX_WIDTH}px) { ` +
+    `${shell} button { min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
+    `${shell} button[data-press-in-line] { margin-top: ${back}px; margin-bottom: ${back}px; } ` +
+    `${shell} a[href] { padding-top: ${pad}px; padding-bottom: ${pad}px; margin-top: -${pad}px; margin-bottom: -${pad}px; } ` +
+    `${shell} label:has(input[type="checkbox"]), ${shell} label:has(input[type="radio"]) { min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
+    `${shell} select { min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
+    `${shell} summary { box-sizing: border-box; min-height: ${PHONE_PRESS_MIN_HEIGHT}px; padding-top: ${FOLD_LINE_PAD}px; padding-bottom: ${FOLD_LINE_PAD}px; } ` +
+    `${shell} input[type="file"] { box-sizing: border-box; min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; padding-top: ${FILE_PICKER_PAD}px; padding-bottom: ${FILE_PICKER_PAD}px; } }`
+  )
+}
+
 /**
  * A press that sits in a line of words or in a bar (the phone walk of 2026-11-21: a job's number at 28 px on a Lien
  * desk row, *Worked later? ›* at 28, a sheet's × at 27). On a phone it stands a fingertip tall, and the margin gives

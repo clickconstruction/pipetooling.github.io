@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: a filed lien's copy is the signed scan — no print without one, and the scan's pages go in the envelope"
 number: 378
-group: ready
-status: asked and designed 2026-11-17, not started · the go to start and both picks answered 2026-11-25 (UTC) in the managing session: yes, start, retire the redrawn COPY page, and any saved scan passes the gate · PR #8539 merged 2026-11-17 as v2.7635
+group: close
+status: asked and designed 2026-11-17 · BUILT 2026-11-19, both PRs of the plan, on the owner's ask of that day: the `drive-link` read as v2.7913 and the gate, the stack and the end of the redrawn COPY page as v2.7916 · neither fragment named this card, so the card read *nothing is built* until 2026-11-27 · both picks answered 2026-11-25 (UTC) in the managing session, after the build and in line with it: retire the redrawn COPY page, and any saved scan passes the gate · left: the live check on a ZZ job, and Taunya's word on the kept redrawn prints of 2026-11-17
 summary: >
   After a lien affidavit is filed, § 53.055 has the claimant send a copy of it to the owner, and to the
   original contractor when there is one, by the fifth day. Filed liens, copies to mail prints a page the
@@ -12,14 +12,15 @@ summary: >
   So the rule changes. A filed lien prints its copies only when a scan of the signed affidavit is saved
   on it, and the scan's own pages are the copy in the envelope. The office already adds those scans
   (Add the stamped scans); nothing reads one back from Drive yet.
-next: PR 1 (S to M). The `drive-link` function reads one scan back from the job's own folder, and a kernel turns it into pages, with nothing on screen. The mock-up of the window's rows is drawn before PR 2.
-size: M as a train of two (S to M · M)
-blocker: Nothing for PR 1. The mock-up of the window's rows is owed before PR 2.
+next: The live check under Verify, on a ZZ job only: record a filing, add a made-up two-page PDF, print, and read that the stack holds the letter and both pages for each envelope; then take the scan off and read that the press holds the lien. It is a walk that writes, so each write is asked first. Then Taunya's word on what happens to the kept redrawn prints, and their receipts, of the ten liens printed on 2026-11-17, which read **Print the copies to mail** again since v2.7916. Then retire the card. Answered 2026-11-27 by Taunya, *the picks stand*, on the kept redrawn prints: leave them as the record, and the office prints the stamped copies for the ten liens again and mails those. That printing and mailing is the office's to do; no session prints or mails.
+size: M as a train of two (S to M · M), both built; left: a walk that writes (XS) and one call
+ver: v2.7913 · v2.7916
+blocker: None in the code. The live check writes on a ZZ job, and the kept redrawn prints wait on Taunya's word.
 ---
 
 # A filed lien's copy is the signed scan (#378)
 
-No mock-up yet. One is owed before PR 2: the window's rows with a signed copy, a row with none, and the held list. Made-up jobs only.
+No mock-up was drawn: both PRs were built on 2026-11-19 from the owner's ask of that day, before the one this card says is owed.
 
 ## The ask
 
@@ -103,4 +104,16 @@ Later, its own card when asked: Docsmit mails the scan's PDF itself (#366 lists 
 
 2026-11-17: designed in a session with the owner, nothing built. The ten liens filed the day before all have a saved scan, so they would print under this rule; until it is built the office prints those scans from Drive by hand.
 
-2026-11-25 (UTC): the managing session asked whether the build may start, its two waits having landed, and the answer was *Yes, start*. The two waits were the split of LienDesk.tsx and PR #8539, which merged on 2026-11-17 as v2.7635. Both picks were answered the same day. Nothing is built, and PR 1 is next.
+2026-11-25 (UTC): the managing session asked whether the build may start, its two waits having landed, and the answer was *Yes, start*. The two waits were the split of LienDesk.tsx and PR #8539, which merged on 2026-11-17 as v2.7635. Both picks were answered the same day. The card then still read *nothing is built, and PR 1 is next*, which was wrong.
+
+2026-11-27: read against main. Both PRs of the plan shipped on 2026-11-19, under versions whose fragments never named this card.
+
+| Plan | Built as | What it is |
+|---|---|---|
+| 1. Read a scan back | v2.7913 | `drive-link`'s `read` action: the bytes of one file inside the job's own folder, for the office, capped at 30 MB |
+| 2. The gate and the stack | v2.7916 | Each envelope takes its letter and then the stamped scan's own pages, copied as they are. A lien with no printable saved copy is held and the rest print. The redrawn COPY page and `LIEN_SERVED_COPY_READ_BY_COUNSEL` are gone. The mail sheet says each envelope's pages |
+
+The build went past the plan in three places, each in v2.7916's fragment: one PDF a run in place of the HTML print; a saved copy of more than three pages or over 4 MB is asked about before it prints; and a lien the app did not draw prints its stamped copy with no cover letter.
+`npm run check:edge-drift` on 2026-11-27 reads every function deployed and current, `drive-link` among them.
+v2.7916's walk built the run's PDF from the filed liens on record, read only: nothing was printed, kept or marked. The card's own live check on a ZZ job has not been made.
+Left from v2.7916, and Taunya's: what happens to the kept redrawn prints, and the receipts, of the ten liens printed on 2026-11-17.

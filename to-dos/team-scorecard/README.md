@@ -4,8 +4,8 @@ number: 360
 group: close
 status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · PR 5 (v2.7369) the estimator's own row on the Bid Board and a closeout's chip on the bid · the residual (v2.7370) a sent bid is judged by the labor count kept with its margin · the train is built, every PR merged, pushed, deployed and walked live 2026-11-15 · the viewport walk's fixes in v2.7397
 next: >
-  The owner reads the Scores tab and an estimator reads their row, and the four calls under Calls the
-  owner makes are answered. Nothing is left to build on this card.
+  An estimator reads their row, and call 4 under Calls the owner makes, the hours reasons, is answered.
+  Nothing is left to build on this card. The Scores tab was read on the live site on 2026-11-27 at 1280 px (the walking thread's sitting 34, v2.8691) and is clean. Calls 1, 2 and 3 were answered by Taunya that day and each stays as built.
 size: M as a train of five (M · S · S · M · S); all five shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
@@ -51,9 +51,13 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 ## Calls the owner makes
 
 1. **Earned, not invoiced.** The field score earns by hours (contract × the window's share of expected hours), as the app does everywhere. The prompt said invoiced.
+   **Answered 2026-11-27 by Taunya**, asked with an example of a job part worked in a month, how the score should count what a crew earned in a window: *By hours worked*. It stays earned by hours, as built.
 2. **Burden on actuals.** Bids price labor at the average wage × 1.20, but the job's burn, the Costs tab and the team-labor reads price clocked hours at raw wages; only the superintendent scoreboard applies the factor. The scorecard applies it. Whether the Costs tab and the burn should too is a separate card.
+   **Answered 2026-11-27 by Taunya**, after a read of where the burden is applied and that it does not overlap the overhead pool's office labor: *for the 1.2, leave it*. The burden stays on the scorecard. The same day she said the job's burn should be priced at the burden too, *Yes, burn at the burden*, which is card #448 (`to-dos/burn-labor-at-the-burden.md`); the Costs tab keeps showing the wages paid.
 3. **Where the target lives.** On the Bid Board's Pricing rules beside the difficulty price list since v2.7361, set by the owner. Whether that is the home he wants is still his call.
+   **Answered 2026-11-27 by Taunya:** *ok*. The target stays on the Bid Board's Pricing rules.
 4. **Hours reasons.** The field score needs none. If the owner wants the drive / shop / waiting / callback drill-down, drive and shop can be inferred (travel stamps, the office job); only waiting and callback would need a press from the tech.
+   **Asked 2026-11-27, not answered.**
 
 ## The train
 

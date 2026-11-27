@@ -14,10 +14,10 @@ summary: >
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
 next: >
-  The simulator looks at the start sheet once v2.8578 is live: it ends above Safari's bar and scrolls to both presses. The simulator looks at Dispatch Mode's home once v2.8587 is live: its first row reads Tally, Clock In, Job Report and Paint a map, with nothing off the side. Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
+  The simulator looks at the start sheet once v2.8578 is live: it ends above Safari's bar and scrolls to both presses. The simulator looks at Dispatch Mode's home once v2.8587 is live: its first row reads Tally, Clock In, Job Report and Paint a map, with nothing off the side. Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card. Checked 2026-11-27: both simulator looks this line asks for are made. The start sheet passed for a job in a development, and Dispatch Mode's home draws the Dashboard's own top row. What is left is the owner's answer to call 11.
 size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: a look at the start sheet's mend (XS), a look at the top row on Dispatch Mode's home, built as v2.8587 (XS), the walk on a real iPhone (XS) and call 11
 blocker: >
-  A real iPhone in a hand, and the owner's answer to call 11.
+  The owner's answer to call 11. The walk on a real iPhone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920 · 7933
 opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
@@ -84,7 +84,7 @@ already.
 4. **After Save.** The map says *Saved on* the job, and offers **Text it from my phone…** at once.
    That press makes the link and opens the phone's own Messages with the words written. The Share
    sheet loses its *Make a link* step: the first press there makes the link. The Share sheet is
-   drawn whole on [#394](../painted-map-share-sheet/README.md), which replaces this mock-up's
+   drawn whole on #394 (closed 2026-11-27; its card lives in git history at the deleting commit), which replaces this mock-up's
    `share` state.
 5. **A wrong job.** **Move it to another job…** joins *Rename this map* and *Throw this map away*,
    for the painter and the office. The database already allows the move.
@@ -369,7 +369,7 @@ sits, and that is not yet tried on a real phone.
    matching jobs above pages for every word, so **Paint a map** stays third for *paint*.
 3. **The Saved band** (S). **Built, v2.7866.** The map says *Saved on* the job and offers **Text it from my phone…**
    at once, with one blue press on the screen and the press back in view after a place is added.
-   The Share sheet itself is built ([#394](../painted-map-share-sheet/README.md)), so this is what
+   The Share sheet itself is built (#394 (closed 2026-11-27; its card lives in git history at the deleting commit)), so this is what
    is left of the old share step. The press is the Share sheet's own. It was built against the
    sheet's older press, the same day the sheet got its instant one (#394 step 3). #394's walk on an
    iPhone simulator found the band still making the link first, and saying *The link is ready.

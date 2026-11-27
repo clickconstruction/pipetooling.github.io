@@ -21,7 +21,7 @@ summary: >
   voice, while the bare code keeps working and the QR stays as small as it is.
 next: Taunya's walk of the company's card (v2.7405, the section *The company's card*) on a real phone with no session, pressing Ask for a bid, the call, and Send a text and Send an email in each sheet once, and seeing the bid ask land in the app from bids@ (the texts go to the company's number from Settings, which is not one of the app's lines today, so they do not reach the Messages page). The tape walk on the PT-E720BT and on 18 mm tape, from Labels → Brother tape (the PT-D610BT printed 24 mm straight over USB from Chrome, v2.6865 and v2.6881). Retire the card once the walks pass.
 size: M as a train of five (XS · S · S · XS · S), all five shipped; left: the walks (S)
-blocker: None. The tape walk needs the printers on the office Mac.
+blocker: None. The tape walk needs the printers on the office Mac. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 opinion: build — the labels, the domain, the redirect, the arithmetic in SQL, the guess guard and the view ledger all exist; what is missing is one public page and one read function, and a crew's scan is broken today for every field role
 ---
 

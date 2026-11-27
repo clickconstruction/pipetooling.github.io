@@ -11,9 +11,9 @@ summary: >
   left. A computer's rows already keep one press column. The mock-up gives a phone the same: words
   at the left, one press at the right, every press one size, the second way out as a quiet line, and
   No day set said once.
-next: A simulator walks the phone mend once it is live, at 402 by 874 points: count the stages a column on one screen with **The flow** pressed, press a stage and read its first rows under the pinned line, scroll and watch Payoffs leave with the list, open the desk from `?payoffs=1`, and look at 1280 px that nothing moved. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
+next: A simulator walks the phone mend once it is live, at 402 by 874 points: count the stages a column on one screen with **The flow** pressed, press a stage and read its first rows under the pinned line, scroll and watch Payoffs leave with the list, open the desk from `?payoffs=1`, and look at 1280 px that nothing moved. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired. Walked 2026-11-27 in the iOS Simulator at 402 by 874 points on v2.8691 (the simulator thread's sitting 2), reads only: a pressed stage pins its line and its rows come at once, each row has one press at the right, 116 by 44, and the way back returns to the flow with the stage ringed. One finding, and it is this card's open question for Taunya: at open, five stages a column stand whole and the sixth is cut, with Payoffs, the switch and the day line above them, and one scroll of about 200 points shows all eight. Mend it, or accept it and close. Not read: Back from a job opened from a stage, the desk from `?payoffs=1`, the desk at 1280 px.
 size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); the phone mend (S), built in two PRs; left: a walk of the mend in a simulator (XS) and a look on a phone (XS)
-blocker: none
+blocker: none. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8341, v2.8346, v2.8575
 opinion: close — built and live; what is left is seeing the flow under a thumb
 ---

@@ -15,7 +15,7 @@ next: >
   question's words, the final check read live, each role's Dashboard card, a real phone, and the
   licensed reader. The learner walk on a test account is done, below.
 size: S as walks and loose ends; the reader's corrections are unsized until the read
-blocker: A licensed HVAC reader, not yet named.
+blocker: A licensed HVAC reader, not yet named. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8158 · 8163 · 8168 · 8169 · 8209 · 8239 · 8569
 opinion: your call — the course is built, checked by its tests and read live; what is left is a licensed read and walks as a learner
 mockup: not required — walks and loose ends only; the course page is built and live

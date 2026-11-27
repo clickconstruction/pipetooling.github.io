@@ -1,8 +1,8 @@
 ---
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
-group: ready
-status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built · the morning run's two reads built 2026-11-16 on the owner's ask of that day (v2.7452) and deployed that day at 10:52 AM Central on Taunya's go · call 4 answered 2026-11-25 (UTC) in the managing session: no big job pays a set number of days after the bill, and the terms in days choice can be hidden until a contract needs it; not hidden yet
+group: close
+status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built · the morning run's two reads built 2026-11-16 on the owner's ask of that day (v2.7452) and deployed that day at 10:52 AM Central on Taunya's go · call 4 answered 2026-11-25 (UTC) in the managing session: no big job pays a set number of days after the bill, and the terms in days choice can be hidden until a contract needs it; hidden 2026-11-27 (v2.8714)
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
   customer's. Most of it shipped with the Pay calendar (#323): a job can carry its own calendar, or
@@ -12,12 +12,12 @@ summary: >
   sheet. No row says a job is on its own calendar, and a job switched off has no door back. Past
   that, four kinds of terms have no home: one bill due on a named date, a number of days after the
   bill, a real date for pay when paid, and dated draws not yet billed.
-next: Hide the terms in days choice in the pay calendar window until a contract needs it (XS), on the answer to call 4. Beside it, someone sets the first real calendars, since none is set: the first real save on a job and on a bill is the live walk. The owner can still change calls 2 and 3, and each fragment says how. The morning run (`messages-nudge-dispatch`) reads a bill's own day and terms in days since v2.7452, deployed 2026-11-16 at 10:52 AM Central on Taunya's go, so nothing here waits on a deploy.
-size: M as a train of five (S · S · S · M · M) and the morning run's two reads (XS); built and deployed. Left: hiding the terms in days choice (XS) and the live walk (XS)
-blocker: nothing for hiding the terms in days choice. The live walk waits on the first real calendar, and only the owner knows which jobs are on their own terms and what each contract says.
+next: Someone sets the first real calendars, since none is set: the first real save on a job and on a bill is the live walk, and *The live walk* below is its recipe. The terms in days choice is hidden since v2.8714, on the answer to call 4. The owner can still change calls 2 and 3, and each fragment says how. The morning run (`messages-nudge-dispatch`) reads a bill's own day and terms in days since v2.7452, deployed 2026-11-16 at 10:52 AM Central on Taunya's go, so nothing here waits on a deploy.
+size: M as a train of five (S · S · S · M · M) and the morning run's two reads (XS); built and deployed, and the terms in days choice hidden (XS, v2.8714). Left: the live walk (XS)
+blocker: the live walk waits on the first real calendar, and only the owner knows which jobs are on their own terms and what each contract says.
 ask: owner · use · Set the first real pay calendar on a job that is on its own terms, and say what its contract says.
 opinion: set one real calendar on the biggest GC job and walk it; nothing more to build here until that says something reads wrong
-ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339 · v2.7341 · v2.7343 · v2.7452
+ver: v2.7036 · v2.7039 · v2.7040 · v2.7127 · v2.7151 · v2.7153 · v2.7339 · v2.7341 · v2.7343 · v2.7452 · v2.8714
 ---
 
 # A job's own pay terms (#341)
@@ -268,6 +268,9 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   accepted, with no cutoff. **Built as carded with call 4 unanswered**: the owner said that if no
   big job pays this way it is never built, and nothing reads differently until someone picks it.
   Call 4 was answered on 2026-11-25: none does, and the choice can be hidden until a contract needs it.
+  **Hidden 2026-11-27 (v2.8714):** the window and the estimator's pay terms open on **Bills must be
+  in by**. The choice is drawn only for terms already in days, and one switch brings it back
+  (`lib/jobs/payTermsInDaysOffer.ts`, a file of its own so the edge's copy of the kernel is untouched).
 - **Left for a deploy:** the morning run (`messages-nudge-dispatch`) reads a bill's own day and
   terms in days in the code since v2.7452, built 2026-11-16 on the owner's ask of that day
   (`_shared/payTermsRead.ts`, each read soft alone). It is proved in tests alone: one made-up
@@ -277,8 +280,8 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   and `npm run check:edge-drift` no longer names it. The 9 AM run of 2026-11-17 is the first
   morning on the new reads. Not proved on a real row: no calendar and no bill's own day is set.
 - **What is left is the live walk.** Three things have never been saved for real: a calendar on
-  a job, a due day on one bill, and terms in days. Each is held by kernel tests, render smokes
-  and the SQL bed.
+  a job, a due day on one bill, and terms in days, which the window no longer offers. Each is held
+  by kernel tests, render smokes and the SQL bed.
 
 ## How to verify
 
@@ -288,6 +291,45 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
 - The kernel is pure. `calendarSourceFor` gets the table in *The precedence*, plus a job row under
   a payer who no longer pays.
 - The first real calendars are the walk. The save has never run on a payer with bills.
+
+## The live walk
+
+Two parts. The first is a look and writes nothing. The second is the first real save, and it waits
+on Taunya: which job is on its own terms, and what its contract says.
+
+**Part 1, a look after v2.8714 is live. No write.**
+
+1. Open Jobs, then the Pipeline's billed rows (`/jobs?tab=stages`). Press the *Pays in* words
+   under any billed row's dates, then the Pay calendar press on the payer's card.
+2. The window's title reads *Pay calendar · <the payer>*. Its first line ends *a set day of the
+   month. Leave it unset for one with no such terms.*
+3. The first field is **Bills must be in by**. There is no *How they pay* and no press that reads
+   *A number of days after the bill*.
+4. Change a choice and read the blue box say the calendar back in dates. Do not press
+   **Save pay calendar**. Close the window with Cancel.
+5. Open a job's window and press its **Pay calendar** row. The same window opens with the switch
+   at the top on that job. Close it the same way.
+6. At 380 px wide the fields stack, and no press is under 44 px tall.
+
+**Part 2, the first real save. It writes, so it needs Taunya's yes by name and her facts.**
+
+1. Taunya names one job on its own terms, its cutoff day, its pay day, the month the pay day falls
+   in, whether it is pay when paid, and the clause.
+2. Open that job's **Pay calendar** row. Set the switch to that job alone. Fill the fields and read
+   the blue box against the contract before saving.
+3. Press **Save pay calendar**. The row in the job window now reads *This job's own* and the
+   calendar's words.
+4. On the Pipeline, the job's billed row reads *This job's own* before its due day, and **Cutoffs
+   coming** names the job on its line. A billed row of another job of the same payer does not
+   change.
+5. On one billed row of that job press *This bill is due on…*, set a day, save, and see the day
+   win over the calendar on that row alone. Take it off again unless Taunya wants it kept.
+6. Next morning, read the morning run's line for that job: it names the same due day the row does.
+7. Say what was saved and that it is real, so it is not taken for a test row.
+
+A walk on a ZZ Test customer and job can stand in for part 2's steps 2 to 5 when Taunya has no
+contract to hand. It proves the save and not the contract's words, and every row it makes is
+deleted after.
 
 ## The owner's calls
 
@@ -304,7 +346,8 @@ My pick is first on each.
    It is quoted from that session's record of the user's answers.
    PR 5 was built before the answer, as v2.7343.
    The answer says hidden, not taken out, so what PR 5 built stays behind the hidden choice.
-   Hiding it is not built, and its size, XS, is this note's estimate.
+   Hidden 2026-11-27 as v2.8714: the window opens on **Bills must be in by**, and the choice is drawn only for terms already in days.
+   The switch that brings it back is `PAY_CALENDAR_DAYS_AFTER_OFFERED` in `src/lib/jobs/payCalendar.ts`.
 5. **When a job's *Bills go to* changes, should its own calendar go with it?** No. The contract was
    with the first payer, so the window says the job holds a calendar for someone who no longer
    pays it, and offers to clear it. Or yes, the job's calendar follows whoever pays.

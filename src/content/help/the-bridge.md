@@ -185,13 +185,34 @@ Three short lists follow, each named by what to do. Each row is one job with one
 
 - **Hours went in, the percent did not move** lists jobs with hours and the same percent. Press **Set the percent** on a row. The row opens to why the job is listed, its crew and its doors. Press **Open the percent window ›** to set the percent as the crews do. Saving files a status report, and the window reads again.
 - **Hours on a job with no price** lists hours that earn nothing until the job has a price. Press **Set a price** to open the job.
-- **Sold, and nobody on it** lists the jobs nobody clocked on in 14 days. Press **Schedule it** to open the row. **Open the Schedule ›** and **Open the job ›** sit under the row.
+- **Sold, and nobody on it** lists the jobs nobody clocked on in 14 days. Press **Schedule it** to open the row. **Open the Schedule ›**, **Open the job ›** and **Name why it waits ›** sit under the row.
 
 A list shows its first rows. Press **Show all** under a list for the rest.
 
-Three presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Every open job** holds the whole list, worst first, under three tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
+Presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Waiting, with a reason** lists the jobs you marked as waiting, and shows only when one waits. **Every open job** holds the whole list, worst first, under its tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
 
 Esc closes the window.
+
+### A job that waits, with a reason
+
+Some quiet jobs are not the crew's to fix. The GC is not ready, or an inspection is owed. Mark the job as waiting, and the window stops counting it against the crew.
+
+1. Open the job's row under **Sold, and nobody on it**.
+2. Press **Name why it waits ›**.
+3. Pick one of six reasons. *Something else* needs a line of your own words.
+4. Press {{button:blue|Mark it waiting}}.
+
+The job leaves the quiet list and its money. The job's dollars show in a tile of their own, *Waits, with a reason*, so nothing hides. The Build card still counts the job, because the work is still sold and not finished.
+
+The job's status does not change. The job stays Working.
+
+:::example What the job shows while it waits
+Waits · the GC is not ready for us · since Oct 26
+:::
+
+That line is a chip on the job's card on Jobs → Stages. The job's Activity also gets a line with your name and the day.
+
+To end the wait, press **Waiting, with a reason** at the foot and open the job's row. Press **Lift the wait ›**. The job counts on the window again, and its Activity gets a second line.
 
 ## Bill, broken down
 

@@ -15,8 +15,11 @@ import { paceDayWords } from './paceCard'
  *   in hours, the crew's own unit;
  * - ahead or behind is the line's own rule (`hoursVerdict`): a crew day or more either way, or a tenth of the
  *   hours budget when the gap is under a crew day, so a small job cannot hide a large gap. Money is
- *   left out: a superintendent's read carries no dollar, and materials are bought before the work they are for.
- *   Money that leads is one calm line and the office's to watch;
+ *   left out of that rule: a superintendent's read carries no dollar;
+ * - money that leads the work while the hours do not is a warning of its own (Taunya, 2026-11-27, after a mock-up of
+ *   both: "I don't want to stay calm, I want the warning"). The card is amber, its headline says the money is ahead,
+ *   and it asks the crew to tell the office what was bought ahead. It shows no dollar. Until then it was one calm
+ *   grey line. When the hours are ahead too, the hours' warning wins and the money is not said;
  * - a gap asks before it warns. When hours have gone in since the percent was last set, the likely cause is an
  *   old percent, so the card is amber and asks *Is 40% still right?* It is red only on a percent said since;
  * - no percent, no hours budget and under 8 hours each say which one it is and whose move it is.
@@ -60,7 +63,10 @@ export type PaceReading = {
   finishAsk: string | null
   /** The hours left in the budget, or null when none are left or no budget exists. */
   leftLine: string | null
-  /** The money, when it leads or its budget is wrong: one calm line, never the headline. */
+  /**
+   * The money as one calm line under the card: its budget looks wrong, or it leads on a card that cannot compare hours
+   * and work. Null when the money is the card's own warning (it is the headline then), and when the hours warn.
+   */
   moneyLine: string | null
 }
 
@@ -159,8 +165,15 @@ export function paceReading(i: PaceReadingInput): PaceReading {
     const why = past >= 0 ? (Math.round(past) > 0 ? W.usedUpBy(hoursOf(past)) : W.usedUp) : W.overWhy
     return { state, tone: 'red', headline: W.over, bars, lines: [W.gap(hoursOf(gapHours)), why], setPctAsk: W.moreDone(pct), stillPct: null, finishAsk: W.finishAsk, leftLine, moneyLine: null }
   }
-  if (state === 'under') return { state, tone: 'green', headline: W.under, bars, lines: [W.underBy(hoursOf(-gapHours))], setPctAsk: null, stillPct: null, finishAsk: null, leftLine, moneyLine }
-  return { state, tone: 'calm', headline: W.track, bars, lines: [W.trackWhy], setPctAsk: null, stillPct: null, finishAsk: null, leftLine, moneyLine }
+  // The hours are not ahead here. Money that leads the work then warns by itself (Taunya, 2026-11-27): amber, its own
+  // headline, the hours' line kept under the bars, and what the crew can do about it. A money budget that looks wrong
+  // is the office's to mend, so that stays one calm line.
+  const hoursLine = state === 'under' ? W.underBy(hoursOf(-gapHours)) : W.trackWhy
+  if (i.money?.leads === true && i.money.wrong !== true) {
+    return { state, tone: 'amber', headline: W.moneyAhead, bars, lines: [hoursLine, W.moneyAheadWhy, W.moneyAheadNext], setPctAsk: null, stillPct: null, finishAsk: null, leftLine, moneyLine: null }
+  }
+  if (state === 'under') return { state, tone: 'green', headline: W.under, bars, lines: [hoursLine], setPctAsk: null, stillPct: null, finishAsk: null, leftLine, moneyLine }
+  return { state, tone: 'calm', headline: W.track, bars, lines: [hoursLine], setPctAsk: null, stillPct: null, finishAsk: null, leftLine, moneyLine }
 }
 
 /** The note a **Still 40%** press files with its status report, so the office reads where the number came from. */
@@ -206,7 +219,12 @@ export const PACE_READING_WORDS = {
 
   left: (hours: string, days: string): string => `${val('left', hours)} left in the budget. About ${val('days', days)} for this crew.`,
   leftShort: (hours: string): string => `${val('left', hours)} left in the budget.`,
+  /** The grey line where the card cannot compare hours and work: no percent, no hours budget, under 8 hours. */
   moneyLeads: 'Money spent is ahead of the work. The office watches that.',
+  /** The warning, when the money leads the work and the hours do not (Taunya, 2026-11-27). */
+  moneyAhead: 'Money spent is ahead of the work.',
+  moneyAheadWhy: 'More has been spent on this job than the work done accounts for.',
+  moneyAheadNext: 'If parts were bought ahead, tell the office so they know why.',
   moneyWrong: 'The office’s money budget for this job looks wrong. There is nothing for you to do.',
 
   /** Under a stage's name on the rail: the one being worked. */

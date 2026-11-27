@@ -11,7 +11,7 @@ summary: >
   The pipe, the Market and Sales windows and a chart on the Bid Board read this way since PRs 1 to 3
   (v2.6973, v2.6975, v2.6977). The page's own Market and Sales cards, the slowest-step reading, the weekly email
   and the guide followed with PRs 4 to 6 (v2.6979, v2.6983, v2.6988). This card holds every rule and what is left, which is the owner's calls.
-next: the owner answers the seven calls still open at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word
+next: the owner answers the seven calls still open at the top of Where it stands, a word each, and reads the email of Monday 2026-11-16; then the card is retired on his word Checked 2026-11-27: the email of Monday 2026-11-16 has passed, and the two PRs the blocker names, #7948 and #7893, both merged on 2026-11-13. The record does not say whether `bridge-weekly-sheet` was redeployed after them then; it was deployed again on 2026-11-27. Answered 2026-11-27 by Taunya, *picks stand*: calls 2, 3, 4 and 5 stay at their picks, and on call 8 the card is retired now and not after an email, since the email's read stays owed on card #334. One call holds it open: call 6, sizing the pipe's widths to the dollars, where she asked *why not?* and has not answered.
 size: L as a train of six (M · S · M · M · M · S), all shipped; left: the owner's calls (XS)
 blocker: None for the build. Monday's email matches the page only once #7948 and #7893 are merged and `bridge-weekly-sheet` is redeployed, and both belong to #334.
 opinion: your call — nothing is left to build; retire it after Monday's email is read, because no real send has shown the Market amount yet.
@@ -220,16 +220,21 @@ Each takes one word. The pick is the builder's, and it stands until he says othe
    as the contract on the jobs made in the window. That is work handed to the field, and the Sales window already
    reads the pile at the won rates. A yes is S: `buildPace.ts` feeds the line, the kernel is copied to the edge
    functions, and the functions that read the copy are redeployed.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *No, keep jobs made*.
 3. **Does the first screen still need its budget of 150 words and 24 numbers?** Pick: **no, drop the question**.
    PR 1 found the standing pipe put the usual week at 161 words and 27 numbers. #334 then took the week's call off
    the page (v2.7105), so the screen that budget measured is gone. The test still holds the card the email prints.
    Nothing to build.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *No, drop the question*.
 4. **A note on each bid's row on the Bid Board, *bids this size: N% won*?** Pick: **no**. Bids → Pricing already
    says how bids this size went, on the bid's title line. A yes is S.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *No*.
 5. **A row in Soft numbers for the old bids with no mark?** Pick: **no**. The Market and Sales windows already ask
    for those marks, each with a door to the Bid Board. A yes is S.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *No*.
 6. **Size the pipe's widths straight to the dollars?** Pick: **no**. #321 answers the same worry, that the five
    steps look alike, by lighting one of them. A yes is S.
+   **Asked 2026-11-27, not answered.** Taunya's words: *why not?* The reasons went back to her: a step's width follows the square root of its dollars with a floor, as a pipe's bore does, so a small step keeps room for its words; straight to dollars is S and a look choice.
 7. **Fix the Bid Board's Pulse so a bid sent on a Sunday counts in its own week?** **Done.** It was fixed as
    v2.7170, on a yes of 2026-11-13. The look is written under *Looked at* below.
 8. **Retire this card now, or after Monday's email is read?** Pick: **after Monday**. The reason is under *When

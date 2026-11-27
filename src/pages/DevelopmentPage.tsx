@@ -34,6 +34,7 @@ import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/devel
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentSitePapers } from '../components/developments/DevelopmentSitePapers'
+import { SiteSecrecy } from '../components/jobs/SiteSecrecy'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
 import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
 import { PlansViewSwitch } from '../components/developments/PlansViewSwitch'
@@ -1835,6 +1836,9 @@ export default function DevelopmentPage() {
 
         {/* Papers for this site (punch list #439): what outside companies were sent for this development or a job in it. Drawn only when there is one. */}
         <DevelopmentSitePapers developmentId={dev.id} addresses={siteAddresses} />
+
+        {/* Secrecy on this site (punch list #439, piece 4): one paper our own people sign before any job here opens. The office presses, the estimator reads. */}
+        <SiteSecrecy site={{ developmentId: dev.id }} role={role} testId="development-site-secrecy" />
 
         {/* The seventh look (punch list #379): trips to a site away from home. Mounted for the office door; the card draws only when the look shows. */}
         {moneyShown ? (

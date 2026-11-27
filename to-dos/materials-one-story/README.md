@@ -371,6 +371,7 @@ his to take or leave: Plan first, and Track for the third word.
 6. **Is the third word Sort, Track or Stock?** Sort already names sorting card purchases on the
    Tally and in Banking. My pick: Track, the owner's own word for this tool. Sort is drawn as he
    asked.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *Track*. The word stays as built.
 7. **Does what walked away show on the On site stage for the office alone?** My pick: yes, as the
    desk does today.
 8. **Where it is now on a Parts Book row: build it, or stop at the search?** My pick: build it
@@ -378,6 +379,7 @@ his to take or leave: Plan first, and Track for the third word.
 9. **Do the groups keep today's order (Purchase · Plan · Sort) or follow a part (Plan · Purchase ·
    Sort)?** My pick: Plan first, with Purchase Orders under Purchase. The page then opens on its
    first tab, and a primary's two groups read left to right.
+   **Answered 2026-11-27 by Taunya**, *picks stand* to the pick *Plan first*. The order stays as built.
 
 ## Where it plugs in
 

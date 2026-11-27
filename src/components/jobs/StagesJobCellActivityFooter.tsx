@@ -10,6 +10,7 @@ import { stripeBillEmailHint } from '../../lib/jobs/stripeBillEmailHint'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { JobContractChip } from './JobContractChip'
+import { BuildWaitChip } from './BuildWaitChip'
 import { legalRowChip } from '../../lib/legal/legalMatters'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -209,6 +210,11 @@ export function StagesJobCellActivityFooter({
     <>
       {renderStagesInvoiceJumpChips(job)}
       {renderStagesContractChip()}
+      {ctx.buildWaitByJobId?.get(job.id) ? (
+        <div style={{ marginTop: '0.35rem' }}>
+          <BuildWaitChip wait={ctx.buildWaitByJobId.get(job.id)} />
+        </div>
+      ) : null}
       {renderStagesStripeEmailedCustomerHint()}
       {hideSeeAllButton ? null : (
         <div style={{ marginTop: '0.35rem' }}>{renderStagesSeeAllButton(ctx, job)}</div>

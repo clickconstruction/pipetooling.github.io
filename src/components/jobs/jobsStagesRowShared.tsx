@@ -43,6 +43,7 @@ import OwnerShareChip from './OwnerShareChip'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { contractRowChipForJob, type ContractRowChip } from '../../lib/jobs/contractRowChip'
 import type { LegalMatterRow } from '../../lib/legal/legalMatters'
+import type { BuildWait } from '../../lib/bridge/build/buildWaits'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { seeAllDoorWords } from '../../lib/jobs/stagesRowDoors'
 
@@ -119,6 +120,8 @@ export type StagesRowRenderContext = {
   onPropertyLinked?: (jobId: string, customerAddressId: string, kind: string) => void
   /** Legal portal PR 2 (v2.3313): the legal matter a Collections job belongs to — the ⚖ chip beside the contract chip. */
   legalMatterByJobId?: ReadonlyMap<string, LegalMatterRow>
+  /** The Build waits that are not lifted (v2.8723, punch list #192 write A): the job's *Waits · … · since …* chip. */
+  buildWaitByJobId?: ReadonlyMap<string, BuildWait>
   /**
    * Opens the job's Contract modal (PR 2); absent = the chip is a plain label. Since v2.4342 the chip
    * says which door it is (`contractRowChip`): `gc-paper` opens Add the contract on the GC's jobs.

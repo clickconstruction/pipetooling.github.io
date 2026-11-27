@@ -19,7 +19,7 @@ sections:
 
 ## The idea
 
-Nobody types a quantity over another. A press names what happened to some of a part in a container on a job, and the number on the screen is the sum of the rows. A count is a row like any other: a point in time that resets the line and leaves the difference on record, so *report when they are missing* is the same rows read a second way. Built 2026-10-29 in four PRs (v2.6039 the ground, v2.6041 the phone, v2.6043 the office, v2.6045 the photo sweep); the card is [`to-dos/materials-on-site/README.md`](../to-dos/materials-on-site/README.md), the owner's six calls and how each went are under its table.
+Nobody types a quantity over another. A press names what happened to some of a part in a container on a job, and the number on the screen is the sum of the rows. A count is a row like any other: a point in time that resets the line and leaves the difference on record, so *report when they are missing* is the same rows read a second way. Built 2026-10-29 in four PRs (v2.6039 the ground, v2.6041 the phone, v2.6043 the office, v2.6045 the photo sweep); the card was `to-dos/materials-on-site/`, closed 2026-11-27 and kept in git history at the deleting commit, the owner's six calls and how each went are under its table.
 
 ## The objects
 

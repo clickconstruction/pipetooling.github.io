@@ -11,9 +11,9 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: A second look at the New task window on a quiet day, each send on its own yes: five sends in a row from Manage, each followed by ＋ New task at once, to see whether it ever fails to open or opens holding the task just sent. Look at the done row on a phone: since v2.8643 its presses sit under the words, which get the row's width. Then someone walks Task Mode on a real phone.
+next: A second look at the New task window on a quiet day, each send on its own yes: five sends in a row from Manage, each followed by ＋ New task at once, to see whether it ever fails to open or opens holding the task just sent. Look at the done row on a phone: since v2.8643 its presses sit under the words, which get the row's width. The walk on a real phone was taken off on 2026-11-27.
 size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a look at the names mend (XS), a look at the delete's line (XS) and a walk on a phone (XS)
-blocker: a person at a phone for the walk.
+blocker: none for the looks a session can make. The walk on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560 · v2.8572 · v2.8643
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
