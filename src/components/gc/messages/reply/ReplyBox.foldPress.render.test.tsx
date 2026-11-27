@@ -62,7 +62,7 @@ const fakeAttach = (): AttachIo => ({
 })
 
 /** The thread window around the box: a line of the person's above it, which a press lands on, and the box at the foot. */
-function thread(more: { short?: boolean } = {}) {
+function thread(more: { short?: boolean; column?: boolean } = {}) {
   const io = fakeIo()
   const view = spineMessagesView()
   const contact = view.contacts.find((c) => c.id === 'c-greg')!
@@ -77,11 +77,14 @@ function thread(more: { short?: boolean } = {}) {
     searchJobs: vi.fn(() => Promise.resolve([] as JobTile[])),
     ...(more.short ? { foldBox: true } : null),
   }
+  // A phone's thread column scrolls the lines and the box as one (`threadRoom`); a desk's does not scroll.
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
       <OpenThreadContext.Provider value={open}>
-        <div data-thread-line>Greg: the pad is ready.</div>
-        <ReplyBox papersIo={noPapers} contact={contact} io={io} quickIo={fakeQuick()} attachIo={fakeAttach()} />
+        <div data-thread-column style={more.column ? { overflowY: 'auto' } : undefined}>
+          <div data-thread-line>Greg: the pad is ready.</div>
+          <ReplyBox papersIo={noPapers} contact={contact} io={io} quickIo={fakeQuick()} attachIo={fakeAttach()} />
+        </div>
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )
@@ -207,5 +210,35 @@ describe('a press outside the reply box folds it (v2.6504)', () => {
     fireEvent.click(within(t.el).getByRole('button', { name: 'Add the note' }))
     await waitFor(() => expect(t.io.addNote).toHaveBeenCalled())
     await waitFor(() => expect(t.folded()).toBe(true))
+  })
+})
+
+describe('a box that wakes brings its foot up on a phone (finding 319)', () => {
+  const rect = (bottom: number) => () => ({ top: 0, left: 0, right: 375, bottom, width: 375, height: bottom, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  function shortRoom(column: boolean) {
+    const t = thread({ short: true, column })
+    const col = t.el.closest('[data-thread-column]') as HTMLElement
+    // jsdom lays nothing out: once open, the box's foot stands 70 px under the column's.
+    col.getBoundingClientRect = rect(259)
+    t.el.getBoundingClientRect = rect(329)
+    return { ...t, col }
+  }
+
+  it('a press into the folded box opens it and scrolls the column so the send press shows', async () => {
+    const t = shortRoom(true)
+    expect(t.folded()).toBe(true)
+    t.field().focus()
+    await waitFor(() => expect(t.folded()).toBe(false))
+    await waitFor(() => expect(t.col.scrollTop).toBe(70))
+    // Typing moves nothing more: the column follows the wake, not the keys.
+    fireEvent.change(t.field(), { target: { value: 'Rusty,' } })
+    expect(t.col.scrollTop).toBe(70)
+  })
+
+  it('at a desk, where the column does not scroll, waking the box moves nothing', async () => {
+    const t = shortRoom(false)
+    t.field().focus()
+    await waitFor(() => expect(t.folded()).toBe(false))
+    expect(t.col.scrollTop).toBe(0)
   })
 })

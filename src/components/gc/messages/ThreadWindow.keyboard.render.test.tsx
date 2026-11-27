@@ -76,8 +76,8 @@ const slots: ThreadSlots = {
   box: () => <div data-test-box>the reply box</div>,
 }
 
-function open() {
-  renderWithProviders(<ThreadWindow contactId="c-greg" onClose={vi.fn()} slots={slots} view={spineMessagesView()} nowIso={DEMO_NOW} writes={writes()} />)
+function open(given: ThreadSlots = slots) {
+  renderWithProviders(<ThreadWindow contactId="c-greg" onClose={vi.fn()} slots={given} view={spineMessagesView()} nowIso={DEMO_NOW} writes={writes()} />)
   const win = screen.getByRole('dialog', { name: 'Greg Paulk: messages' })
   const q = (sel: string) => win.querySelector(sel) as HTMLElement
   return {
@@ -199,5 +199,62 @@ describe('the thread window at a desk', () => {
     expect(t.win.getAttribute('data-thread-room')).toBe('whole')
     expect(t.backdrop.style.inset).toBe('0')
     expect(t.column().style.overflowY).toBe('')
+  })
+})
+
+describe('the reply box’s foot follows the keys (finding 319)', () => {
+  // A box as the reply box marks itself, with a field in it. jsdom lays nothing out, so the two rects are given.
+  const boxSlots: ThreadSlots = {
+    ...slots,
+    box: () => (
+      <div data-reply-box>
+        <textarea aria-label="Write to Greg Paulk" />
+        <button type="button">Send email…</button>
+      </div>
+    ),
+  }
+  const rect = (bottom: number) => () => ({ top: 0, left: 0, right: 375, bottom, width: 375, height: bottom, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  function withBox() {
+    screenIs(true)
+    const vv = viewport(553)
+    const t = open(boxSlots)
+    const column = t.column()
+    const box = column.querySelector('[data-reply-box]') as HTMLElement
+    // With the keys up the box's foot stands 96 px under the column's.
+    column.getBoundingClientRect = rect(259)
+    box.getBoundingClientRect = rect(355)
+    return { vv, column, field: within(box).getByRole('textbox') as HTMLTextAreaElement }
+  }
+
+  it('when the keyboard takes room while the box holds the focus, the column scrolls the send press up', () => {
+    const t = withBox()
+    t.field.focus()
+    expect(t.column.scrollTop).toBe(0)
+    t.vv.set({ height: 259 })
+    expect(t.column.scrollTop).toBe(96)
+  })
+
+  it('a room that grows moves nothing, and neither does a room that falls while the person reads the lines', () => {
+    const t = withBox()
+    // The focus is not in the box: the room falls and the column stays.
+    t.vv.set({ height: 259 })
+    expect(t.column.scrollTop).toBe(0)
+    // The focus is in the box and the keyboard goes away: nothing to bring up.
+    t.field.focus()
+    t.vv.set({ height: 553 })
+    expect(t.column.scrollTop).toBe(0)
+  })
+
+  it('at a desk the column does not scroll and nothing moves', () => {
+    screenIs(false)
+    const vv = viewport(700)
+    const t = open(boxSlots)
+    const column = t.column()
+    const box = column.querySelector('[data-reply-box]') as HTMLElement
+    column.getBoundingClientRect = rect(259)
+    box.getBoundingClientRect = rect(355)
+    ;(within(box).getByRole('textbox') as HTMLTextAreaElement).focus()
+    vv.set({ height: 300 })
+    expect(column.scrollTop).toBe(0)
   })
 })

@@ -63,6 +63,26 @@ export function threadRoom(phone: boolean, band: VisibleBand | null): ThreadRoom
 }
 
 /**
+ * The reply box's foot under the keys (finding 319, a look in the iOS Simulator at 375 by 667 on 2026-11-27). The
+ * column scrolls, so the foot could always be reached. Nothing brought it up: a tap woke the box, the keyboard took its
+ * room, Safari showed the caret, and the row with the send press stood under the room's foot until a scroll.
+ *
+ * So the column follows the foot twice: when the box wakes, and when the room gets shorter while the box holds the
+ * focus. Never on a keystroke, never when the room grows, and never by a scroll of the person's own.
+ */
+
+/** How far the column scrolls so the box's foot shows: the px of the box under the column's foot, 0 when none is. */
+export function replyFootScroll(columnBottom: number, boxBottom: number): number {
+  const under = boxBottom - columnBottom
+  return under > 0.5 ? Math.ceil(under) : 0
+}
+
+/** The room got shorter: the keyboard came up, or took more. A first read and a room that grew are not that. */
+export function roomFell(before: number | null | undefined, now: number | null | undefined): boolean {
+  return before != null && now != null && now < before
+}
+
+/**
  * A person has pinched the page larger: less of its width shows than it has. The part that shows is then a corner of
  * the page under their fingers, not the room a keyboard left, and a window that followed it would shrink and jump as
  * they read. Safari's own text size (the aA menu) is not a pinch: there the page itself is narrower and all of it shows.
