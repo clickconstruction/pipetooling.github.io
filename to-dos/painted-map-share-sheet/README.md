@@ -74,7 +74,7 @@ Most common first:
 The order is a judgment, not a count. The live app held one painted map and no link on 2026-11-18,
 as the dev seat reads it, so no use decides it. It rests on three things. The owner's own use in
 [#392](../paint-a-map-press/README.md): *someone needs a one-off map to text to someone*. The table
-*Who gets what* and its pick on [#345](../paint-a-map/README.md), which puts the link's presses
+*Who gets what* and its pick on #345 (closed 2026-11-27; its card lives in git history at the deleting commit), which puts the link's presses
 first, then the picture and the page, and the files last. And the walk of 2026-11-18, where the
 share step was the second worst snag.
 
@@ -271,7 +271,7 @@ the address is known at the moment of the press and nothing waits.
   sheet. **Fixed in v2.7894:** the band asks the server the sheet's question, hands the phone its
   text inside the press on a yes, and listens for the page being left. Walked on the same
   simulator after: Messages opened, and back in Safari the band said nothing false.
-- **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
+- **#345 (closed 2026-11-27; its card lives in git history at the deleting commit).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
 - **#393 (closed 2026-11-18, in [the Closed lines](../README.md)).** It worked in the map's window
   and the place sheet. This card
