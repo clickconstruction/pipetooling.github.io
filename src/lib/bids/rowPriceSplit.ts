@@ -15,6 +15,7 @@
  *
  * The bid's card is the sum of the rows. Pure.
  */
+import { formatCurrency } from '../format'
 import type { RowKind } from './rowKinds'
 
 export type RowSplitTyped = {
@@ -95,6 +96,27 @@ export function sumRowSplits(splits: ReadonlyArray<Pick<RowSplit, 'material' | '
     if (s.materialSource === 'typed') out.rowsTyped++
   }
   return out
+}
+
+/** A figure as the screen shows it, in whole cents: the rounding `formatCurrency` does, and no other. */
+function shownCents(v: number): number {
+  if (!Number.isFinite(v)) return 0
+  const cents = Math.round(Number(formatCurrency(Math.abs(v)).replace(/,/g, '')) * 100)
+  return v < 0 ? -cents : cents
+}
+
+/**
+ * The labor line as the screen shows it (finding 346): what is left of the row's figure once the other lines are
+ * shown. Labor is already what is left of the price, so a row always adds up. Each line is rounded to the cent by
+ * itself for the screen, though, and three rounded lines need not add to the rounded row: at 2,584.87 a unit plus
+ * 50%, material is a third of a cent off, and the three lines read a cent over or under. So the labor line reads
+ * the row's own figure as the screen rounds it, less the other lines as the screen rounds them. The three then add
+ * to the row to the cent, and no line a person can type changes.
+ *
+ * It is for the screen alone. The split itself, the three cards' sums and every saved number stay as they were.
+ */
+export function laborLeftToTheCent(rowFigure: number, otherLines: ReadonlyArray<number>): number {
+  return (shownCents(rowFigure) - otherLines.reduce((sum, line) => sum + shownCents(line), 0)) / 100
 }
 
 /** Under a row with no price, in place of its split's lines. It is a note on the row, not an empty list. */
