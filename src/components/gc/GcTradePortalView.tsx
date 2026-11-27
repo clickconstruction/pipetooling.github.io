@@ -20,9 +20,12 @@ import { GcTradePortalPaperwork, GcTradePortalPapersPage } from './GcTradePortal
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 import { GcTradePortalWhere } from './GcTradePortalWhere'
 import { phoneThumbPressesCss } from '../../lib/phonePress'
+import { portalFitCss } from '../../lib/gc/tradePortalFit'
 
 /** The mark on the portal's shell, and the rule that grows the presses inside it on a phone. */
 const TRADE_PORTAL_THUMB_CSS = phoneThumbPressesCss('[data-trade-portal]')
+/** No card of the portal runs past the shell (finding 334): every grid that names no column takes the shell's room. */
+const TRADE_PORTAL_FIT_CSS = portalFitCss('[data-trade-portal]')
 
 /**
  * GC mode, the trade partner portal (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md): what one company sees at its
@@ -135,6 +138,7 @@ export function GcTradePortalView({
       >
         {/* On a phone every press of the portal stands a fingertip tall (finding 290). At a desk nothing changes. */}
         <style>{TRADE_PORTAL_THUMB_CSS}</style>
+        <style>{TRADE_PORTAL_FIT_CSS}</style>
         <header style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
           <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
             {GC_COMPANY.name} · {pt(lang, 'letterhead')}
