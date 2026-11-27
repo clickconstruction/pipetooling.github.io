@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { onJobActivityChanged } from '../lib/jobs/jobActivityChanged'
 import { noteTagsChanged, notifyNoteTag } from '../lib/jobs/noteTagsIo'
 import type { JobThreadNotePostOptions } from './useJobThreadNotes'
 import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
@@ -234,6 +235,15 @@ export function useJobThreadNotesForModal(
       void supabase.removeChannel(channel)
     }
   }, [open, jobId, authUserId, realtimeChannelId, reloadActivityQuiet])
+
+  // A press in this tab that took lines off the job's Activity says so (finding 283): the database's signal above
+  // carries a new line and never a deleted one, so the list read again here or it drew the lines until the next open.
+  useEffect(() => {
+    if (!open || !jobId) return
+    return onJobActivityChanged((changedJobId) => {
+      if (changedJobId === jobId) void reloadActivityQuiet(jobId)
+    })
+  }, [open, jobId, reloadActivityQuiet])
 
   const submitNoteWithBody = useCallback(
     async (body: string, source: 'draft' | 'stamp', opts?: JobThreadNotePostOptions): Promise<boolean> => {

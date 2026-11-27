@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { onJobActivityChanged } from '../lib/jobs/jobActivityChanged'
 import { noteTagsChanged, notifyNoteTag } from '../lib/jobs/noteTagsIo'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import {
@@ -418,6 +419,15 @@ export function useJobThreadNotes(
       void supabase.removeChannel(channel)
     }
   }, [authUserId, loadJobThreadNotesForJob, mergeJobThreadStatsForJobIds, realtimeChannelId])
+
+  // A press in this tab that took lines off a job's Activity says so (finding 283): the signal above carries a new
+  // line and never a deleted one. The open thread reads again, and the row's counts with it.
+  useEffect(() => {
+    return onJobActivityChanged((jobId) => {
+      if (expandedJobThreadIdRef.current === jobId) void loadJobThreadNotesForJob(jobId, { quiet: true })
+      void mergeJobThreadStatsForJobIds([jobId])
+    })
+  }, [loadJobThreadNotesForJob, mergeJobThreadStatsForJobIds])
 
   const submitJobThreadNoteWithBody = useCallback(
     /**

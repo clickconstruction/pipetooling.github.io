@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { onJobActivityChanged } from '../../lib/jobs/jobActivityChanged'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienVoidedByHandRecords } from './LienVoidedByHandRecords'
 
@@ -341,5 +342,70 @@ describe('LienVoidedByHandRecords · the Activity lines of deleted notice record
     expect(strayBox()).toBeNull()
     await waitFor(() => expect(io.linesRead).toEqual(['j1', 'j1']))
     expect(strayBox()).toBeNull()
+  })
+})
+
+describe('LienVoidedByHandRecords · a job window open behind it hears a delete (finding 283)', () => {
+  /** The jobs a list of Activity would read again. */
+  const hear = () => {
+    const heard: string[] = []
+    const stop = onJobActivityChanged((id) => heard.push(id))
+    return { heard, stop }
+  }
+
+  it('Clear… says the job’s Activity changed once the function cleared lines', async () => {
+    io.lines = LINES
+    io.clearAnswer = 2
+    const { heard, stop } = hear()
+    const changed = draw('dev', ZZ, FILINGS.slice(2))
+    await waitFor(() => expect(strayBox()).not.toBeNull())
+    fireEvent.click(clearPress())
+    const yes = await screen.findByRole('button', { name: 'Clear 2 lines' })
+    // Nothing is said on the first press or while the confirm stands.
+    expect(heard).toEqual([])
+    fireEvent.click(yes)
+    await waitFor(() => expect(changed.n).toBe(1))
+    expect(heard).toEqual(['j1'])
+    stop()
+  })
+
+  it('says nothing when the function cleared none, when the confirm is cancelled, or when the clear is refused', async () => {
+    io.lines = LINES
+    io.clearAnswer = 0
+    const { heard, stop } = hear()
+    const changed = draw('dev', ZZ, FILINGS.slice(2))
+    await waitFor(() => expect(strayBox()).not.toBeNull())
+    fireEvent.click(clearPress())
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear 2 lines' }))
+    await waitFor(() => expect(changed.n).toBe(1))
+    await waitFor(() => expect(clearPress().disabled).toBe(false))
+    fireEvent.click(clearPress())
+    await screen.findByRole('button', { name: 'Clear 2 lines' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Clear 2 lines' })).toBeNull())
+    await waitFor(() => expect(clearPress().disabled).toBe(false))
+    io.clearRefuse = new Error('This job is not a test job.')
+    fireEvent.click(clearPress())
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear 2 lines' }))
+    expect(await screen.findByText('This job is not a test job.')).toBeTruthy()
+    expect(heard).toEqual([])
+    stop()
+  })
+
+  it('Delete… says so too, since the record’s line goes with it, and says nothing when the delete is refused', async () => {
+    const { heard, stop } = hear()
+    const changed = draw('dev')
+    openList()
+    fireEvent.click(deletePress(0))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete the record' }))
+    await waitFor(() => expect(changed.n).toBe(1))
+    expect(heard).toEqual(['j1'])
+    io.refuse = new Error('A desk paper points at this record.')
+    await waitFor(() => expect(deletePress(1).disabled).toBe(false))
+    fireEvent.click(deletePress(1))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete the record' }))
+    expect(await screen.findByText('A desk paper points at this record.')).toBeTruthy()
+    expect(heard).toEqual(['j1'])
+    stop()
   })
 })
