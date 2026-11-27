@@ -979,6 +979,38 @@ describe('BidsPricingTab render smoke', () => {
     // Opened again every box is empty.
     fireEvent.click(within(bookDrawer()).getByText('Add entry'))
     expect(formsOpen()).toEqual(['New entry [][][][][] Cancel|Save'])
+    fireEvent.click(screen.getByText('Cancel'))
+    // The pencil on an entry opens the form on each stage's own price.
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    expect(formsOpen()).toEqual(['Edit entry [Water closet][100][50][25][175] Delete|Cancel|Save'])
+  })
+
+  it('every door that opens a form clears the tab’s error line, and so does closing the entry form', async () => {
+    const setError = vi.fn()
+    await openBook({ setError })
+    const cleared = () => {
+      const n = setError.mock.calls.filter((c) => c[0] === null).length
+      setError.mockClear()
+      return n
+    }
+    cleared()
+    fireEvent.click(within(bookDrawer()).getByTitle('Show all price books'))
+    fireEvent.click(within(bookDrawer()).getByText('Add book'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    // Closing the version form leaves the line alone, and so does the pencil on a book.
+    expect(cleared()).toBe(0)
+    fireEvent.click(within(bookDrawer()).getByTitle('Rename this book'))
+    expect(cleared()).toBe(0)
+    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(within(bookDrawer()).getByText('Add entry'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(within(bookDrawer()).getByTitle('Edit'))
+    expect(cleared()).toBe(1)
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(cleared()).toBe(1)
   })
 
   it('in Combined price a new entry lands in Rough In, and an edited one moves Rough In by the difference', async () => {
