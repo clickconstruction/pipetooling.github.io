@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, held in the simulator the same day at 125%, 115% and 100% text · the look at 375 by 667 made in the simulator 2026-11-27 on v2.8691: with the keyboard up the send press was under it on the first tap (finding 319) · mended in v2.8736 (PR #10084) on the answer *Picks stand* to the pick *Mend it*, merged the same day · seen clean in the simulator the same day at 375 by 667: in Email and in Text at 100% text, and in Text at 125% (finding 341) · left: Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, held in the simulator the same day at 125%, 115% and 100% text · the look at 375 by 667 made in the simulator 2026-11-27 on v2.8691: with the keyboard up the send press was under it on the first tap (finding 319) · mended in v2.8736 (PR #10084) on the answer *Picks stand* to the pick *Mend it*, merged the same day · seen clean in the simulator the same day at 375 by 667: in Email and in Text at 100% text, and in Text at 125% (finding 341) · 2026-11-27: the card's last three calls answered by the person at the keyboard, *Picks stand*: nobody's face stays a grey ?, the faces stay as they are, and a past day in Edit task is to read *has had it since* · left: that one wording mend, with `small-fixes`
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,11 +11,11 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: Grace's two notes wait on her word, and they are what keeps this card open: the old task's sentence in Edit task, and the faces that do not hold everyone, counted again after two weeks of use before anything changes. The mend of the send press under the keyboard, v2.8736, is seen clean in the simulator (2026-11-27, 375 by 667 points): on the first tap into the reply box **Send email…** and **Send text…** are whole above the keyboard at 100% text, and **Send text…** at 125% with the whole box. That answers the pick *Mend it*. Not read after the mend: 402 wide, Email at 125% text, and the Dispatch job picker at 375. To weigh, with the fixing thread: the three small presses v2.8736 left as they are, **Send email…** at 110 by 30, **Attach** at 75 by 34 and the kind chips 31 tall.
-size: M as five small PRs (S · S · XS · S · S), built; the send press's mend built after them (v2.8736, S) and seen in the small simulator; left: Grace's word on her two notes
-blocker: Grace's word for her two notes. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
+next: One wording mend, with the `small-fixes` thread: in Edit task, a task whose day is past reads *[name] has had it since [day].* where it reads *gets it on* today. The card is retired when that mend is merged. Answered 2026-11-27 by the person at the keyboard, *Picks stand*, relayed by the managing session, to the three calls this card had left: nobody's face in a thread's header stays a grey **?**, the faces offered when giving a task stay Me and the last four with no recount, and the past day's sentence changes. Two of the three were Grace's notes; the person was told so, and that they may answer for her, and answered. Not read after v2.8736: 402 wide, Email at 125% text, and the Dispatch job picker at 375. To weigh, with the fixing thread: the three small presses v2.8736 left as they are, **Send email…** at 110 by 30, **Attach** at 75 by 34 and the kind chips 31 tall.
+size: M as five small PRs (S · S · XS · S · S), built; the send press's mend built after them (v2.8736, S) and seen in the small simulator; left: one wording mend in Edit task (XS)
+blocker: The wording mend in Edit task, with `small-fixes`. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585 · v2.8736
-opinion: close it on Grace's word for her two notes — every row that could be built is built, and the last mend is seen in the small simulator
+opinion: close it when the Edit task wording mend is merged — every other row is built, and the last three calls are answered
 mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
 
@@ -91,9 +91,11 @@ without this card. Every one was seen on the simulator, not on a phone in a hand
 
 - **An old task's sentence in Edit task** reads like *Theo gets it on Tue, Feb 17.* for a day long
   past. *has had it since Tue, Feb 17.* may read better. Wording only.
+  **Answered 2026-11-27:** say *has had it since* for a past day. Not built yet.
 - **The faces do not hold everyone.** Replayed on the record, Me and the last four people covered
   87 of 137 tasks, and the rest press **Someone else** first. Count it again after two weeks of
   use before changing anything.
+  **Answered 2026-11-27:** leave the faces as they are. No recount was made.
 
 ## What I would not claim
 
@@ -149,7 +151,7 @@ Walked in the iOS Simulator (iPhone 17, iOS 26.2, Safari) on a ZZ Test person's 
 **Left from this walk.**
 
 - **A small phone in a hand**, in Text and in Email, to see the scroll reach the box's foot.
-- **At 320 px wide the header's first row was 37 px too wide**, keyboard or not: the name got no width and ⋯ sat half off the right edge. Fixed in v2.8300. It was not a 320 px fault alone: at 375 the name had 18 px and on an iPhone 17 it had 45, so it read as two letters. The who-has-it pill's words took 171 px of the row. The folded header was drawn on 2026-10-12 with that pill as a face alone, and the window has handed that look to the slot since, but the slot never read it. It reads it now: a face 28 px wide, with the words as its name to a screen reader, and its menu slid onto the screen from wherever the face sits. The name gets 106 px at 320, 161 of its 164 at 375 and all of it at 402. Measured in a browser at 320, 375, 402 and 1,400 wide, not in a simulator. One pick is left to the owner: nobody's face is a grey **?**, as the whole pill drew it beside its words.
+- **At 320 px wide the header's first row was 37 px too wide**, keyboard or not: the name got no width and ⋯ sat half off the right edge. Fixed in v2.8300. It was not a 320 px fault alone: at 375 the name had 18 px and on an iPhone 17 it had 45, so it read as two letters. The who-has-it pill's words took 171 px of the row. The folded header was drawn on 2026-10-12 with that pill as a face alone, and the window has handed that look to the slot since, but the slot never read it. It reads it now: a face 28 px wide, with the words as its name to a screen reader, and its menu slid onto the screen from wherever the face sits. The name gets 106 px at 320, 161 of its 164 at 375 and all of it at 402. Measured in a browser at 320, 375, 402 and 1,400 wide, not in a simulator. One pick is left to the owner: nobody's face is a grey **?**, as the whole pill drew it beside its words. **Answered 2026-11-27:** keep the grey **?**.
 
 It changes nothing at a desk: every branch is behind the window's own phone flag.
 
@@ -218,3 +220,13 @@ The simulator's finding was put to the person at the keyboard that day as: *the 
 - **Not read after the mend:** 402 wide, Email at 125% text, and the Dispatch job picker at 375. The three small presses were not measured again.
 
 So the question answered above, *Mend it*, is done and seen. This card stays open for Grace's two notes alone.
+
+### Answered 2026-11-27: the card's last three calls
+
+Put to the person at the keyboard that day as rows 6 to 8 of a round of eight, each with its context and a pick. The answer, typed to the managing session and relayed: *Picks stand*. The person was told that two of the three are Grace's notes and that they may answer for her.
+
+- **Nobody's face.** The pick was *Keep the grey ?*. Nothing changes.
+- **The faces do not hold everyone.** The pick was *Leave the faces as they are*. Nothing changes. This differs from the advice above, to count again after two weeks of use: those two weeks ended on 2026-11-27 and no count was made. A count asked for later is a read through the dev seat, on its own ask.
+- **An old task's sentence.** The pick was *Say has had it since for a past day*. It is the one answer that builds something: a wording mend in Edit task, the client alone, which the managing session sent to the `small-fixes` thread the same day.
+
+This card is retired when that mend is merged.
