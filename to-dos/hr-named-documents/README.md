@@ -15,7 +15,7 @@ summary: >
   mark, and a door that takes a .md or .txt file off the desk so a long document never rides
   through an agent's context. The view the two fixed documents share becomes Documents, with
   Summary and Narrative pinned at the top as the two the agent keeps.
-next: Taunya's and Micah's two calls on the card, now that both documents are on the file (2026-11-09, Where it stands): archive a named document in the app, and whether the two Drive-linked evidence records are retired. The seat's archive defect under Where it stands was fixed in v2.6948 with no migration: the plan's hash commits to archived or not, never the dry run's stamp. Delete this card after.
+next: Taunya's and Micah's two calls on the card, now that both documents are on the file (2026-11-09, Where it stands): archive a named document in the app, and whether the two Drive-linked evidence records are retired. The seat's archive defect under Where it stands was fixed in v2.6948 with no migration: the plan's hash commits to archived or not, never the dry run's stamp. Delete this card after. Answered 2026-11-27 by Taunya, *the picks stand*: yes, add an archive press for a named document on People → HR, a small build that is not started; and retire the two Drive-linked evidence records on the case, a note on each and nothing deleted, which is planned through the dev seat and takes her yes again at the time. The card stays open until the press is built and the two records are retired.
 size: M + M + S
 blocker: None.
 mockup: mockup.html — the Documents view with the two pinned documents and the named list, Add a document's three doors, one document open with its section index and Edit the document, the counsel-only mark, and the seat's plan reply by document id
