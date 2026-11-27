@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { announceJobActivityChanged } from '../../lib/jobs/jobActivityChanged'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import {
   LIEN_BY_HAND_RECORD_DELETED,
@@ -36,6 +37,9 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * and each time the records change. The line is drawn when one or more names a record the job no longer holds,
  * though the job holds no voided record. **Clear…** asks, then calls the function that clears them, and the toast
  * says how many it cleared. A read that fails draws nothing here and leaves the list above as it was.
+ *
+ * Both presses take lines off the job's Activity, and the lists hear only new lines from the database. So each says
+ * so through `announceJobActivityChanged`, and a job window open behind this one reads its list again (finding 283).
  */
 export function LienVoidedByHandRecords({
   role,
@@ -101,6 +105,8 @@ export function LienVoidedByHandRecords({
       if (!(await confirmDialog({ ...lienByHandDeleteConfirm(siblings), danger: true }))) return
       await deleteLienByHandRecord(record.id)
       showToast(LIEN_BY_HAND_RECORD_DELETED, 'success')
+      // The record's Activity line went with it: a job window open behind this one reads its list again (finding 283).
+      announceJobActivityChanged(jobId)
       onChanged()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The record was not deleted.'), 'error')
@@ -117,6 +123,7 @@ export function LienVoidedByHandRecords({
       const n = await clearLienNoticeStrayLines(jobId)
       showToast(lienNoticeStrayClearedWords(n), n > 0 ? 'success' : 'info')
       setCleared((c) => c + 1)
+      if (n > 0) announceJobActivityChanged(jobId)
       onChanged()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The Activity lines were not cleared.'), 'error')
