@@ -157,6 +157,9 @@ type LienDeskItemRow = {
   status: string
   submitted_at: string | null
   updated_at: string
+  void_of_filing_ids: string[] | null
+  void_prior_sent_at: string | null
+  void_stamped_at: string | null
   voided_at: string | null
   word_channel: string
   word_note: string

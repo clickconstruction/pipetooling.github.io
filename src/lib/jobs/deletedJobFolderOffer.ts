@@ -66,3 +66,58 @@ export function jobFolderTrashToast(outcome: { answer: JobFolderTrashAnswer } | 
   if ('answer' in outcome) return { words: `The job is deleted. ${outcome.answer.words}`, tone: 'success' }
   return { words: `The job is deleted. ${outcome.problem}`, tone: 'warning' }
 }
+
+// ---------- Recently deleted: a job deleted earlier (punch list #443, row 18, the second half) ----------
+
+/**
+ * Whether a bundle in Settings → Recently deleted is offered the press that sends its job's Drive folder to the
+ * trash: a dev, a deleted job's bundle, and a kept copy that is ZZ-named and keeps a Drive link. The ask after a
+ * delete covers a job a dev deletes from now on. This covers one deleted before that was built, or deleted by the
+ * office, or deleted while the function was not yet deployed. The function decides either way.
+ */
+export function deletedBundleFolderOffered(role: string | null | undefined, kind: string | null | undefined, job: JobFolderTrashJob | null | undefined): boolean {
+  return kind === 'job' && jobFolderTrashOffered(role, job)
+}
+
+/** The line a bundle's card says above the press. */
+export const DELETED_BUNDLE_FOLDER_LINE = 'This test job kept a Drive folder. Deleting the job did not remove it.'
+
+/** The press on a bundle's card. */
+export const DELETED_BUNDLE_FOLDER_PRESS = 'Send its Drive folder to the trash…'
+
+/** The link beside the press, so the folder can be looked at first. */
+export const DELETED_BUNDLE_FOLDER_OPEN = 'Open it in Drive ↗'
+
+/** The confirm window's words. The button names the act, and the message says what goes, what stays and how it comes back. */
+export function deletedBundleFolderConfirm(label: string): { title: string; message: string; confirmLabel: string } {
+  const name = label.trim()
+  return {
+    title: 'Send this job’s Drive folder to the trash?',
+    message: `${name ? `${name}. ` : ''}Its own Drive folder goes to Drive’s trash, and can be restored there for 30 days. The folder stays if a bid, another job or a customer still keeps it. It also stays if a person added a file to it. The customer’s folder stays. If you put this job back later, restore its folder in Drive as well.`,
+    confirmLabel: 'Send to Drive’s trash',
+  }
+}
+
+/** What a bundle's card says once the function has answered: what became of the folder, or why it stays. */
+export function deletedBundleFolderOutcome(outcome: { answer: JobFolderTrashAnswer } | { problem: string }): { words: string; tone: 'done' | 'stays' } {
+  if ('answer' in outcome) return { words: outcome.answer.words, tone: 'done' }
+  return { words: jobFolderTrashProblem(outcome.problem), tone: 'stays' }
+}
+
+/** One deleted job as the archive's read hands it over: its id, and the three columns the offer reads. */
+export interface DeletedJobFolderRow {
+  record_id: string | null
+  job_name: string | null
+  customer_name: string | null
+  google_drive_link: string | null
+}
+
+/** The kept copies by job id, the newest first read winning: a job deleted, put back and deleted again has two. */
+export function deletedJobFolderFacts(rows: ReadonlyArray<DeletedJobFolderRow>): Map<string, JobFolderTrashJob> {
+  const out = new Map<string, JobFolderTrashJob>()
+  for (const r of rows) {
+    if (!r.record_id || out.has(r.record_id)) continue
+    out.set(r.record_id, { job_name: r.job_name, customer_name: r.customer_name, google_drive_link: r.google_drive_link })
+  }
+  return out
+}

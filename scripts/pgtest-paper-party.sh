@@ -35,7 +35,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # Last of all, the site a paper names (punch list #439), which restates the view with three columns at its end. A view
 # never loses a column, so an older definition cannot replace the wider view: the view is dropped before the files
 # below are applied again, and the newest definition, applied last, makes it as prod has it.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql) $(ls supabase/migrations/*_agreements_party_join_by_key.sql) $(ls supabase/migrations/*_agreements_on_file_site.sql)"
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql) $(ls supabase/migrations/*_agreements_party_join_by_key.sql) $(ls supabase/migrations/*_agreements_on_file_site.sql) $(ls supabase/migrations/*_agreements_on_file_site_print.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

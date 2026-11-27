@@ -2380,6 +2380,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 - **UI (v2.699)**: **Settings → Data & recovery → Recently deleted (dev)** — lists restorable bundles and drives the two RPCs. the block is dev-gated inside `SettingsDataTab` (`isDev`;
   since v2.6766 the `settings-data` group also opens to the controller and the owner for their own blocks);
   the RPCs enforce dev independently, so the UI gate is convenience, not the boundary.
+  Since v2.8688 a deleted ZZ test job's entry there offers **Send its Drive folder to the trash…** to a dev, and `job-drive-folders` enforces dev itself for that body (403 `dev_only`).
   Since v2.8677 a person's bundle that holds a copy of the users row goes to `restore_deleted_test_person` in place of `restore_deleted_records` (`restoreFunctionFor`), which gates on `is_dev()` itself (see *A row made by mistake can be deleted*).
 
 ### Bid history is DB-captured, read with the bid (v2.4598, `20261007040000_bid_changes.sql`)

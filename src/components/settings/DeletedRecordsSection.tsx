@@ -46,6 +46,9 @@ import {
   type BulkDeleteAlertDismissState,
 } from '../../lib/bulkDeleteAlertDismiss'
 import { MoneyText } from '../Money'
+import DeletedJobFolderLine from './DeletedJobFolderLine'
+import type { JobFolderTrashJob } from '../../lib/jobs/deletedJobFolderOffer'
+import { readDeletedJobFolderFacts } from '../../lib/jobs/jobDriveFoldersIo'
 
 /** Deep-link anchor id (dashboard "Review deletions" → this section, opened). */
 export const RECENTLY_DELETED_ANCHOR_ID = 'settings-recently-deleted'
@@ -71,10 +74,29 @@ const AUTO_FETCH_ALERT_BUNDLES = 12
 export default function DeletedRecordsSection() {
   const [open, setOpen] = useState(false)
   const { showToast } = useToastContext()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const location = useLocation()
   const { bundles, loading, error, preview, busy, submitting, runPreview, runRestore } =
     useDeletedRecordsArchive({ enabled: open })
+
+  // Punch list #443, row 18: the deleted jobs' names and Drive links, read once a list, for the press that sends a
+  // ZZ test job's folder to Drive's trash. Additive: when the read fails the cards are as they were, with no press.
+  const [folderJobs, setFolderJobs] = useState<ReadonlyMap<string, JobFolderTrashJob>>(() => new Map())
+  useEffect(() => {
+    const jobIds = bundles.filter((b) => b.kind === 'job').map((b) => b.group_key)
+    if (!open || role !== 'dev' || jobIds.length === 0) return
+    let cancelled = false
+    void readDeletedJobFolderFacts(jobIds)
+      .then((facts) => {
+        if (!cancelled) setFolderJobs(facts)
+      })
+      .catch(() => {
+        /* additive UI: the press is simply not offered */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, role, bundles])
 
   // "What's inside" contents per bundle: lazily fetched on first open, cached for the session.
   const [filters, setFilters] = useState<DeletedBundleFilters>(EMPTY_BUNDLE_FILTERS)
@@ -478,6 +500,7 @@ export default function DeletedRecordsSection() {
                         >
                           {openContents.has(b.group_key) ? 'Hide contents' : "What's inside?"}
                         </button>
+                        <DeletedJobFolderLine role={role} bundle={b} job={folderJobs.get(b.group_key)} />
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         <button

@@ -85,10 +85,18 @@ export function siteKeysOfAddress(address: string | null | undefined, answers: R
   return key ? samePlaceKeys(key, answers) : new Set()
 }
 
-/** What a paper's line says of its site: `for the site at 118 Old Quarry Trl, Sampleton, TX`, or nothing. */
-export function paperSiteNote(row: { site_address?: string | null }): string {
+/** The words a paper's line adds when its signer reads the site's address: the box's own words, in the past. */
+export const SITE_PRINTED_WORDS = 'printed on the paper'
+
+/**
+ * What a paper's line says of its site: `for the site at 118 Old Quarry Trl, Sampleton, TX`, or nothing. When the
+ * office ticked **Print the site's address on the paper** the line says so after the address: `, printed on the
+ * paper`. Only `true` itself says it, so a row read without the column says nothing about a print.
+ */
+export function paperSiteNote(row: { site_address?: string | null; site_prints_address?: boolean | null }): string {
   const address = oneSpace(row.site_address ?? '')
-  return address ? `for the site at ${val('address', address)}` : ''
+  if (!address) return ''
+  return `for the site at ${val('address', address)}${row.site_prints_address === true ? `, ${SITE_PRINTED_WORDS}` : ''}`
 }
 
 /** The words of the site's line in the email window, and of the window that finds a site. */

@@ -223,6 +223,8 @@ Here is what the tick changes.
 - A signed paper's PDF prints the same line above its words. The copy the signer is emailed has it too.
 - A form's PDF is the form itself. A form prints no address.
 
+Later, the paper's own line tells you the box was ticked. The line reads *for the site at* the address, then *printed on the paper*. A paper whose box was left off ends at the address.
+
 The signer reads only the address. The signer does not read which jobs are there, or the development's name.
 
 Naming another site takes the tick off. Tick the box again for the new address.
