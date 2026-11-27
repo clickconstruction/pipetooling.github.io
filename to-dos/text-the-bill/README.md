@@ -109,7 +109,7 @@ What exists:
   `JobFormInvoiceList.tsx`, `HostedStripeBillPanel.tsx` and `SendRecordInvoiceModal.tsx`; the
   bill is made in `BilledPaymentConfirmationModal.tsx`, `ConvertBillToStripeModal.tsx`,
   `SendRecordInvoiceModal.tsx`; the email draft is `EmailBillDraftModal.tsx`.
-- #290 (`to-dos/short-bill-link.md`, PRs #7414 and #7415): the short
+- #290 (closed 2026-11-27; its card lives in git history at the deleting commit; PRs #7414 and #7415): the short
   `my.clickplumbing.com/pay/<ten letters>` link through `billTextLink`. This card does not touch
   `loadNewestBillLink` or those PRs' files beyond the share row's Text press; the text takes
   whatever `{bill}` and `billTextLink` return and swaps to the short link by itself.
