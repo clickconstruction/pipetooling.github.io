@@ -10,7 +10,7 @@
  */
 import type { CSSProperties, ReactElement } from 'react'
 import { formatCurrency } from '../../lib/format'
-import { SPLIT_NO_PRICE_WORDS, parseSplitDollars, type RowSplit } from '../../lib/bids/rowPriceSplit'
+import { SPLIT_NO_PRICE_WORDS, laborLeftToTheCent, parseSplitDollars, type RowSplit } from '../../lib/bids/rowPriceSplit'
 import type { PricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { MoneyText } from '../Money'
 
@@ -69,6 +69,17 @@ export function PricingSplitRows({ r, s, taxPct, materialMarkup, wbMarkupDraft, 
         </td>
       </tr>
     )
+  // The labor line is what is left, on the screen too (finding 346, v2.8759): the row's own figure as the screen
+  // rounds it, less the other lines as the screen rounds them, so the three always add to the row to the cent.
+  const others = parts.filter((p) => p.key !== 'labor')
+  const lineProfit = (p: (typeof parts)[number]) => p.priceEa * n - (p.costEa ?? 0) * n
+  const laborShown = isEquipmentRow
+    ? null
+    : {
+        priceEa: laborLeftToTheCent(r.effRevenue / n, others.map((p) => p.priceEa)),
+        revenue: laborLeftToTheCent(r.effRevenue, others.map((p) => p.priceEa * n)),
+        profit: laborLeftToTheCent(parts.reduce((sum, p) => sum + lineProfit(p), 0), others.map(lineProfit)),
+      }
   return (
     <>
       {parts.map((part, i) => {
@@ -76,6 +87,11 @@ export function PricingSplitRows({ r, s, taxPct, materialMarkup, wbMarkupDraft, 
         const revenue = part.priceEa * n
         const costRow = part.costEa == null ? null : part.costEa * n
         const profit = costRow == null ? null : revenue - costRow
+        // What this line shows: its own figures, and for labor what is left to the cent.
+        const mine = part.key === 'labor' ? laborShown : null
+        const shownPriceEa = mine ? mine.priceEa : part.priceEa
+        const shownRevenue = mine ? mine.revenue : revenue
+        const shownProfit = profit == null ? null : mine ? mine.profit : profit
         const margin = profit != null && revenue > 0 ? profit / revenue : null
         const under = part.key === 'labor' && s.labor < -0.005
         const td = (extra?: CSSProperties) => childTd({ ...(last ? { borderBottom: '1px solid var(--border)' } : {}), ...extra })
@@ -145,12 +161,12 @@ export function PricingSplitRows({ r, s, taxPct, materialMarkup, wbMarkupDraft, 
                 />
               ) : (
                 <span style={{ display: 'inline-block', width: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : part.key === 'labor' ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: part.key === 'labor' ? 600 : 400, textDecoration: part.key === 'tax' && !s.taxable ? 'line-through' : 'none' }}>
-                  <MoneyText text={money(part.priceEa, true)} />
+                  <MoneyText text={money(shownPriceEa, true)} />
                 </span>
               )}
             </td>
-            <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : undefined, fontWeight: part.key === 'labor' ? 600 : 400 })}>{priced ? <MoneyText text={money(revenue, true)} /> : ''}</td>
-            <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: profit != null && profit < 0 ? 'var(--text-red-700)' : undefined })}>{priced ? <MoneyText text={money(profit, true)} /> : ''}</td>
+            <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : undefined, fontWeight: part.key === 'labor' ? 600 : 400 })}>{priced ? <MoneyText text={money(shownRevenue, true)} /> : ''}</td>
+            <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: profit != null && profit < 0 ? 'var(--text-red-700)' : undefined })}>{priced ? <MoneyText text={money(shownProfit, true)} /> : ''}</td>
             <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: margin == null ? 'var(--text-faint)' : mColor(margin) })}>{priced && margin != null ? `${Math.round(margin * 100)}%` : ''}</td>
             <td style={td()} />
           </tr>

@@ -437,7 +437,8 @@ describe('BidsPricingTab render smoke', () => {
       ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $475.25 ¦ $2,851.50 ¦ $2,251.50 ¦ 79% ¦ ',
       '#wb-split-cr-lav  ¦ ├Materialthe takeoff +%[50] ¦ 4 ¦ $100.00 ¦  ¦ [150.00] ¦ $600.00 ¦ $200.00 ¦ 33% ¦ ',
       ' ¦ ├Sales tax8.25% on material ¦ 4 ¦ $8.25 ¦  ¦ $12.38 ¦ $49.50 ¦ $16.50 ¦ 33% ¦ ',
-      ' ¦ └Laborwhat is left ¦ 4 ¦ $100.00 ¦  ¦ $337.63 ¦ $1,350.50 ¦ $950.50 ¦ 70% ¦ ',
+      // Labor is what is left to the cent (finding 346, v2.8759): $500.00 less $150.00 and $12.38, where it read $337.63 and the three added to $500.01.
+      ' ¦ └Laborwhat is left ¦ 4 ¦ $100.00 ¦  ¦ $337.62 ¦ $1,350.50 ¦ $950.50 ¦ 70% ¦ ',
       '#wb-split-cr-fd  ¦ └No price on this row yet, so nothing to split.',
     ])
     const material = screen.getByLabelText('Material per unit in the price of Water closet') as HTMLInputElement
@@ -486,7 +487,8 @@ describe('BidsPricingTab render smoke', () => {
     expect(splitLines()).toEqual([
       '#wb-split-cr-wc  ¦ ├Materialtyped ¦ 6 ¦ $200.00 ¦  ¦ [250.00] ¦ $1,500.00 ¦ $300.00 ¦ 20% ¦ ',
       ' ¦ ├Sales tax8.25% on material ¦ 6 ¦ $16.50 ¦  ¦ $20.63 ¦ $123.75 ¦ $24.75 ¦ 20% ¦ ',
-      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $529.38 ¦ $3,176.25 ¦ $2,576.25 ¦ 81% ¦ ',
+      // $800.00 less $250.00 and $20.63: $529.37 to the cent, where it read $529.38 (finding 346).
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $529.37 ¦ $3,176.25 ¦ $2,576.25 ¦ 81% ¦ ',
     ])
     expect(box().title).toBe('Typed for this row — clear it to go back to the rule')
     // A typed price is underlined solid, in the cell's own width.
