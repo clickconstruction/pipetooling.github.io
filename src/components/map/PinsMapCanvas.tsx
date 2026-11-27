@@ -15,7 +15,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
-import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster, CLUSTER_NOUN_UNNAMED, clusterTitle } from '../../lib/map/clusterPins'
 import { pinLabelInk } from '../../lib/map/pinLabelInk'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { leafletScrollWheelZoom } from '../../lib/map/scrollZoomGate'
@@ -53,7 +53,7 @@ export type PinsMapCanvasProps = {
   scrollZoomAfterClick?: boolean
   /** Leaflet only (v2.4796): more react-leaflet layers mounted inside the map — the Map page's draw tool, court layer and fly-to. The Google canvas ignores them. */
   children?: ReactNode
-  /** What a cluster disc counts, for its hover title (v2.4802): "bids" unless the caller says. */
+  /** What a cluster disc counts, for its hover title (v2.4802): the caller says, as "permits" or "jobs"; unsaid it is "pins". */
   clusterNoun?: string
 }
 
@@ -103,7 +103,7 @@ function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; n
     <Marker
       position={[cluster.lat, cluster.lng]}
       icon={icon}
-      title={`${cluster.count} ${noun} here — click to zoom in`}
+      title={clusterTitle(cluster.count, noun)}
       eventHandlers={{
         click: () => {
           const b = clusterBounds(cluster)
@@ -152,7 +152,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   return icon
 }
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, fitMaxZoom = 15, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, fitMaxZoom = 15, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = CLUSTER_NOUN_UNNAMED }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const [mapClicked, setMapClicked] = useState(false)

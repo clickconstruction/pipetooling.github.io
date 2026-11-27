@@ -50,8 +50,8 @@ vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 // The map canvases are lazy and heavy; a list of pin buttons drives the same callbacks (the Bid Board smoke's stand-in).
 vi.mock('../map/PinsMapGoogleCanvas', () => ({ default: () => <div data-testid="google-canvas" /> }))
 vi.mock('../map/PinsMapCanvas', () => ({
-  default: (p: { pins: Array<{ id: string; title: string; color: string }>; onSelect: (id: string) => void }) => (
-    <div data-testid="canvas">
+  default: (p: { pins: Array<{ id: string; title: string; color: string }>; onSelect: (id: string) => void; clusterNoun?: string }) => (
+    <div data-testid="canvas" data-cluster-noun={p.clusterNoun ?? ''}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color}>
           pin {pin.title}
@@ -183,6 +183,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     await openLedger()
     fireEvent.click(screen.getByRole('button', { name: 'Map' }))
     await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
+    // A group of its pins is named *permits* (finding 327): every group on this map read *N bids here*.
+    expect(screen.getByTestId('canvas').getAttribute('data-cluster-noun')).toBe('permits')
     const pin = screen.getByRole('button', { name: /pin 100 SAMPLE ST/ })
     expect(pin.getAttribute('data-color')).toBe('#2563eb')
     fireEvent.click(pin)
