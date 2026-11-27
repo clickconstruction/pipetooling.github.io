@@ -71,7 +71,9 @@ describe('phoneThumbPressesCss (finding 290)', () => {
 
   it('grows the four presses that are not buttons or links: a tick by its label, a pick, a fold’s line and a file picker', () => {
     expect(css).toContain('[data-zz-shell] label:has(input[type="checkbox"]), [data-zz-shell] label:has(input[type="radio"]) { min-height: 44px !important; }')
-    expect(css).toContain('[data-zz-shell] select { min-height: 44px !important; }')
+    // A pick takes a set height (finding 335): Safari on an iPhone overrides a least height on a pick, and keeps a set one.
+    expect(css).toContain('[data-zz-shell] select { box-sizing: border-box; height: 44px !important; }')
+    expect(css).not.toMatch(/select \{[^}]*min-height/)
     // A fold's line takes padding and no flex, which would lose its marker. 17 px of words in the middle of 44.
     expect(css).toContain('[data-zz-shell] summary { box-sizing: border-box; min-height: 44px; padding-top: 13px; padding-bottom: 13px; }')
     expect(css).not.toMatch(/summary \{[^}]*display/)
