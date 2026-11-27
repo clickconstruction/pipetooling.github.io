@@ -36,7 +36,7 @@ vi.mock('../../lib/research/permitResearchIo', () => io)
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadAllNameContactMatches: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
 vi.mock('../../lib/research/bidSiteIo', () => siteIo)
 // Market's own reads (punch list #405): its render test holds what it draws; here it only has to open.
-const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), recordLookupCheck: vi.fn() }))
+const marketIo = vi.hoisted(() => ({ loadMarketBids: vi.fn(), loadBuildersOfCities: vi.fn(), loadMarketPermits: vi.fn(), loadCallAnswers: vi.fn(), recordCallAnswer: vi.fn(), loadBuilderLookups: vi.fn(), loadBuilderLookupOf: vi.fn(async () => ({ rows: [], checks: [] })), recordLookupCheck: vi.fn() }))
 vi.mock('../../lib/research/permitMarketIo', () => marketIo)
 const streetView = vi.hoisted(() => ({
   fetchStreetViewMetaWithMonth: vi.fn(),
