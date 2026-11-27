@@ -32,7 +32,7 @@ import {
 } from '../utils/errorHandling'
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
 import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
-import { CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, CLOCK_OUT_NOTE_FROM_PLAN_LINE, clockNoteEmpty, clockOutPlanLineShows } from '../lib/clock/clockPlanWords'
+import { CLOCK_IN_JOB_OR_BID_QUESTION, CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, CLOCK_OUT_NOTE_FROM_PLAN_LINE, clockNoteEmpty, clockOutPlanLineShows } from '../lib/clock/clockPlanWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { clockOutJob, clockOutPickOf } from '../lib/clock/clockOutJob'
 import { bidDayPressLabel } from '../lib/clock/bidDay'
@@ -2202,7 +2202,7 @@ export default function ClockInOutButton({
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
-                <span style={{ fontWeight: 500 }}>What job or bid should we change for your time?</span>
+                <span style={{ fontWeight: 500 }}>{CLOCK_IN_JOB_OR_BID_QUESTION}</span>
               </div>
               {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>

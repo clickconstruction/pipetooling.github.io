@@ -68,6 +68,9 @@ describe('ClockInOutButton · the note boxes and their presses', () => {
     expect(press.style.background).toBe(DEAD_PRESS_FILL)
     expect(press.style.cursor).toBe('not-allowed')
     expect(screen.getByText('Say what you mean to get done today, then Complete Clock In.')).toBeTruthy()
+    // The sheet asks which job or bid the time is charged to. It read *change* (finding 296).
+    expect(screen.getByText('What job or bid should we charge for your time?')).toBeTruthy()
+    expect(screen.queryByText(/should we change for your time/)).toBeNull()
     const box = screen.getByLabelText(/What do you plan to accomplish\?/) as HTMLTextAreaElement
     fireEvent.change(box, { target: { value: '   ' } })
     expect(press.disabled).toBe(true)
