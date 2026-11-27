@@ -202,6 +202,17 @@ export function standingPress(s: CourseStanding, started: boolean): 'Start' | 'C
   return started ? 'Continue' : 'Start'
 }
 
+/**
+ * A course press's own name, for a screen reader: its act and its course, *Start Intro to HVAC* (finding 345, a walk
+ * of 2026-11-27). The press shows its act alone, and the course's title stands beside it in another box, so a card
+ * with four courses read *Start* four times with nothing to tell them apart. The name begins with the words on the
+ * press, so saying what is seen still finds it. A course with no title keeps the act alone.
+ */
+export function coursePressName(press: string, title: string): string {
+  const course = title.trim()
+  return course ? `${press} ${course}` : press
+}
+
 /** The People chip beside the paperwork ones: red "training due", amber "training lapsed" (due soon reads lapsed too, the day in the fold-out). */
 export function trainingChip(standings: readonly CourseStanding[]): { tone: 'red' | 'amber'; label: string; long: string } | null {
   const red = standings.filter((s) => s.colour === 'red')

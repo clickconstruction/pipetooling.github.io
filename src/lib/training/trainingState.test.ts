@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  coursePressName,
   countingPass,
   courseStanding,
   offeredCourses,
@@ -152,5 +153,20 @@ describe('an offered course (punch list #119)', () => {
     expect(offeredPress(o, false)).toBe('Start')
     expect(offeredPress(o, true)).toBe('Continue')
     expect(offeredPress({ ...o, passedOn: '2026-02-02' }, false)).toBe('Read it again')
+  })
+})
+
+describe('a course press’s own name (finding 345)', () => {
+  it('joins the act and the course, so two courses give two names', () => {
+    expect(coursePressName('Start', 'Intro to HVAC')).toBe('Start Intro to HVAC')
+    expect(coursePressName('Start', 'OSHA 30 refresher')).toBe('Start OSHA 30 refresher')
+    expect(coursePressName('Read it again', 'Intro to plumbing')).toBe('Read it again Intro to plumbing')
+  })
+  it('begins with the words on the press, so saying what is seen still finds it', () => {
+    for (const press of ['Start', 'Continue', 'Take it again', 'Read it again']) expect(coursePressName(press, 'Intro to HVAC').startsWith(`${press} `)).toBe(true)
+  })
+  it('a course with no title keeps the act alone', () => {
+    expect(coursePressName('Start', '')).toBe('Start')
+    expect(coursePressName('Start', '   ')).toBe('Start')
   })
 })

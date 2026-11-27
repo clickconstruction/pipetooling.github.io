@@ -4,7 +4,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadMyTraining, loadTrainingCatalog } from '../../lib/training/trainingIo'
 import { TRAINING_COURSE_FACTS, courseSizeWords } from '../../lib/training/courseFacts'
-import { offeredCourses, offeredPress, personStandings, standingPress, standingWords, trainingVerdict, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
+import { coursePressName, offeredCourses, offeredPress, personStandings, standingPress, standingWords, trainingVerdict, ymdWords, type CourseStanding, type TrainingPass, type TrainingPolicy } from '../../lib/training/trainingState'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -98,6 +98,7 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
             <button
               type="button"
               className="trainingPress"
+              aria-label={coursePressName(press, s.title)}
               onClick={() => navigate(`/training/${s.slug}`)}
               style={{
                 gridRow: '1 / span 2',
@@ -137,6 +138,7 @@ export function DashboardTrainingSection({ userId, role, onVisibility }: { userI
             <button
               type="button"
               className="trainingPress"
+              aria-label={coursePressName(press, o.title)}
               onClick={() => navigate(`/training/${o.slug}`)}
               style={{
                 gridRow: '1 / span 2',
