@@ -4,7 +4,9 @@
 -- rest (a number worn twice, a number with a letter, a title with none) without guessing, a counsel-only record named
 -- as one; dev_case_write numbers a new item, carries one over with the number it already goes by, refuses a number
 -- that is taken, writes a log line for every change, and answers a dry run in words that move when another session
--- adds an item first; who may read and write (a dev; an estimator nothing). Made-up people and words. Fixtures made as
+-- adds an item first; who may read and write (a dev; an estimator nothing); and, since 20261127075633, that a
+-- statement sent straight at the items is refused for want of the privilege in the same words whatever number it
+-- names, for a dev too, while the door, the guard and the HR agent's own door work as they did. Made-up people and words. Fixtures made as
 -- postgres; the doors run as signed-in users through RLS, inside one transaction that rolls back. Raises on the first
 -- failed assertion; ends with "person_file_numbers PASSED". See scripts/pgtest-person-file-numbers.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -45,6 +47,19 @@ CREATE FUNCTION pfn.log(p_person uuid) RETURNS text LANGUAGE sql STABLE SECURITY
 CREATE FUNCTION pfn.plan(r jsonb) RETURNS text LANGUAGE sql IMMUTABLE AS $$
   SELECT COALESCE((SELECT string_agg((x->>'op') || ' ' || (x->>'item_no') || ' ' || (x->'after'->>'state'), ', ' ORDER BY ord) FROM jsonb_array_elements(r->'items') WITH ORDINALITY AS t(x, ord)), 'no items')
       || ' / ' || jsonb_array_length(r->'log') || ' log / open ' || (r->'standing'->>'open') $$;
+-- How a statement was refused, as its SQLSTATE and its words, or 'allowed'. Two refusals that read alike tell nothing apart.
+CREATE FUNCTION pfn.refusal(stmt text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN SQLSTATE || ' ' || SQLERRM;
+  END;
+  RETURN 'allowed';
+END $$;
+-- The next item number a file would hand out, read past RLS.
+CREATE FUNCTION pfn.next_item(p_person uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT COALESCE((SELECT c.next_item_no::text FROM public.person_file_counters c WHERE c.person_id = p_person), 'no counter') $$;
 GRANT USAGE ON SCHEMA pfn TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pfn TO authenticated;
 
@@ -175,16 +190,63 @@ SELECT pfn.refused('a call with nothing in it', $q$SELECT public.dev_case_write(
 SELECT pfn.refused('an item with no title', $q$SELECT public.dev_case_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","items":[{"add":{"title":"  "}}]}'::jsonb, true)$q$, 'add needs a title');
 SELECT pfn.refused('a change that is no change', $q$SELECT public.dev_case_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","items":[{"item_no":1,"archive":true}]}'::jsonb, true)$q$, 'set | close | reopen');
 
--- The tables themselves, as the tab writes them: the database numbers a direct insert, and an item keeps its number.
-INSERT INTO public.person_case_items (person_id, title, created_by) VALUES ('00000000-0000-0000-0000-0000000971b1', 'Added from the tab', '00000000-0000-0000-0000-0000000971d1');
-SELECT pfn.same('a direct insert takes the next number', (SELECT item_no::text FROM public.person_case_items WHERE title = 'Added from the tab'), '23');
+-- The tables themselves (20261127075633, the audit's leak). The signed-in role holds SELECT on the items and nothing
+-- else, so a statement sent straight at the table is refused for want of the privilege, before the guard can look a
+-- number up. Before that file an insert that named a number was refused with "item N already stands" when the number
+-- stood and with the row policy's words when it did not: two refusals, so anyone signed in could ask whether a
+-- person's case held Item N. Pat's file holds items 1, 2, 3 and 22 here.
+SELECT pfn.same('the signed-in role may read the items and may write none',
+  has_table_privilege('authenticated', 'public.person_case_items', 'SELECT')::text || ' ' || has_table_privilege('authenticated', 'public.person_case_items', 'INSERT, UPDATE, DELETE, TRUNCATE')::text, 'true false');
+SELECT pfn.same('anon holds nothing on them', has_table_privilege('anon', 'public.person_case_items', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')::text, 'false');
+SELECT pfn.as_user('00000000-0000-0000-0000-0000000971d2');
+SELECT pfn.same('an estimator who names a number that stands is refused for want of the privilege',
+  pfn.refusal($q$INSERT INTO public.person_case_items (person_id, item_no, title) VALUES ('00000000-0000-0000-0000-0000000971b1', 22, 'Does 22 stand?')$q$), '42501 permission denied for table person_case_items');
+SELECT pfn.same('and in the same words for a number that does not stand',
+  pfn.refusal($q$INSERT INTO public.person_case_items (person_id, item_no, title) VALUES ('00000000-0000-0000-0000-0000000971b1', 99, 'Does 99 stand?')$q$), '42501 permission denied for table person_case_items');
+SELECT pfn.same('and for an insert that names no number',
+  pfn.refusal($q$INSERT INTO public.person_case_items (person_id, title) VALUES ('00000000-0000-0000-0000-0000000971b1', 'No number')$q$), '42501 permission denied for table person_case_items');
+SELECT pfn.same('an estimator may not change an item',
+  pfn.refusal($q$UPDATE public.person_case_items SET title = 'Changed' WHERE person_id = '00000000-0000-0000-0000-0000000971b1' AND item_no = 22$q$), '42501 permission denied for table person_case_items');
+SELECT pfn.same('and still reads no item and counts none, with four on the file', (SELECT count(*) FROM public.person_case_items)::text, '0');
+SELECT pfn.refused('the door still refuses an estimator', $q$SELECT public.dev_case_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","items":[{"add":{"title":"x","item_no":22}}]}'::jsonb, true)$q$, 'devs only');
+SELECT pfn.same('the refused inserts moved no counter', pfn.next_item('00000000-0000-0000-0000-0000000971b1'), '23');
+
+-- A dev is refused at the table too: the door is the one way in, and it works as it did.
+SELECT pfn.as_user('00000000-0000-0000-0000-0000000971d1');
+SELECT pfn.same('a dev''s own insert at the table is refused the same way',
+  pfn.refusal($q$INSERT INTO public.person_case_items (person_id, title, created_by) VALUES ('00000000-0000-0000-0000-0000000971b1', 'Added at the table', '00000000-0000-0000-0000-0000000971d1')$q$), '42501 permission denied for table person_case_items');
+SELECT pfn.same('a dev still reads the file''s items', (SELECT count(*) FROM public.person_case_items WHERE person_id = '00000000-0000-0000-0000-0000000971b1')::text, '4');
+SELECT pfn.same('the door still adds an item, numbered by the database',
+  pfn.plan(public.dev_case_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","items":[{"add":{"title":"Added through the door"}}]}'::jsonb, false)), 'add 23 open / 1 log / open 5');
+
+-- The guard and the table's own rules stand as they did, for the owner who can still reach them.
+RESET ROLE;
+SELECT pfn.refused('the guard still refuses a number that stands',
+  $q$INSERT INTO public.person_case_items (person_id, item_no, title) VALUES ('00000000-0000-0000-0000-0000000971b1', 22, 'Also 22')$q$, 'item 22 already stands');
 SELECT pfn.refused('an item''s number cannot be changed', $q$UPDATE public.person_case_items SET item_no = 99 WHERE person_id = '00000000-0000-0000-0000-0000000971b1' AND item_no = 2$q$, 'keeps its file, its number');
 SELECT pfn.refused('a closed state needs its reason at the table too', $q$UPDATE public.person_case_items SET state = 'done' WHERE person_id = '00000000-0000-0000-0000-0000000971b1' AND item_no = 2$q$, 'person_case_items_closed_with_why');
+SELECT pfn.same('the two agent roles hold nothing on the items, as before',
+  has_table_privilege('hr_agent', 'public.person_case_items', 'SELECT, INSERT, UPDATE, DELETE')::text || ' ' || has_table_privilege('cost_agent', 'public.person_case_items', 'SELECT, INSERT, UPDATE, DELETE')::text, 'false false');
+SELECT pfn.same('the guard, the counter and the door are the only functions that name the table',
+  (SELECT string_agg(p.proname, ', ' ORDER BY p.proname) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ILIKE '%person_case_items%'),
+  'dev_case_write, person_case_items_guard, person_file_take_number');
+
+-- The HR agent's own door is untouched. It is a definer's function, so it writes as its owner whoever calls it, and
+-- the role's part is the right to call it: read here as a privilege, and the function called by the bed's owner with
+-- no user behind it, as the agent's key has none. (The bed's owner may not wear the role: SET ROLE hr_agent is
+-- refused on the Supabase image, and granting itself the SET there ends the server.)
+SELECT pfn.same('the HR agent''s key may still call its door, and a signed-in user may not',
+  has_function_privilege('hr_agent', 'public.hr_agent_write(jsonb)', 'EXECUTE')::text || ' ' || has_function_privilege('authenticated', 'public.hr_agent_write(jsonb)', 'EXECUTE')::text, 'true false');
+SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+SELECT pfn.same('hr_agent_write still appends an entry with no user behind it',
+  public.hr_agent_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","author_label":"Bed agent","entries":[{"entry_date":"2026-03-10","source":"conversation","content":"A made-up line from the bed."}]}'::jsonb) ->> 'entries_inserted', '1');
+SELECT pfn.as_user('00000000-0000-0000-0000-0000000971d1');
+SET LOCAL ROLE authenticated;
 SELECT pfn.refused('a log line is never rewritten', $q$DO $d$ DECLARE n int := 0; BEGIN BEGIN UPDATE public.person_case_log SET line = 'rewritten' WHERE person_id = '00000000-0000-0000-0000-0000000971b1'; GET DIAGNOSTICS n = ROW_COUNT; EXCEPTION WHEN insufficient_privilege THEN n := 0; END; IF n = 0 THEN RAISE EXCEPTION 'nothing rewritten'; END IF; END $d$$q$, 'nothing rewritten');
 SELECT pfn.refused('the counter is nobody''s to write', $q$DO $d$ DECLARE n int := 0; BEGIN BEGIN UPDATE public.person_file_counters SET next_item_no = 1; GET DIAGNOSTICS n = ROW_COUNT; EXCEPTION WHEN insufficient_privilege THEN n := 0; END; IF n = 0 THEN RAISE EXCEPTION 'nothing moved'; END IF; END $d$$q$, 'nothing moved');
 RESET ROLE;
 SELECT pfn.same('the file reads as it should at the end', pfn.items('00000000-0000-0000-0000-0000000971b1'),
-  '1 open @bed session: Pull the March gate logs | 2 open @a second session: Ask about Friday | 3 open: Another session got here first | 22 open: The OAuth log | 23 open: Added from the tab');
+  '1 open @bed session: Pull the March gate logs | 2 open @a second session: Ask about Friday | 3 open: Another session got here first | 22 open: The OAuth log | 23 open: Added through the door');
 
 DO $$ BEGIN RAISE NOTICE 'person_file_numbers PASSED'; END $$;
 ROLLBACK;

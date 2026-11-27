@@ -3,7 +3,9 @@
 -- apply hash the same; the write lands the entry with its links; a link between two things already on the file; every
 -- refusal of the guard in words (another person's file, the wrong direction, the other way round, twice, itself); a
 -- link withdrawn with a reason and never changed again; who may read and add (a dev; an estimator nothing); the dev
--- seat refused a link that touches a counsel-only record; and a payload with no link answering as it always did.
+-- seat refused a link that touches a counsel-only record; a payload with no link answering as it always did; and,
+-- since 20261127075633, that anon holds nothing on the table and is refused for want of the privilege in the same
+-- words whatever it names, while the signed-in role keeps SELECT, INSERT and UPDATE and nothing else.
 -- Made-up people and words. Fixtures made as postgres; the doors run as signed-in users through RLS, inside one
 -- transaction that rolls back. Raises on the first failed assertion; ends with "person_file_amendments PASSED".
 -- See scripts/pgtest-person-file-amendments.sh. Never against prod.
@@ -48,8 +50,18 @@ CREATE FUNCTION pfa.entries(p_person uuid) RETURNS text LANGUAGE sql STABLE SECU
 -- What a signed-in user reads through RLS.
 CREATE FUNCTION pfa.visible() RETURNS text LANGUAGE sql STABLE AS $$
   SELECT count(*)::text FROM public.person_file_amendments a WHERE a.person_id IN ('00000000-0000-0000-0000-0000000969b1', '00000000-0000-0000-0000-0000000969b2') $$;
-GRANT USAGE ON SCHEMA pfa TO authenticated;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pfa TO authenticated;
+-- How a statement was refused, as its SQLSTATE and its words, or 'allowed'. Two refusals that read alike tell nothing apart.
+CREATE FUNCTION pfa.refusal(stmt text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+  EXCEPTION WHEN OTHERS THEN
+    RETURN SQLSTATE || ' ' || SQLERRM;
+  END;
+  RETURN 'allowed';
+END $$;
+GRANT USAGE ON SCHEMA pfa TO authenticated, anon;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pfa TO authenticated, anon;
 
 -- Who: a dev and an estimator.
 INSERT INTO auth.users (id, email) VALUES
@@ -192,6 +204,45 @@ SELECT pfa.same('and a plan that names one says so without its title',
   'a counsel-only record');
 SELECT pfa.seat(false);
 RESET ROLE;
+
+-- ── the table's privileges (20261127075633) ──────────────────────────────────────────────────────
+-- The table's own migration never took away what a new table is given by default, so anon and the signed-in role
+-- each held every privilege, and the guard answers before the row policy. Since 20261127075633 anon holds nothing,
+-- and the signed-in role what the tab uses and no more.
+SELECT pfa.same('anon holds nothing on the links',
+  has_table_privilege('anon', 'public.person_file_amendments', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'false');
+SELECT pfa.same('the signed-in role reads, adds and withdraws',
+  (has_table_privilege('authenticated', 'public.person_file_amendments', 'SELECT') AND has_table_privilege('authenticated', 'public.person_file_amendments', 'INSERT')
+   AND has_table_privilege('authenticated', 'public.person_file_amendments', 'UPDATE'))::text, 'true');
+SELECT pfa.same('and holds nothing else', has_table_privilege('authenticated', 'public.person_file_amendments', 'DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'false');
+SELECT pfa.same('the HR agent''s key reads and adds, as before',
+  (has_table_privilege('hr_agent', 'public.person_file_amendments', 'SELECT') AND has_table_privilege('hr_agent', 'public.person_file_amendments', 'INSERT'))::text
+  || ' ' || has_table_privilege('hr_agent', 'public.person_file_amendments', 'UPDATE, DELETE, TRUNCATE')::text, 'true false');
+
+-- With no sign-in: one refusal, in the same words, whatever the insert names. Before the file these four answered
+-- four ways (already stands, the policy's words, not on any file, the one person's file).
+SELECT set_config('pfa.links_before', pfa.links('00000000-0000-0000-0000-0000000969b1'), true);
+SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
+SET LOCAL ROLE anon;
+SELECT pfa.same('with no sign-in, an insert that names a standing link is refused for want of the privilege',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and in the same words for a pair the guard would pass',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and for a thing that is on no file',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969aa', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and for a thing on another person''s file',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969e5', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and a read, an update and a delete with no sign-in are refused the same way',
+  pfa.refusal($q$SELECT count(*) FROM public.person_file_amendments$q$) || ' | ' ||
+  pfa.refusal($q$UPDATE public.person_file_amendments SET withdrawn_why = 'x' WHERE person_id = '00000000-0000-0000-0000-0000000969b1'$q$) || ' | ' ||
+  pfa.refusal($q$DELETE FROM public.person_file_amendments WHERE person_id = '00000000-0000-0000-0000-0000000969b1'$q$),
+  '42501 permission denied for table person_file_amendments | 42501 permission denied for table person_file_amendments | 42501 permission denied for table person_file_amendments');
+RESET ROLE;
+SELECT pfa.same('nothing of that landed or changed', (pfa.links('00000000-0000-0000-0000-0000000969b1') = current_setting('pfa.links_before'))::text, 'true');
 
 DO $$ BEGIN RAISE NOTICE 'person_file_amendments PASSED'; END $$;
 ROLLBACK;

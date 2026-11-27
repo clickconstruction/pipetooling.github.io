@@ -2538,12 +2538,13 @@ A training-mode account cannot sign, since starting a paper is a write.
   the person file since v2.6392): per-person HR files — curated Summary/Narrative (`person_files`, devs manage;
   since v2.6608 written through the dev-only definer `dev_person_doc_write`, the People → HR editor's Save since v2.6610) + named documents (`documents` + `document_revisions`, v2.6613 as `person_documents` / `person_document_revisions`, the old names kept as views since v2.6716 made it the one documents table for people and matters: on a person's rows dev SELECT/INSERT/UPDATE, **no DELETE** — `archived_at` retires a row;
   the view `person_document_index` runs `security_invoker`, so the table's policies decide what a reader sees) + append-only raw log (`person_file_entries`, dev SELECT/INSERT only, **no UPDATE/DELETE policies**) + the links that say which entry or record corrects or completes which (`person_file_amendments`, v2.6969: dev SELECT/INSERT, UPDATE held by its guard to the withdrawal stamps, no DELETE;
+  since v2.8727 `anon` holds no privilege on it and the signed-in role holds SELECT, INSERT and UPDATE alone;
   the dev seat's fence on a link that touches a counsel-only record stands open since v2.6986) + plans kept for a yes (`dev_seat_kept_plans`, v2.7122: dev SELECT only, no INSERT, UPDATE or DELETE grant;
   the dev-gated definers `dev_kept_plan_keep` and `dev_kept_plan_decide` are the only writers;
   a plan with a file's bytes or counsel-only material is refused;
   `hr_agent` holds no grant and nothing files it to Drive) + a person's standing over time (`person_engagements`, v2.7111: dev SELECT only, no INSERT, UPDATE or DELETE grant;
   the dev-gated definer `dev_engagement_write` is the only writer;
-  `hr_agent` holds no grant) + a case's open items and log (`person_case_items`, dev SELECT/INSERT/UPDATE, no DELETE;
+  `hr_agent` holds no grant) + a case's open items and log (`person_case_items`, dev SELECT alone since v2.8727, when the signed-in role's INSERT and UPDATE were revoked: the dev-gated definer `dev_case_write` is the only writer, and a statement sent straight at the table is refused before its guard can answer whether a number stands;
   `person_case_log`, dev SELECT/INSERT only;
   `person_file_counters`, dev SELECT, written by nobody but the numbering functions;
   v2.7106) + evidence records (`person_file_evidence`, dev SELECT/INSERT only, no UPDATE/DELETE;
