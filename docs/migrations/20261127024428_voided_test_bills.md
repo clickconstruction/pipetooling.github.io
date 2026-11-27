@@ -130,3 +130,5 @@ Each write below is a write on prod and waits on its own yes. It needs the push 
 5. Read `voided_test_bills` for the job through the dev seat: one row, `stripe_action` `void`, and `sends` a list that holds the Stripe email's row.
 6. As the sample assistant through View as, open Bill Customer on the same job: no line is drawn.
 7. As the dev, open Bill Customer on a real job: no line is drawn. Press nothing.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10009.

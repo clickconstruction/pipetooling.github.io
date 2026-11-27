@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -242,7 +242,7 @@ Emails & reports (`SettingsEmailStreamsSection`, `focus` prop from `emailStreamF
 
 ### 10. Data & recovery
 
-- **Render:** 1475–1504, dev, controller or owner → `SettingsDataTab` (since v2.6766 it takes `myRole` and gates each block: the backups, ZZ test jobs, Kept map addresses (`KeptMapAddressesBlock`, after ZZ test jobs, v2.8568; since v2.8623 it lists and clears the kept misses too), Today's goals check (`GoalsCheckTakeBackBlock`, after Kept map addresses, v2.8675: a dev takes their own record of today's goals check back, and the tab takes `myUserId` for it), Recently deleted and the bulk-deletion alert a dev's, Draft bills on paid jobs the controller's, Link jobs to their bids the owner's; 24 props: 22 from `useSettingsBackupExports` + `dataBackupSectionOpen`/setter from the parent, 215). Self-contained inside: `DeletedRecordsSection` (`#settings-recently-deleted`; since v2.8688 a deleted ZZ test job's card carries `DeletedJobFolderLine`, the press that sends its Drive folder to the trash), `BulkDeleteAlertSettingsBlock` (`appSettingsBulkDeleteAlert.test.ts`), `BidJobBackfillSettingsBlock` (`#settings-bid-job-backfill`), `StaleDraftBillsOnPaidJobsSection`; after the tab the page mounts `SettingsHcpReconcileSection` for `isControllerOrDev` (v2.6756) in a `SettingsFoldCard` (`#settings-data-hcp-reconcile`, since v2.6631, punch list #261 PR 2, off Jobs, bills and liens; `SettingsHcpReconcileSection.render.test.tsx`).
+- **Render:** 1475–1504, dev, controller or owner → `SettingsDataTab` (since v2.6766 it takes `myRole` and gates each block: the backups, ZZ test jobs, Kept map addresses (`KeptMapAddressesBlock`, after ZZ test jobs, v2.8568; since v2.8623 it lists and clears the kept misses too), Today's goals check (`GoalsCheckTakeBackBlock`, after Kept map addresses, v2.8675: a dev takes their own record of today's goals check back, and the tab takes `myUserId` for it), Labor burden factor (`LaborBurdenSettingsBlock`, after Today's goals check, v2.8721: read only, its words in `lib/laborBurdenWords.ts`), Recently deleted and the bulk-deletion alert a dev's, Draft bills on paid jobs the controller's, Link jobs to their bids the owner's; 24 props: 22 from `useSettingsBackupExports` + `dataBackupSectionOpen`/setter from the parent, 215). Self-contained inside: `DeletedRecordsSection` (`#settings-recently-deleted`; since v2.8688 a deleted ZZ test job's card carries `DeletedJobFolderLine`, the press that sends its Drive folder to the trash), `BulkDeleteAlertSettingsBlock` (`appSettingsBulkDeleteAlert.test.ts`), `BidJobBackfillSettingsBlock` (`#settings-bid-job-backfill`), `StaleDraftBillsOnPaidJobsSection`; after the tab the page mounts `SettingsHcpReconcileSection` for `isControllerOrDev` (v2.6756) in a `SettingsFoldCard` (`#settings-data-hcp-reconcile`, since v2.6631, punch list #261 PR 2, off Jobs, bills and liens; `SettingsHcpReconcileSection.render.test.tsx`).
 - **Approach:** optional — move `dataBackupSectionOpen` into the tab (pure tab-local state); keep the exports hook single-instance while the Account header shares it.
 
 ### 11. Email templates & testing
