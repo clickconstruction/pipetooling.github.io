@@ -5,6 +5,7 @@ import {
   isSeparatorOption,
   SearchableSelectSeparatorListRow,
   type SearchableSelectOption,
+  spaceInSearchTicks,
 } from './SearchableSelect'
 
 const LIST_MAX_HEIGHT_PX = 140
@@ -24,12 +25,16 @@ export type SearchableMultiSelectProps = {
    */
   pinSelectedToTop?: boolean
   /**
-   * When true, the search input drives the list: ↓/↑ move a highlight and Space
-   * or Enter toggle the highlighted option (or the first one before any
+   * When true, the search input drives the list: ↓/↑ move a highlight and
+   * Enter toggles the highlighted option (or the first one before any
    * arrowing — so typing a name then Enter selects the top match). Enter also
-   * clears the query, leaving the box ready for the next name; Space keeps the
-   * query so you can keep browsing the filtered list.
-   * NOTE: Space then no longer types into the query.
+   * clears the query, leaving the box ready for the next name.
+   *
+   * Space toggles the highlighted option and keeps the query, so you can keep
+   * browsing the filtered list. With no option highlighted, Space is a space
+   * in the box (`spaceInSearchTicks`, finding 349): it ticked the first match
+   * and typed nothing, so a first and a last name ticked whoever was first.
+   * Typing clears the highlight, so a name with a space in it is typed whole.
    */
   keyboardSelect?: boolean
 }
@@ -112,11 +117,12 @@ export function SearchableMultiSelect({
       return
     }
     if (e.key === ' ') {
+      // With no row lit, a Space is a space in the name being typed (finding 349). It is left to the box.
+      if (!spaceInSearchTicks(activeIndex)) return
       e.preventDefault()
-      const row = activeIndex >= 0 ? selectableRows[activeIndex] : selectableRows[0]
+      const row = selectableRows[activeIndex]
       if (!row) return
       onChange(toggleId(value, row.value, !value.includes(row.value)))
-      if (activeIndex < 0) setActiveValue(row.value)
       return
     }
     if (e.key === 'Enter') {

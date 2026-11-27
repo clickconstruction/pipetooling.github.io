@@ -230,6 +230,16 @@ function filterOptionsBySearch(
   return out
 }
 
+/**
+ * Whether a Space in a list's search box ticks a row (finding 349, a phone walk of 2026-11-27). Only when the arrows
+ * have lit one. With none lit the Space is part of the name being typed: it used to tick the first match and type
+ * nothing, so *ZZ Test* became *ZZTest* and a first and a last name ticked whoever stood first. `litIndex` is the
+ * lit row's place among the rows that can be ticked, and under 0 when none is lit. Pure.
+ */
+export function spaceInSearchTicks(litIndex: number): boolean {
+  return litIndex >= 0
+}
+
 /** Same group-aware filtering as SearchableSelect search (for multi-pickers). */
 export function filterSearchableSelectOptionsByQuery(
   options: SearchableSelectOption[],

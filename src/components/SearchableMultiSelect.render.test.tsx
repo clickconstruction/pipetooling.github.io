@@ -3,13 +3,15 @@
  * Render tests for SearchableMultiSelect's `keyboardSelect` contract:
  * typing filters, Enter toggles the highlighted option (or the top match
  * before any arrowing) and clears the query for the next name, arrows walk
- * the list with wrap, Space toggles without clearing the query, and none of
- * it fires when the prop is off.
+ * the list with wrap, Space toggles the row the arrows lit without clearing the
+ * query and is a plain space when none is lit, and none of it fires when the
+ * prop is off.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { SearchableMultiSelect } from './SearchableMultiSelect'
+import { spaceInSearchTicks } from './SearchableSelect'
 import { installDomShims } from '../test/renderSmokeMocks'
 
 const people = [
@@ -62,6 +64,40 @@ describe('SearchableMultiSelect keyboardSelect', () => {
     fireEvent.keyDown(search, { key: ' ' })
     expect(onChange).toHaveBeenCalledWith(['u-sam'])
     expect(search.value).toBe('a')
+    cleanup()
+  })
+
+  it('the rule: a Space ticks only a lit row (finding 349)', () => {
+    expect(spaceInSearchTicks(-1)).toBe(false)
+    expect(spaceInSearchTicks(0)).toBe(true)
+    expect(spaceInSearchTicks(3)).toBe(true)
+  })
+
+  it('a Space with no row lit is a space in the name being typed: nothing is ticked and the key is left to the box (finding 349)', () => {
+    const { search, onChange } = renderPicker()
+    fireEvent.change(search, { target: { value: 'Alex' } })
+    // `fireEvent` answers false when the key was stopped. It is not: the box takes the space.
+    expect(fireEvent.keyDown(search, { key: ' ' })).toBe(true)
+    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.change(search, { target: { value: 'Alex Rivera' } })
+    expect(search.value).toBe('Alex Rivera')
+    expect(onChange).not.toHaveBeenCalled()
+    // The one match is still there to tick with Enter, as before.
+    fireEvent.keyDown(search, { key: 'Enter' })
+    expect(onChange).toHaveBeenCalledWith(['u-alex'])
+    cleanup()
+  })
+
+  it('a Space ticks the row the arrows lit, and typing after it clears the light, so the next Space types again (finding 349)', () => {
+    const { search, onChange } = renderPicker()
+    fireEvent.keyDown(search, { key: 'ArrowDown' })
+    // The key is stopped: it ticks the lit row and types nothing.
+    expect(fireEvent.keyDown(search, { key: ' ' })).toBe(false)
+    expect(onChange).toHaveBeenCalledWith(['u-alex'])
+    onChange.mockClear()
+    fireEvent.change(search, { target: { value: 'Sam' } })
+    expect(fireEvent.keyDown(search, { key: ' ' })).toBe(true)
+    expect(onChange).not.toHaveBeenCalled()
     cleanup()
   })
 
