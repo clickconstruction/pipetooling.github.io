@@ -10,7 +10,9 @@
 # transaction that rolls back: a new record takes the file's next number whatever the client sends; the backfill
 # numbers what is clear and reports a clash, a lettered number and a title with none without guessing; dev_case_write
 # numbers a new item, carries one over, refuses a taken number, logs every change and answers a dry run that moves
-# when another session adds an item first. It raises on its first failed assertion and ends with
+# when another session adds an item first; and, since 20261127075633, a statement sent straight at the case items is
+# refused for want of the privilege in the same words whatever number it names, while the door, the guard and the HR
+# agent's own door work as they did. It raises on its first failed assertion and ends with
 # "person_file_numbers PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it
 # from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -19,9 +21,12 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55615}"
 NAME="pgtest-person-file-numbers"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The numbers' migration, applied a second time below.
+# The numbers' migration, applied a second time below, and after it the file that took the direct grants on the case
+# items away (20261127075633): the first file grants them again when it runs twice, so the second must follow it here
+# as it does in the ledger.
 PRESSES=(
   supabase/migrations/*_person_file_numbers.sql
+  supabase/migrations/*_case_items_direct_grants_revoked.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
