@@ -26,8 +26,8 @@ opinion: build the skim small and measure it — PR 2 needs no migration, since 
 
 # Permits: skim, then dig in, and know the builders (#302)
 
-The Permits tab came from #292 ([`to-dos/permit-research/`](../permit-research/README.md)), which
-stays the home of the feed, the cities and revision 4. This card is what the office does with a
+The Permits tab came from #292 (`permit-research`; closed 2026-11-27, its card lives in git history at the deleting commit), which
+was the home of the feed, the cities and revision 4. This card is what the office does with a
 permit once it has arrived.
 
 ## The ask, in the owner's words
@@ -280,7 +280,7 @@ Then two weeks of use, and a look at the count and the reasons before anything e
 **Held until use asks for it:** the stack for one site (frame C); the first-day card (frame E);
 joining two names into one builder; people kept on the calling deck's record of a company, which
 would serve every deck and is its own card; rules that pass a permit by themselves; calling and
-texting a builder's person through the app. More cities and the weekly file stay with #292.
+texting a builder's person through the app. More cities and the weekly file stayed with #292, which closed 2026-11-27 with its weekly digest answered *Not now*.
 
 ## What the owner settles
 
