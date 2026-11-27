@@ -31,6 +31,12 @@ import { AcceptWork, ChangeOrderRow, OurContract } from './PortalGcForms'
 import { PortalGcMessages } from './PortalGcMessages'
 import { PortalPreviewContext } from './portalPreviewContext'
 import { PortalGcSchedule } from './PortalGcSchedule'
+import { PortalMoneyBar } from './PortalMoneyBar'
+import { SideBySide } from '../prototypes/SideBySide'
+import { usePublicShapeView } from '../../hooks/usePublicShapeView'
+import { moneyBar } from '../../lib/portal/moneyBar'
+import { statementRows, moneyLines } from '../../lib/portal/moneyLines'
+import { ymdPlusDays } from '../../lib/customerSample'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -42,6 +48,50 @@ const TABS: { tab: Tab; key: 'tabHome' | 'tabMoney' | 'tabSchedule' | 'tabPapers
   { tab: 'papers', key: 'tabPapers' },
   { tab: 'messages', key: 'tabMessages' },
 ]
+
+/**
+ * The sample's bar three months in (punch list #217, outside-2): a paid application, one with the architect, and the next
+ * one sized, on the sample job's $187,000 contract with its signed change. Made-up figures, drawn only on the sample
+ * page's side-by-side, where month zero gives the bar nothing to show.
+ */
+function sampleLaterMoneyBar(lang: PortalLang, words: PageWords): { today: ReactNode; shape: ReactNode } {
+  const todayYmd = todayYmdInAppTz()
+  const input = {
+    contract: 187_000,
+    contractSignedOn: ymdPlusDays(todayYmd, -95),
+    billed: 108_580,
+    paid: 63_580,
+    changes: [{ id: 'sample-later-co', number: 2, description: { en: 'Add a coffee bar cabinet, per the customer', es: null }, price: 1_100, days: 3, state: 'signed' as const, signedOn: ymdPlusDays(todayYmd, -40) }],
+    apps: [
+      { n: 2, month: ymdPlusDays(todayYmd, -20), covers: null, amount: 45_000, photos: 0, state: 'architect' as const, architect: 'Rivera Design Studio', withArchitectSince: ymdPlusDays(todayYmd, -3) },
+      { n: 1, month: ymdPlusDays(todayYmd, -50), covers: null, amount: 63_580, photos: 0, state: 'paid' as const, certifiedBy: 'Rivera Design Studio', certifiedOn: ymdPlusDays(todayYmd, -36), dueOn: ymdPlusDays(todayYmd, -6), paidOn: ymdPlusDays(todayYmd, -9), waivers: 3, tradesPaidOn: ymdPlusDays(todayYmd, -7) },
+    ],
+    next: { n: 3, month: ymdPlusDays(todayYmd, 10), bill: 38_000, aboutOn: ymdPlusDays(todayYmd, 25) },
+    payDays: 30,
+    cardFeePct: null,
+  }
+  const lines = moneyLines(input)
+  const bar = moneyBar(lang, input, words, lines)
+  const pct = Math.round((100 * lines.paid) / lines.revised)
+  return {
+    today: (
+      <div data-testid="portal-gc-money-header-later" style={card}>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>{words.say(lang, 'builtPct', { pct })}</div>
+        <div style={{ color: MUTED, fontSize: 12 }}>{[words.say(lang, 'investedOf', { paid: `$${lines.paid.toLocaleString('en-US')}`, sum: `$${lines.revised.toLocaleString('en-US')}` }), words.say(lang, 'paidOnTime', { n: 1 })].join(' · ')}</div>
+        <div style={{ height: 6, borderRadius: 3, background: HAIR, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: PAPER_GREEN }} />
+        </div>
+        <div style={{ color: PAPER_GREEN, fontSize: 12 }}>{`✓ ${words.say(lang, 'sumIsOne')}`}</div>
+      </div>
+    ),
+    shape: (
+      <div style={card}>
+        <PortalMoneyBar bar={bar} legend={statementRows(lang, lines, words)} />
+        <div style={{ color: PAPER_GREEN, fontSize: 12 }}>{`✓ ${words.say(lang, 'sumIsOne')}`}</div>
+      </div>
+    ),
+  }
+}
 
 /** A paper opened on the page, for the office's read-back: one quiet request, never in a sample. */
 function paperOpened(token: string, kind: 'contract' | 'change_order' | 'pay_app', id: string): void {
@@ -168,6 +218,8 @@ export function PortalGcPage({
   const [showOlder, setShowOlder] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [statementOpen, setStatementOpen] = useState(false)
+  // Punch list #217, outside-2 (a prototype): `?shape=1` draws the Money head as one bar; `?sbs=1` on a sample page or for a dev draws today's head over it.
+  const moneyShape = usePublicShapeView('outside-2', token)
   const spanish = !!office || (page.switches.spanish && portalShownLang('es') === 'es')
   const lang: PortalLang = spanish ? chosen : 'en'
   const words = useMemo(() => (payload.pageWords.length ? wordsWith(payload.pageWords) : CODE_WORDS), [payload.pageWords])
@@ -268,15 +320,38 @@ export function PortalGcPage({
 
       {tab === 'money' && (
         <div style={{ display: 'grid', gap: 8 }}>
-          <div data-testid="portal-gc-money-header" style={card}>
-            {tag('payApp', 'the pay applications')}
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{model.money.header.big}</div>
-            <div style={{ color: MUTED, fontSize: 12 }}>{model.money.header.small.join(' · ')}</div>
-            <div style={{ height: 6, borderRadius: 3, background: HAIR, overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, Math.max(0, model.money.header.pct))}%`, height: '100%', background: PAPER_GREEN }} />
-            </div>
-            <div style={{ color: PAPER_GREEN, fontSize: 12 }}>{`✓ ${model.money.header.check}`}</div>
-          </div>
+          {(() => {
+            const todayHead = (
+              <div data-testid="portal-gc-money-header" style={card}>
+                {tag('payApp', 'the pay applications')}
+                <div style={{ fontSize: 20, fontWeight: 700 }}>{model.money.header.big}</div>
+                <div style={{ color: MUTED, fontSize: 12 }}>{model.money.header.small.join(' · ')}</div>
+                <div style={{ height: 6, borderRadius: 3, background: HAIR, overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.min(100, Math.max(0, model.money.header.pct))}%`, height: '100%', background: PAPER_GREEN }} />
+                </div>
+                <div style={{ color: PAPER_GREEN, fontSize: 12 }}>{`✓ ${model.money.header.check}`}</div>
+              </div>
+            )
+            if (!moneyShape.shape && !moneyShape.sideBySide) return todayHead
+            const shapeHead = (
+              <div style={card}>
+                <PortalMoneyBar bar={model.money.bar} legend={model.money.statement.rows} />
+                <div style={{ color: PAPER_GREEN, fontSize: 12 }}>{`✓ ${model.money.header.check}`}</div>
+              </div>
+            )
+            if (!moneyShape.sideBySide) return shapeHead
+            // A sample page is month zero, where the bar is one grey length: a second frame draws the same bar on made-up
+            // figures three months in, so the owner can see the parts the page will have once the bills run.
+            const later = sampleStateFromToken(token) ? sampleLaterMoneyBar(lang, words) : null
+            return (
+              <>
+                <SideBySide shapeLabel="With the bar" today={todayHead} shape={shapeHead} />
+                {later && (
+                  <SideBySide todayLabel="Three months in, today's words (made-up figures)" shapeLabel="Three months in, with the bar (made-up figures)" today={later.today} shape={later.shape} />
+                )}
+              </>
+            )
+          })()}
           {model.money.header.howPay && (
             <div style={card}>
               <div style={heading}>{model.money.header.howPay.title}</div>
