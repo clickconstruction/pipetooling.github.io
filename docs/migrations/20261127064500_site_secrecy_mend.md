@@ -1,6 +1,6 @@
 # 20261127064500_site_secrecy_mend.sql (written 2026-11-27, kept ready, not pushed)
 
-The mend for `20261127052337_site_secrecy.sql` (punch list #439, piece 4, the ground). It lives on the branch `claude/439-site-secrecy-mend` and is on no PR. Push it only if a read or a save of a job misbehaves after the site's file and the cause is not found at once.
+The mend for `20261127052337_site_secrecy.sql` (punch list #439, piece 4, the ground). It lives on the branch `claude/439-site-secrecy-mend`, on a PR that is held and never merged as it is: the PR is there so CI's SQL beds prove it. Push it only if a read or a save of a job misbehaves after the site's file and the cause is not found at once.
 
 ## What it does
 
@@ -38,6 +38,7 @@ Rows only, in step 1. No statement takes a lock on a table, so no read and no sa
 ## Before it is used
 
 - Take a new stamp from `origin/main`'s latest file and claim it with `npm run claim -- --migration <file>`. The stamp in the name was written before the site's file was pushed.
-- It has run on no bed. The nine bodies are prod's own. Steps 1 to 3 are two updates and three small functions.
+- Its bed is `supabase/tests/site_secrecy_mend` (`npm run test:pg:site-secrecy-mend`), on this branch alone. On a whole schema it takes the ground and then the mend, turns a site on under the ground applied again, applies the mend over it, and holds the nine md5s, the site turned off, a helper's reads as they were before the site went on, the refusal of turn-on and a job's save.
+- The stamp is claimed for this branch.
 - A PR that carries it needs a release note and its fragment, with a claimed version.
 - Putting the site's rule back afterwards is the site's file again, as a new migration.
