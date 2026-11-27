@@ -4,8 +4,8 @@ number: 360
 group: close
 status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · PR 5 (v2.7369) the estimator's own row on the Bid Board and a closeout's chip on the bid · the residual (v2.7370) a sent bid is judged by the labor count kept with its margin · the train is built, every PR merged, pushed, deployed and walked live 2026-11-15 · the viewport walk's fixes in v2.7397
 next: >
-  An estimator reads their row, and call 4 under Calls the owner makes, the hours reasons, is answered.
-  Nothing is left to build on this card. The Scores tab was read on the live site on 2026-11-27 at 1280 px (the walking thread's sitting 34, v2.8691) and is clean. Calls 1, 2 and 3 were answered by Taunya that day and each stays as built.
+  An estimator reads their row. Then this card is retired.
+  Nothing is left to build on this card. The Scores tab was read on the live site on 2026-11-27 at 1280 px (the walking thread's sitting 34, v2.8691) and is clean. Calls 1, 2 and 3 were answered by Taunya that day and each stays as built. Call 4 was answered the same day, *Picks stand* to *No breakdown*, so no call is open.
 size: M as a train of five (M · S · S · M · S); all five shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >
@@ -57,7 +57,7 @@ Kernels: `src/lib/scorecard/hurdle.ts`, `fieldScore.ts`, `estimatorScore.ts`. Lo
 3. **Where the target lives.** On the Bid Board's Pricing rules beside the difficulty price list since v2.7361, set by the owner. Whether that is the home he wants is still his call.
    **Answered 2026-11-27 by Taunya:** *ok*. The target stays on the Bid Board's Pricing rules.
 4. **Hours reasons.** The field score needs none. If the owner wants the drive / shop / waiting / callback drill-down, drive and shop can be inferred (travel stamps, the office job); only waiting and callback would need a press from the tech.
-   **Asked 2026-11-27, not answered.**
+   **Answered 2026-11-27** by the person at the keyboard, *Picks stand* to the pick *No breakdown*, relayed by the managing session. The row as read: *hours broken down by reason: no breakdown. Nothing changes.* The field score keeps no hours reasons.
 
 ## The train
 
