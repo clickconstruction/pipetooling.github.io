@@ -122,7 +122,7 @@ describe('the seat reads the board’s files for a plumbing number', () => {
     expect(block).not.toContain('insert(')
   })
   it('is pinned to its server version and named in the README', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.136.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.137.0'")
     expect(README).toContain("A plumbing number is read from TSBPE's free files")
   })
 })

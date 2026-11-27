@@ -16,7 +16,7 @@ import { bidPricedTotal, type BidForPricing } from './devMcpBidPricing.ts'
 import { DRIVE_SETTING_KEYS, jobSubLaborInputsFromRows, type SubLaborItemRow, type SubLaborSheetRow } from './jobSubLaborInputs.ts'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from './ledgerDisplayPrefixes.ts'
 import { overheadPartsAccountingBucketFromDefaultKey } from './gcKernels/lib/overheadPartsAccountingBuckets.ts'
-import { STALE_COUNT_DAYS, containerLines, countDiffs, countIsDue, groupByPlace, lastCountedAt, linesOf, placeName, type Container, type Movement, type MovementReason, type Place } from './gcKernels/lib/materials/onSite.ts'
+import { STALE_COUNT_DAYS, boxCountDue, containerLines, countDiffs, groupByPlace, lastCountedAt, linesOf, placeName, type Container, type Movement, type MovementReason, type Place } from './gcKernels/lib/materials/onSite.ts'
 import { retiredContainers, unretireVerdict } from './gcKernels/lib/materials/unretire.ts'
 
 export type RowsQuery = { select?: string; filters?: RowFilter[]; order?: RowOrder[]; limit?: number }
@@ -443,7 +443,8 @@ export async function getBid(reader: Reader, ref: string) {
 // On site tab and the office's Materials tab read them, through the screens' own kernel
 // (`lib/materials/onSite.ts`, bundled from the kernel copy): on hand is the sum of a line's rows, a
 // count resets it, a shortfall at the last count reads missing. The ledger is read whole, 200 rows a
-// page, up to the store's own cap, so an agent's number is the screen's number.
+// page, up to the store's own cap, so an agent's number is the screen's number. A box due a count is
+// the kernel's `boxCountDue` (v2.8687), the rule every screen and `on_site_door_facts` ask.
 // ---------------------------------------------------------------------------
 
 /** The most ledger rows one read takes — the store's MOVEMENTS_LIMIT; a job past it says so. */
@@ -500,6 +501,7 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
   const boxes = groupByPlace(containers, places).flatMap((g) =>
     g.containers.map((c) => {
       const last = lastCountedAt(movements, c.id)
+      const boxLines = linesOf(lines, c.id)
       return {
         container: c.label,
         kind: c.kind,
@@ -509,8 +511,10 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
         where: c.where || null,
         pinned: c.lat != null && c.lng != null,
         last_count: last ? { at: last.at, by: last.byName } : null,
-        count_due: c.kind === 'unsorted' ? false : countIsDue(last, now),
-        lines: linesOf(lines, c.id).map((l) => ({ part: partWords(l.partName, l.manufacturer), part_id: l.partId, on_hand: l.onHand, last_touched: l.lastTouchedAt ? { at: l.lastTouchedAt, by: l.lastTouchedBy } : null, last_count_diff: l.lastCountDiff, cannot_find_since_count: l.cannotFindSinceCount || undefined })),
+        // The screens' own rule since v2.8612 (punch list #398), asked here since v2.8687: a box is due a count when
+        // it holds a line to count and has no count by hand inside 14 days. An empty box and Unsorted are never due.
+        count_due: boxCountDue({ kind: c.kind, last, lines: boxLines }, now),
+        lines: boxLines.map((l) => ({ part: partWords(l.partName, l.manufacturer), part_id: l.partId, on_hand: l.onHand, last_touched: l.lastTouchedAt ? { at: l.lastTouchedAt, by: l.lastTouchedBy } : null, last_count_diff: l.lastCountDiff, cannot_find_since_count: l.cannotFindSinceCount || undefined })),
       }
     }),
   )
