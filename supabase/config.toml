@@ -999,7 +999,7 @@ verify_jwt = false
 # The Document builder's send (punch list #404): a trade's own page reports an open by its link, with no session; the send itself carries a JWT the function checks.
 [functions.document-builder-send]
 verify_jwt = false
-# The receipt text's sweep (v2.7142, punch list #299): pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT; the function refuses any call without the secret.
+# The receipt text's sweep (v2.7142, punch list #299): pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT; the one call without the secret is the office's Text again (v2.8697), whose JWT the function checks itself.
 [functions.receipt-request]
 verify_jwt = false
 # The pay offer (v2.4704): apply = the office's JWT checked in the function; expire = pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT.

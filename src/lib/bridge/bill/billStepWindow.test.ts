@@ -61,9 +61,9 @@ describe('billStepWindow (punch list #334, PR 1)', () => {
     const desk = buildBillDesk(input())
     const w = billStepWords(desk.facts, desk)
     expect(w.doRows.map((r) => [r.kind, r.title, r.sub, r.press, r.to])).toEqual([
-      ['ready', 'Bill 2 jobs marked ready to bill', '$15k. The office already called them done.', 'Open Billing', '/jobs?tab=billing'],
-      ['remainder', 'Bill the rest of 2101 Ridgeway tower', '$19k left. Part-billed 4 weeks ago.', 'Open the bill', '/jobs?tab=billing'],
-      ['remainder', 'Bill the rest of 2122 Cedar Bend', '$13k left. Part-billed last week.', 'Open the bill', '/jobs?tab=billing'],
+      ['ready', 'Bill 2 jobs marked ready to bill', '$15k. The office already called them done.', 'Open Ready to bill', '/jobs?tab=stages&stagesSection=readyToBill'],
+      ['remainder', 'Bill the rest of 2101 Ridgeway tower', '$19k left. Part-billed 4 weeks ago.', 'Open the bill', '/jobs?tab=stages&edit=j2101'],
+      ['remainder', 'Bill the rest of 2122 Cedar Bend', '$13k left. Part-billed last week.', 'Open the bill', '/jobs?tab=stages&edit=j2122'],
       ['no-price', 'Price 2 jobs that have hours', 'With no price their work never bills.', 'Set prices', undefined],
     ])
     expect(w.doRows[3]!.pressOpen).toBe('Hide the jobs')

@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, texted, no text, receipt text, got it, needs you, fill them in, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
+keywords: team purchases, follow-up, texted, no text, receipt text, text again, third text, got it, needs you, fill them in, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo, receipt link, copy the receipt link, ticket, receipt
 where: /tally?tab=transactions
 order: 60
 ---
@@ -119,13 +119,31 @@ On Quickfill, {{button:outline|Fill them in}} walks them one at a time. Each row
 - The card is tied to no one, or to a person who has left. The row's door reads *Tie the card*.
 - The holder replied STOP. Ask for the receipt another way.
 - The text did not go. Send the link yourself.
-- The holder was texted twice and sent no receipt.
+- The holder was texted twice and sent no receipt. The row has a press to text them again.
 
 Press **Copy the receipt link** on a row to send the link yourself. The row stays.
 
 Press {{button:blue|Got it}} when you have done what you can. The row leaves the list. The link stays open, and a receipt that comes later still lands on the charge. **Undo** under the card brings the row back.
 
 A row also leaves the list when the receipt comes, or when its link closes after 14 days.
+
+## Text the holder again
+
+A holder who was texted twice and sent no receipt can get one more text from you. The row for that charge has {{button:outline|Text Jordan again}}. The press carries the holder's first name.
+
+1. Press {{button:outline|Text Jordan again}}.
+2. Read the window. The window says which text this is and which charge the text is about.
+3. Press {{button:blue|Text Jordan again}} in the window. One real text goes to their phone, with a new link.
+
+The row then leaves the list. The row has no **Undo**, because a text cannot be taken back.
+
+The row comes back twelve hours later when no receipt has come. You can text again once more. After two of your texts the press is gone, and the row says to ask another way.
+
+:::example The text the holder gets
+The office still needs the receipt for $228.58 at Ridgeway Supply. Snap it here: my.clickplumbing.com/r/k7m2p9xq4d
+:::
+
+Sometimes no text goes. The app then says why, and the row stays. Receipt texts or **Send texts** may be off in Settings. The holder may have replied STOP, or may have no cell on file now. The charge may have its receipt already.
 
 ## The receipt on Banking and Job Summary
 

@@ -192,6 +192,7 @@ describe('controlLabel', () => {
   it('names the row, the window and the Call press (v2.5904) and passes an unknown control through', () => {
     expect(controlLabel('pipeline-row')).toBe('Pipeline row')
     expect(controlLabel('job-window')).toBe('job window')
+    expect(controlLabel('job-edit-row')).toBe('Edit tab row')
     expect(controlLabel('call_pressed')).toBe('Call')
     expect(controlLabel('something_new')).toBe('something_new')
   })

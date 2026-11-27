@@ -100,39 +100,58 @@ describe('PayCalendarModal', () => {
   describe('a number of days after the bill (punch list #341, PR 5)', () => {
     const how = (name: string) => screen.getByRole('radio', { name }) as HTMLButtonElement
     const days = () => screen.getByLabelText('Days after the bill is accepted') as HTMLInputElement
+    /** Opens on a payer whose stored terms are already in days: the one way the choice is on the page since v2.8714. */
+    const openOnDays = async (n: number) => {
+      io.loadPayerPayCalendars.mockResolvedValue([{ ...STORED, calendar: { ...STORED.calendar!, daysAfter: n } }])
+      const opened = open()
+      await waitFor(() => expect(days().value).toBe(String(n)))
+      return opened
+    }
 
-    it('asks how they pay first, and for the days alone on the second answer', async () => {
+    it('does not ask how they pay on a payer with no terms in days: the choice is hidden until a contract needs it (call 4)', async () => {
       open()
       await waitFor(() => expect(record()).toContain('Their last 4 payments'))
-      expect(how('On a set day of the month').getAttribute('aria-checked')).toBe('true')
+      expect(screen.queryByRole('radiogroup', { name: 'How they pay' })).toBeNull()
+      expect(screen.queryByRole('radio')).toBeNull()
+      expect(screen.queryByText('How they pay')).toBeNull()
       expect(screen.queryByLabelText('Days after the bill is accepted')).toBeNull()
-      fireEvent.click(how('A number of days after the bill'))
+      // The window opens straight on the calendar's own choices, and its first line names the one kind it offers.
+      expect(screen.getByLabelText('Bills must be in by')).toBeTruthy()
+      expect(screen.getByText('For a payer whose contract says when they pay: a set day of the month. Leave it unset for one with no such terms.')).toBeTruthy()
+    })
+
+    it('does not ask on a stored calendar of a set day either', async () => {
+      io.loadPayerPayCalendars.mockResolvedValue([STORED])
+      open()
+      await waitFor(() => expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('25'))
+      expect(screen.queryByRole('radiogroup', { name: 'How they pay' })).toBeNull()
+    })
+
+    it('asks how they pay on terms already in days, and for the days alone', async () => {
+      await openOnDays(45)
       expect(how('A number of days after the bill').getAttribute('aria-checked')).toBe('true')
-      expect(days().value).toBe('45')
+      expect(how('On a set day of the month').getAttribute('aria-checked')).toBe('false')
       expect(screen.queryByLabelText('Bills must be in by')).toBeNull()
       expect(screen.queryByLabelText('They pay on the')).toBeNull()
+      expect(screen.getByText('For a payer whose contract says when they pay: a set day of the month, or a number of days after the bill. Leave it unset for one with no such terms.')).toBeTruthy()
       // Said back in dates, and the record replayed against it: three of the four landed inside 45 days, and one 6 days past.
       expect(preview()).toBe('A bill accepted today, Nov 12, is due Dec 27.Each bill has its own due day. No cutoff decides a month.')
-      expect(record()).toBe('Their record against this. Their last 4 payments landed 0 to 6 days after the due day. Usually on the day. 3 of 4 were on time.')
+      await waitFor(() => expect(record()).toBe('Their record against this. Their last 4 payments landed 0 to 6 days after the due day. Usually on the day. 3 of 4 were on time.'))
       fireEvent.change(days(), { target: { value: '20' } })
       expect(preview()).toContain('is due Dec 2.')
       expect(record()).toContain('Their last 4 payments landed 0 to 31 days after the due day.')
     })
 
-    it('saves the days, and a switch back to a set day saves a calendar', async () => {
-      const { onClose } = open()
-      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
-      fireEvent.click(how('A number of days after the bill'))
+    it('saves the days', async () => {
+      const { onClose } = await openOnDays(45)
       fireEvent.change(days(), { target: { value: '60' } })
       fireEvent.click(screen.getByRole('button', { name: 'Save pay calendar' }))
       await waitFor(() => expect(onClose).toHaveBeenCalled())
       expect(io.savePayCalendar).toHaveBeenCalledWith(expect.anything(), { payerId: 'payer-1', calendar: expect.objectContaining({ daysAfter: 60 }) })
     })
 
-    it('holds the days inside what the terms can name', async () => {
-      open()
-      await waitFor(() => expect(record()).toContain('Their last 4 payments'))
-      fireEvent.click(how('A number of days after the bill'))
+    it('holds the days inside what the terms can name, and a switch to a set day can be switched back', async () => {
+      await openOnDays(45)
       fireEvent.change(days(), { target: { value: '999' } })
       expect(days().value).toBe('180')
       // An emptied box stays empty while it is typed in, and the terms keep their last days until a number takes their place.
@@ -145,7 +164,11 @@ describe('PayCalendarModal', () => {
       fireEvent.blur(days())
       expect(days().value).toBe('30')
       fireEvent.click(how('On a set day of the month'))
-      expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('eom')
+      expect((screen.getByLabelText('Bills must be in by') as HTMLSelectElement).value).toBe('25')
+      // The choice stays on the page once the terms were in days, so the way back is one press.
+      expect(how('On a set day of the month').getAttribute('aria-checked')).toBe('true')
+      fireEvent.click(how('A number of days after the bill'))
+      expect(days().value).toBe('45')
     })
 
     it('opens a stored row of days on the second answer', async () => {

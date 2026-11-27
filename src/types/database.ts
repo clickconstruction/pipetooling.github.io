@@ -23933,6 +23933,7 @@ export type Database = {
           settings_revision: number | null
           settings_set_at: string | null
           settings_set_by: string | null
+          site_secrecy_id: string | null
         }
         Insert: {
           basis?: string | null
@@ -23963,6 +23964,7 @@ export type Database = {
           settings_revision?: number | null
           settings_set_at?: string | null
           settings_set_by?: string | null
+          site_secrecy_id?: string | null
         }
         Update: {
           basis?: string | null
@@ -23993,6 +23995,7 @@ export type Database = {
           settings_revision?: number | null
           settings_set_at?: string | null
           settings_set_by?: string | null
+          site_secrecy_id?: string | null
         }
         Relationships: [
           {
@@ -24063,6 +24066,13 @@ export type Database = {
             columns: ["settings_set_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_site_secrecy_id_fkey"
+            columns: ["site_secrecy_id"]
+            isOneToOne: false
+            referencedRelation: "site_secrecy"
             referencedColumns: ["id"]
           },
         ]
@@ -37153,6 +37163,9 @@ export type Database = {
       }
       receipt_requests: {
         Row: {
+          again_at: string | null
+          again_by: string | null
+          again_count: number
           answered_at: string | null
           cell: string | null
           closed_at: string | null
@@ -37175,6 +37188,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          again_at?: string | null
+          again_by?: string | null
+          again_count?: number
           answered_at?: string | null
           cell?: string | null
           closed_at?: string | null
@@ -37197,6 +37213,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          again_at?: string | null
+          again_by?: string | null
+          again_count?: number
           answered_at?: string | null
           cell?: string | null
           closed_at?: string | null
@@ -37219,6 +37238,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "receipt_requests_again_by_fkey"
+            columns: ["again_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "receipt_requests_holder_user_id_fkey"
             columns: ["holder_user_id"]
@@ -38359,6 +38385,99 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      site_secrecy: {
+        Row: {
+          address: string | null
+          address_key: string | null
+          body_format: string
+          body_html: string | null
+          book_document_id: string | null
+          canonical_document_url: string | null
+          code_name: string | null
+          created_at: string
+          development_id: string | null
+          form_template_id: string | null
+          id: string
+          paper_name: string
+          turned_off_at: string | null
+          turned_off_by: string | null
+          turned_on_at: string
+          turned_on_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_key?: string | null
+          body_format?: string
+          body_html?: string | null
+          book_document_id?: string | null
+          canonical_document_url?: string | null
+          code_name?: string | null
+          created_at?: string
+          development_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          paper_name: string
+          turned_off_at?: string | null
+          turned_off_by?: string | null
+          turned_on_at?: string
+          turned_on_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_key?: string | null
+          body_format?: string
+          body_html?: string | null
+          book_document_id?: string | null
+          canonical_document_url?: string | null
+          code_name?: string | null
+          created_at?: string
+          development_id?: string | null
+          form_template_id?: string | null
+          id?: string
+          paper_name?: string
+          turned_off_at?: string | null
+          turned_off_by?: string | null
+          turned_on_at?: string
+          turned_on_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_secrecy_book_document_id_fkey"
+            columns: ["book_document_id"]
+            isOneToOne: false
+            referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_secrecy_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_secrecy_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_secrecy_turned_off_by_fkey"
+            columns: ["turned_off_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_secrecy_turned_on_by_fkey"
+            columns: ["turned_on_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       spec_section_match_rules: {
         Row: {
@@ -46036,6 +46155,7 @@ export type Database = {
           site_address: string | null
           site_address_key: string | null
           site_development_id: string | null
+          site_prints_address: boolean | null
           source_id: string | null
           state: string | null
           with_name: string | null
@@ -46866,6 +46986,7 @@ export type Database = {
         }
         Returns: Json
       }
+      address_key: { Args: { p_address: string }; Returns: string }
       adopt_bid_as_version: {
         Args: {
           p_name: string
@@ -52826,6 +52947,9 @@ export type Database = {
       receipt_request_ensure: {
         Args: { p_made_by?: string; p_transaction_id: string }
         Returns: {
+          again_at: string | null
+          again_by: string | null
+          again_count: number
           answered_at: string | null
           cell: string | null
           closed_at: string | null
@@ -52861,6 +52985,8 @@ export type Database = {
       receipt_requests_to_chase: {
         Args: never
         Returns: {
+          again_at: string
+          again_count: number
           amount: number
           closes_at: string
           holder_name: string
@@ -54123,6 +54249,32 @@ export type Database = {
       signed_agreement_notify_recipients: {
         Args: { p_master_user_id: string }
         Returns: string[]
+      }
+      site_paper_covers_user: {
+        Args: { p_site_secrecy_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      site_secrecy_keys: { Args: { p_key: string }; Returns: string[] }
+      site_secrecy_preview: {
+        Args: { p_address: string; p_development_id: string }
+        Returns: Json
+      }
+      site_secrecy_sync: {
+        Args: { p_job_id?: string; p_site_secrecy_id: string }
+        Returns: number
+      }
+      site_secrecy_turn_off: {
+        Args: { p_site_secrecy_id: string }
+        Returns: undefined
+      }
+      site_secrecy_turn_on: {
+        Args: {
+          p_address: string
+          p_book_document_id: string
+          p_code_name?: string
+          p_development_id: string
+        }
+        Returns: Json
       }
       snapshot_job_budget_from_bid: {
         Args: { p_bid_id: string; p_job_id: string }

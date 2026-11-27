@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -3119,7 +3119,10 @@ a charge still without a receipt gets one reminder in the evening, one a charge.
 On the Team queue the charge wears a chip, *Texted 6:14 PM* or *No text*, with the reason under it: the card tied to no one, no cell on file, a person who has left, a STOP, or a text that did not go (`receiptLineWords`).
 The charges the text cannot finish are a **Needs you** line, *N card charges wait on a receipt the text cannot get* (`receipts-to-chase`, v2.7148), and rows of Quickfill's Fill them in deck (`lib/needsYou/fillInReceipts.ts`): each says why and names its door, **Copy the receipt link** sends the link by hand, and **Got it** takes the row off the office's list while the link stays open.
 The same state shows as a chip beside a recent card charge on Banking's ledger and User Sort and in the **Receipt** column of Job Summary's card-charge drill-down (`lib/tickets/receiptState.ts`, `components/tickets/ReceiptStateChip.tsx`, v2.7152).
+A row for a charge texted and reminded with no receipt also has **Text again** (v2.8697, `receiptAgainPress`): the press reads *Text Jordan again*, a window asks first, and the office's own text goes on a new link.
+The office may text again twice for one charge, twelve hours apart (`RECEIPT_AGAIN_MAX`, `RECEIPT_AGAIN_REST_HOURS`), and the row rests off the list for twelve hours after each press.
 **Function**: `receipt-request`, called by the cron of the same name.
+The office's Text again calls the same function, signed in.
 **Guides**: *turn on receipt texts for card charges* (the owner), *answer the text about a charge on your card* (the holder), *sort the team's card purchases from the office* (the office).
 
 ### Team purchases and the Team queue (Job Parts Tally)
@@ -7168,6 +7171,8 @@ Since v2.8691 a paper's line says *printed on the paper* after its site when tha
 Since v2.8665 a site's papers show on each job at it, as **Papers for this site** on the job's Documents tab ([`JobDocumentsSitePapers.tsx`](../src/components/jobs/JobDocumentsSitePapers.tsx), [`sitePapers.ts`](../src/lib/addresses/sitePapers.ts)), and a company's own list of papers says a paper's site on its line.
 Since v2.8668 the Agreements tab's **Find by site…** asks the list for one site's papers, by the site's keys on the view's `site_address_key` (`AgreementsQuery.site`, `agreementsLedgerIo.ts`), and a line says its paper's site.
 Since v2.8669 a development's page has **Papers for this site** too: the papers that name the development or the address of a job or a bid in it ([`DevelopmentSitePapers.tsx`](../src/components/developments/DevelopmentSitePapers.tsx), `developmentSiteScope` in `sitePapers.ts`), drawn by the list the job's tab shares ([`SitePapersList.tsx`](../src/components/jobs/SitePapersList.tsx)).
+Since v2.8693 a development's page has the block **Secrecy on this site** ([`SiteSecrecy.tsx`](../src/components/jobs/SiteSecrecy.tsx), [`siteSecrecy.ts`](../src/lib/addresses/siteSecrecy.ts)): off, it offers **Turn on secrecy for this site**, whose panel picks the paper our own people sign and counts the jobs that shut and the people asked before its last press, and on, it says since when, the paper, the jobs that carry it and who has signed, with **Turn it off…**.
+A job's roster reads a site's paper with no **Take off**, and a sub who is not asked it as *not asked* (`siteSecrecyId`, `asked` in [`jobPapers.ts`](../src/lib/jobs/jobPapers.ts)).
 Since v2.8486 the look for a copy that is already out (v2.8325) reads the company's own contact and each named contact that points at it (`partyContactsToLook`, `findPartyContacts`), so a copy out under a person named there is found, and Escape closes the three windows the press draws.
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 Since v2.8419 a trade company's own paper, tagged *Trade company*, sits under **Staff and subs** with the subs who work there, where it sat under **GC projects** before.
@@ -8221,6 +8226,7 @@ Since v2.7341 one bill can carry **its own due day** (`invoice_due_days`, `set_i
 it rides with the calendars (`loadPayCalendars`, `indexPayCalendars`' `byInvoice`) and sits at the top of the ladder `calendarSourceFor` reads (`from: 'bill'`, `ownDue`): the bill's own day, the job's calendar, the payer's, the pace guess.
 Such a bill reads **Due** on that day with *This bill's own day · § 9.4* under it, and no record is replayed against it.
 Since v2.7343 the terms have a second shape, **a number of days after the bill** (`payer_pay_calendars.days_after`, `PayCalendar.daysAfter`, 1 to 180): the window's first choice is *How they pay* (`PayCalendarFields`), *On a set day of the month* or *A number of days after the bill*;
+Since v2.8714 that first choice is hidden unless the terms on the form are already in days, by `showsHowTheyPay` and the switch `PAY_CALENDAR_DAYS_AFTER_OFFERED` in `lib/jobs/payTermsInDaysOffer.ts`, which is off (punch list #341, call 4).
 `dueDayFor` adds the days to the day the bill was accepted, `nextCutoff` answers none so no cutoff line draws, and the words read *Paid 45 days after the bill* and *pay terms* (`payTermsNoun`).
 Since v2.7028 a bill of theirs reads **Due** on its [[Bill dates ledger (Pipeline)]] row, with *Usually lands about …* under it, through `billedPayModel` (`src/lib/jobs/billedDuePay.ts`), which wraps the pace guess and leaves it and its edge copies as they were;
 the Payment forecast, the phone rows and the Lien desk's runway read the same model, and since v2.7040 so do the job window's bills list (`useJobBilledExpectedPay` → `invoiceLedgerRow`, *due Nov 10 · 2 d past*) and Call mode (`buildPaymentChaseQueue`).

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { callPressedTarget, navButtonName, resolveNavClick } from './navClickTelemetry'
+import { JOB_EDIT_ROW_CONTROL, callPressedTarget, jobEditRowTarget, navButtonName, navNameFromWords, resolveNavClick } from './navClickTelemetry'
 
 function domFrom(html: string): HTMLElement {
   const root = document.createElement('div')
@@ -22,8 +22,8 @@ describe('resolveNavClick', () => {
   })
 
   it('keeps the search string so tab targets stay distinct', () => {
-    const root = domFrom('<div data-navtrack="quick-button"><a href="/jobs?tab=billing&newJob=true" id="hit">Job</a></div>')
-    expect(resolveNavClick(root.querySelector('#hit'))?.target).toBe('/jobs?tab=billing&newJob=true')
+    const root = domFrom('<div data-navtrack="quick-button"><a href="/jobs?tab=stages&newJob=true" id="hit">Job</a></div>')
+    expect(resolveNavClick(root.querySelector('#hit'))?.target).toBe('/jobs?tab=stages&newJob=true')
   })
 
   it('strips an absolute origin down to the app path', () => {
@@ -98,5 +98,28 @@ describe('navButtonName', () => {
     expect(navButtonName(button('data-nav="speech-bubble" aria-label="Open Ridgeway’s messages"'))).toBe('speech-bubble')
     expect(navButtonName(button('', '<svg></svg>'))).toBeNull()
     expect(navButtonName(button(`aria-label="${'x'.repeat(80)}"`))?.length).toBe(48)
+  })
+})
+
+describe('jobEditRowTarget (v2.8704, punch list #190)', () => {
+  it('names an Edit tab row by its own words', () => {
+    expect(JOB_EDIT_ROW_CONTROL).toBe('job-edit-row')
+    for (const label of ['Team', 'Account man', 'Folders', 'Customer', 'Phone', 'Email', 'Bills go to', 'Bills also go to', 'Property record', 'Date met', 'GC/Builder', 'Billing email', 'Plans', 'Project', 'Development', 'Bid', 'Contract', 'Sub work order', 'Pay calendar', 'Charging the customer']) {
+      expect(jobEditRowTarget(label), label).toBe(`#${label}`)
+    }
+  })
+
+  it('never carries a person, a company or an address a label names', () => {
+    expect(jobEditRowTarget('Show Dana Whitfield')).toBe('#Show …')
+    expect(jobEditRowTarget('Show Ridgeway Builders')).toBe('#Show …')
+    expect(jobEditRowTarget('Property kind for 412 Cedar Loop')).toBe('#Property kind')
+    expect(jobEditRowTarget('Our contract on this job')).toBe('#Our contract')
+    expect(jobEditRowTarget('   ')).toBe('#…')
+  })
+
+  it('reads a label as a button’s own words are read', () => {
+    expect(navNameFromWords('Edit GC/Builder')).toBe('Edit GC/Builder')
+    expect(navNameFromWords('Rosa')).toBe('…')
+    expect(navNameFromWords('')).toBeNull()
   })
 })

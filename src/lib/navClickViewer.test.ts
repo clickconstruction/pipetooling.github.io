@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const insert = vi.fn(() => Promise.resolve({ data: null, error: null }))
 vi.mock('./supabase', () => ({ supabase: { from: vi.fn(() => ({ insert })) } }))
 
-import { navClickViewer, recordCallPressed, recordViewerNavClick, setNavClickViewer } from './navClickViewer'
+import { navClickViewer, recordCallPressed, recordJobEditRowOpened, recordViewerNavClick, setNavClickViewer } from './navClickViewer'
 
 function rowButton(): Element {
   const root = document.createElement('div')
@@ -50,5 +50,16 @@ describe('navClickViewer (v2.5904)', () => {
     setNavClickViewer('u1', 'assistant')
     expect(() => recordViewerNavClick({ target: null })).not.toThrow()
     expect(() => recordViewerNavClick({ target: {} as EventTarget })).not.toThrow()
+  })
+
+  it('records an Edit tab row opened under the row’s name, and nothing while signed out (v2.8704)', async () => {
+    recordJobEditRowOpened('Team')
+    expect(insert).not.toHaveBeenCalled()
+    setNavClickViewer('u3', 'assistant')
+    recordJobEditRowOpened('Team')
+    recordJobEditRowOpened('Show Dana Whitfield')
+    await vi.waitFor(() => expect(insert).toHaveBeenCalledTimes(2))
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'u3', role: 'assistant', control: 'job-edit-row', target: '#Team' }))
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ control: 'job-edit-row', target: '#Show …' }))
   })
 })

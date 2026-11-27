@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  BILLING_ATTENTION_LABEL,
-  billingFixturesCellText,
-  billingJobMatchesSearch,
-  billingMaterialsCellText,
-  sortJobsForBilling,
-  billingJobNeedsAttention,
-  billingRowMoneyTokens,
-  billingTotals,
-} from './billingTab'
+import { billingJobMatchesSearch } from './billingTab'
 
 describe('billingJobMatchesSearch', () => {
   const job = { hcp_number: 'HCP-120', job_name: 'Repipe Main', job_address: '9 Elm St' }
@@ -27,54 +18,6 @@ describe('billingJobMatchesSearch', () => {
   })
 })
 
-describe('sortJobsForBilling', () => {
-  const jobs = [{ hcp_number: 'HCP-9' }, { hcp_number: 'HCP-100' }, { hcp_number: 'HCP-20' }]
-
-  it('sorts numerically, descending by default and ascending on request', () => {
-    expect(sortJobsForBilling(jobs, false).map((j) => j.hcp_number)).toEqual(['HCP-100', 'HCP-20', 'HCP-9'])
-    expect(sortJobsForBilling(jobs, true).map((j) => j.hcp_number)).toEqual(['HCP-9', 'HCP-20', 'HCP-100'])
-  })
-
-  it('does not mutate the input', () => {
-    const input = [...jobs]
-    sortJobsForBilling(input, true)
-    expect(input.map((j) => j.hcp_number)).toEqual(['HCP-9', 'HCP-100', 'HCP-20'])
-  })
-})
-
-describe('billingFixturesCellText', () => {
-  it('returns a dash only for an empty list', () => {
-    expect(billingFixturesCellText([])).toBe('—')
-    // Non-empty list whose rows are all blank joins to '' (historical behavior)
-    expect(billingFixturesCellText([{ name: ' ', count: 1 }])).toBe('')
-  })
-
-  it('formats count, positive unit price, and description lines', () => {
-    expect(
-      billingFixturesCellText([
-        { name: 'Lav', count: 3, line_unit_price: 150, line_description: ' incl. trim ' },
-        { name: 'WC', count: 1, line_unit_price: 0 },
-      ]),
-    ).toBe('Lav × 3 @ $150.00\nincl. trim\nWC')
-  })
-})
-
-describe('billingMaterialsCellText', () => {
-  it('returns a dash only for an empty list and drops blank zero rows', () => {
-    expect(billingMaterialsCellText([])).toBe('—')
-    expect(billingMaterialsCellText([{ description: ' ', amount: 0 }])).toBe('')
-  })
-
-  it('labels blank descriptions as Item and formats amounts', () => {
-    expect(
-      billingMaterialsCellText([
-        { description: 'Permit', amount: 250 },
-        { description: '', amount: 12.5 },
-      ]),
-    ).toBe('Permit: $250.00\nItem: $12.50')
-  })
-})
-
 describe('billingJobMatchesSearch — line items (v2.1619)', () => {
   const job = {
     hcp_number: '917',
@@ -90,48 +33,5 @@ describe('billingJobMatchesSearch — line items (v2.1619)', () => {
     expect(billingJobMatchesSearch(job, 'permit')).toBe(true)
     expect(billingJobMatchesSearch(job, 'inglow family')).toBe(true)
     expect(billingJobMatchesSearch(job, 'faucet')).toBe(false)
-  })
-})
-
-describe('billingJobNeedsAttention', () => {
-  const subLabor = new Set(['j2'])
-  const team = new Set(['j1'])
-  it('flags only when BOTH sub labor and team labor are missing (v2.1643); no HCP means not auditable', () => {
-    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '917' }, subLabor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, subLabor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j3', hcp_number: '917' }, subLabor, team)).toBe(true)
-    expect(billingJobNeedsAttention({ id: 'j9', hcp_number: null }, subLabor, team)).toBe(false)
-  })
-
-  it('reads the sub sheet by the job it is linked to, not the number (v2.3838)', () => {
-    // j2 was renumbered 917 → 1017; its sheet still displays 917 but is linked to j2.
-    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '1017' }, subLabor, new Set())).toBe(false)
-    // Another job that happens to carry the sheet's number gains nothing from it.
-    expect(billingJobNeedsAttention({ id: 'j4', hcp_number: '917' }, subLabor, new Set())).toBe(true)
-  })
-})
-
-describe('billingRowMoneyTokens / billingTotals', () => {
-  it('splits paid / billed-open / unbilled and skips zero tokens', () => {
-    const tokens = billingRowMoneyTokens({ revenue: 1000, payments_made: 200 }, 300)
-    expect(tokens).toEqual([
-      { label: 'paid $200.00', tone: 'paid' },
-      { label: 'billed $300.00 open', tone: 'billed' },
-      { label: 'unbilled $500.00', tone: 'unbilled' },
-    ])
-    expect(billingRowMoneyTokens({ revenue: 0, payments_made: 0 }, 0)).toEqual([])
-  })
-  it('totals the filtered rows', () => {
-    expect(billingTotals([{ revenue: 100, payments_made: 40 }, { revenue: 50, payments_made: 0 }])).toEqual({
-      count: 2,
-      totalBill: 150,
-      totalPaid: 40,
-    })
-  })
-})
-
-describe('BILLING_ATTENTION_LABEL', () => {
-  it('keeps the owner phrasing for the both-missing icon', () => {
-    expect(BILLING_ATTENTION_LABEL).toBe('No team labor or sub labor recorded for this job.')
   })
 })

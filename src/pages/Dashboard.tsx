@@ -1149,7 +1149,7 @@ export default function Dashboard() {
       return [] as Array<{ key: string; label: string; to: string }>
     }
     return [
-      { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
+      { key: 'job', label: 'Job', to: '/jobs?tab=stages&newJob=true' },
       { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=subs&view=pay&newJob=true' },
       { key: 'bid', label: 'Bid', to: '/bids?new=true' },
       { key: 'project', label: 'Project', to: '/projects/new' },
