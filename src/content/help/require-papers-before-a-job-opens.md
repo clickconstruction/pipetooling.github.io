@@ -2,7 +2,7 @@
 title: require papers before a job opens
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: papers before a job opens, GC's own form, their own form, propose, proposal, stricter setting, take it, decline, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
+keywords: papers before a job opens, GC's own form, their own form, propose, proposal, stricter setting, take it, decline, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again, secrecy on this site, turn on secrecy, whole site, development, not asked
 order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
@@ -165,6 +165,27 @@ You can still text the sub a link. Find the sub's row in the table and press **C
 Press **Take off** on the paper's row and confirm. Nobody is asked to sign it for this job any more. Every signature already on file is kept.
 
 A paper you take off stays on file. Only the developer can delete one. The paper must be on a test job, with no copy on anyone's file.
+
+## Ask for one paper across a whole site
+
+A development can hold many jobs. You can ask for one paper on all of them at once. Open the development's page and find **Secrecy on this site**.
+
+1. Press **Turn on secrecy for this site**.
+2. Pick a paper under **The paper our own people sign**. The list shows the papers in the Contract Book.
+3. Read **What happens when you press**. The panel counts the jobs that shut and the people asked.
+4. Press the blue button. The button names its count, such as {{button:blue|Turn it on and ask 12 people to sign}}.
+
+Every job in the development now carries the paper. Each person signs once, and that signature covers every job there. A job added to the development later takes the paper too.
+
+A sub is an outside company and is not asked this paper. The sub's row in a job's table reads *not asked*.
+
+:::example A paper that is not in the list
+A paper built from settings is left out. Its settings are set one job at a time.
+:::
+
+On a job, the site's paper has no **Take off**. Open the development's page and press **Turn it off…** to take the paper off every job. The jobs open at once and every signature is kept. Turning secrecy on again asks only the people who never signed.
+
+An estimator can read the block. Only the office can turn secrecy on or off.
 
 ## Change a paper's words
 
