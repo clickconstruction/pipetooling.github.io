@@ -162,7 +162,7 @@ async function drawList(lib: ProofPdfLib, doc: PdfDocLike, lines: ReadonlyArray<
     else if (l.kind === 'muted') text(l.text, regular, 9.5, grey)
     else if (l.kind === 'part') text(l.text.toUpperCase(), bold, 9, ink)
     else if (l.kind === 'body') text(l.text, regular, 10, ink)
-    else {
+    else if (l.kind === 'row') {
       // A row stays whole on its page: the company with its day at the right, then what sits under it.
       room(16 + l.subs.length * 13)
       const right = pdfSafeText(l.right)
