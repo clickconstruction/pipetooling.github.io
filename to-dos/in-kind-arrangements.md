@@ -1,7 +1,7 @@
 ---
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
-group: close
+group: ready
 status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · the customer's profile window, the Invoices tab and dev-mcp's two reads followed in v2.8266 · the Pipeline's map, a development's Money look, the aging chart and the printed report followed in v2.8272, which closes every screen traced · left of the sweep: the statement week, which waits with the owner's call on a GC's statement · the owner's call came on 2026-11-22 and its GC half is built (v2.8309): a GC's statement and GC Review leave the bill out and say one line · the statement week's email says its line since v2.8320 · left of the call: the portal
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without

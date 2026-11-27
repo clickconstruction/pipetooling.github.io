@@ -22,7 +22,7 @@ mockup: not required — the presses and the tools stay where they are and only 
 
 # Painted maps on a Google map (#387)
 
-This card follows [Paint a map (#345)](paint-a-map/README.md), which built painted maps on Leaflet and
+This card follows Paint a map (#345, closed 2026-11-27; its card lives in git history at the deleting commit), which built painted maps on Leaflet and
 left Google as *a switch for later*. This is that switch.
 
 ## The ask, in the owner's words

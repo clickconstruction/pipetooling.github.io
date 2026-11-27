@@ -1,7 +1,7 @@
 ---
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
-group: close
+group: gated
 status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes, v2.8368 the card sends the list it showed, whose migration waits for a go) · the three live walks were walked on the ZZ job on 2026-11-23 and 2026-11-24, and each holds · left: the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
