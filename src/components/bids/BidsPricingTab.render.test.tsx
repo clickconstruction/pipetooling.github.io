@@ -418,6 +418,129 @@ describe('BidsPricingTab render smoke', () => {
     expect(gridRowCount()).toBe(3)
   })
 
+  // The split's child rows (punch list #46 row 1, the second medium cut). Pinned on the tab as it stood, before
+  // the rows moved to `PricingSplitRows`: every cell of every line, in each shape the split takes.
+  const splitLines = () =>
+    [...grid().querySelectorAll('tbody tr')]
+      .filter((tr) => !tr.id.startsWith('wb-row-'))
+      .map((tr) => (tr.id ? `#${tr.id} ` : '') + [...tr.querySelectorAll('td')].map((td) => (td.textContent ?? '').trim() + [...td.querySelectorAll('input')].map((x) => `[${(x as HTMLInputElement).value}]`).join('')).join(' ¦ '))
+
+  it('the split’s lines carry their own dollars: cost, price, revenue, profit and margin a part', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(button(/Expand all/))
+    await settle()
+    expect(splitLines()).toEqual([
+      // Six water closets at $800. Material is the takeoff's $200 a unit plus 50%, tax is 8.25% of that, labor is what is left.
+      '#wb-split-cr-wc  ¦ ├Materialthe takeoff +%[50] ¦ 6 ¦ $200.00 ¦  ¦ [300.00] ¦ $1,800.00 ¦ $600.00 ¦ 33% ¦ ',
+      ' ¦ ├Sales tax8.25% on material ¦ 6 ¦ $16.50 ¦  ¦ $24.75 ¦ $148.50 ¦ $49.50 ¦ 33% ¦ ',
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $475.25 ¦ $2,851.50 ¦ $2,251.50 ¦ 79% ¦ ',
+      '#wb-split-cr-lav  ¦ ├Materialthe takeoff +%[50] ¦ 4 ¦ $100.00 ¦  ¦ [150.00] ¦ $600.00 ¦ $200.00 ¦ 33% ¦ ',
+      ' ¦ ├Sales tax8.25% on material ¦ 4 ¦ $8.25 ¦  ¦ $12.38 ¦ $49.50 ¦ $16.50 ¦ 33% ¦ ',
+      ' ¦ └Laborwhat is left ¦ 4 ¦ $100.00 ¦  ¦ $337.63 ¦ $1,350.50 ¦ $950.50 ¦ 70% ¦ ',
+      '#wb-split-cr-fd  ¦ └No price on this row yet, so nothing to split.',
+    ])
+    const material = screen.getByLabelText('Material per unit in the price of Water closet') as HTMLInputElement
+    expect(material.title).toBe('The rule: the takeoff +50%. Type over it for this row.')
+    expect((screen.getByLabelText('The material markup, percent, on Water closet') as HTMLInputElement).title).toBe("The bid's markup. Type one for this row alone.")
+    const taxed = screen.getAllByTitle('Taxed — press to make this row tax-free')
+    expect(taxed.map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['8.25% on material', 'true'], ['8.25% on material', 'true']])
+  })
+
+  it('the Sales tax line’s press makes a row tax-free, writes it on the row, and labor takes what is left', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Open the split of Water closet: material, tax, labor'))
+    fireEvent.click(screen.getByTitle('Taxed — press to make this row tax-free'))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'bids_count_rows', op: 'update', payload: { kind: 'fixture', tags: ['restrooms'], split_material_cents: null, split_markup_pct: null, split_taxable: false } }])
+    expect(splitLines()).toEqual([
+      '#wb-split-cr-wc  ¦ ├Materialthe takeoff +%[50] ¦ 6 ¦ $200.00 ¦  ¦ [300.00] ¦ $1,800.00 ¦ $600.00 ¦ 33% ¦ ',
+      // The tax we still pay on the material shows as a loss on its own line: no tax is charged, $99 is owed.
+      ' ¦ ├Sales taxtax-free ¦ 6 ¦ $16.50 ¦  ¦ $0.00 ¦ $0.00 ¦ −$99.00 ¦  ¦ ',
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $500.00 ¦ $3,000.00 ¦ $2,400.00 ¦ 80% ¦ ',
+    ])
+    const free = screen.getByTitle('Tax-free — press to tax its material')
+    expect(free.getAttribute('aria-pressed')).toBe('false')
+    // The struck-through price says the tax is off, where a taxed line's is plain.
+    const taxLine = [...grid().querySelectorAll('tbody tr')][2] as HTMLElement
+    expect([...taxLine.querySelectorAll('span')].some((x) => x.style.textDecoration === 'line-through')).toBe(true)
+  })
+
+  it('a material price typed on a split line is kept on the row, and clearing it with Enter goes back to the rule', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Open the split of Water closet: material, tax, labor'))
+    const box = () => screen.getByLabelText('Material per unit in the price of Water closet') as HTMLInputElement
+    fireEvent.change(box(), { target: { value: '250' } })
+    fireEvent.blur(box())
+    await settle()
+    // $250 a unit for six: $1,500, kept in cents.
+    expect(db.writes).toEqual([{ table: 'bids_count_rows', op: 'update', payload: { kind: 'fixture', tags: ['restrooms'], split_material_cents: 150000, split_markup_pct: null, split_taxable: null } }])
+    expect(splitLines()).toEqual([
+      '#wb-split-cr-wc  ¦ ├Materialtyped ¦ 6 ¦ $200.00 ¦  ¦ [250.00] ¦ $1,500.00 ¦ $300.00 ¦ 20% ¦ ',
+      ' ¦ ├Sales tax8.25% on material ¦ 6 ¦ $16.50 ¦  ¦ $20.63 ¦ $123.75 ¦ $24.75 ¦ 20% ¦ ',
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $529.38 ¦ $3,176.25 ¦ $2,576.25 ¦ 81% ¦ ',
+    ])
+    expect(box().title).toBe('Typed for this row — clear it to go back to the rule')
+    // A typed material has no markup box: the rule is not what prices it.
+    expect(screen.queryByLabelText('The material markup, percent, on Water closet')).toBeNull()
+    db.writes = []
+    box().focus()
+    fireEvent.change(box(), { target: { value: '' } })
+    fireEvent.keyDown(box(), { key: 'Enter' })
+    await settle()
+    expect(db.writes).toEqual([{ table: 'bids_count_rows', op: 'update', payload: { kind: 'fixture', tags: ['restrooms'], split_material_cents: null, split_markup_pct: null, split_taxable: null } }])
+    expect(splitLines()[0]).toBe('#wb-split-cr-wc  ¦ ├Materialthe takeoff +%[50] ¦ 6 ¦ $200.00 ¦  ¦ [300.00] ¦ $1,800.00 ¦ $600.00 ¦ 33% ¦ ')
+  })
+
+  it('a markup typed on a split line moves the line as it is typed, and is kept on the row when the box is left', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Open the split of Water closet: material, tax, labor'))
+    const box = () => screen.getByLabelText('The material markup, percent, on Water closet') as HTMLInputElement
+    fireEvent.focus(box())
+    fireEvent.change(box(), { target: { value: '40' } })
+    expect(box().value).toBe('40')
+    const at40 = [
+      '#wb-split-cr-wc  ¦ ├Materialthe takeoff +%[40] ¦ 6 ¦ $200.00 ¦  ¦ [280.00] ¦ $1,680.00 ¦ $480.00 ¦ 29% ¦ ',
+      ' ¦ ├Sales tax8.25% on material ¦ 6 ¦ $16.50 ¦  ¦ $23.10 ¦ $138.60 ¦ $39.60 ¦ 29% ¦ ',
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $496.90 ¦ $2,981.40 ¦ $2,381.40 ¦ 80% ¦ ',
+    ]
+    // Before anything is saved: the three lines already read at 40%.
+    expect(splitLines()).toEqual(at40)
+    expect(db.writes).toEqual([])
+    fireEvent.blur(box())
+    await settle()
+    expect(db.writes).toEqual([{ table: 'bids_count_rows', op: 'update', payload: { kind: 'fixture', tags: ['restrooms'], split_material_cents: null, split_markup_pct: 40, split_taxable: null } }])
+    expect(splitLines()).toEqual(at40)
+    expect(box().title).toBe("This row's own markup; the bid's is 50%. Clear it to go back.")
+    expect((screen.getByLabelText('Material per unit in the price of Water closet') as HTMLInputElement).title).toBe('The rule: the takeoff +40%. Type over it for this row.')
+  })
+
+  it('an equipment row splits to one line with no cost, and a labor line that goes under reads red with no margin', async () => {
+    // The water closet's material is typed at $5,000, over its $4,800 price. The lavatory is an Equipment row.
+    const base = COUNT_ROWS as unknown as Array<Record<string, unknown>>
+    const rows = [{ ...base[0], split_material_cents: 500000 }, { ...base[1], kind: 'equipment' }, base[2]] as unknown as Props['pricingCountRows']
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: rows, pricingRowsForGrid: gridRows({ countRows: rows }) })} />)
+    await settle()
+    fireEvent.click(button(/Expand all/))
+    await settle()
+    expect(splitLines()).toEqual([
+      '#wb-split-cr-wc  ¦ ├Materialtyped ¦ 6 ¦ $200.00 ¦  ¦ [833.33] ¦ $5,000.00 ¦ $3,800.00 ¦ 76% ¦ ',
+      ' ¦ ├Sales tax8.25% on material ¦ 6 ¦ $16.50 ¦  ¦ $68.75 ¦ $412.50 ¦ $313.50 ¦ 76% ¦ ',
+      ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ −$102.08 ¦ −$612.50 ¦ −$1,212.50 ¦  ¦ ',
+      "#wb-split-cr-lav  ¦ └Equipmentan item of its own; its cost is on the Labor tab's rentals ¦ 4 ¦ — ¦  ¦ $500.00 ¦ $2,000.00 ¦ — ¦  ¦ ",
+      '#wb-split-cr-fd  ¦ └No price on this row yet, so nothing to split.',
+    ])
+    const labor = [...grid().querySelectorAll('tbody tr')][3] as HTMLElement
+    expect([...labor.querySelectorAll('span')].filter((x) => x.style.color === 'var(--text-red-700)').length).toBeGreaterThanOrEqual(2)
+    // An equipment line has no box to type in and no tax press.
+    const equipment = document.getElementById('wb-split-cr-lav') as HTMLElement
+    expect(equipment.querySelector('input')).toBeNull()
+    expect(equipment.querySelector('button')).toBeNull()
+  })
+
   it('the Markup and Tax tools open with their scopes and close', async () => {
     renderWithProviders(<BidsPricingTab {...pricedProps()} />)
     await settle()
