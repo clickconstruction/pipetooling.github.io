@@ -205,12 +205,11 @@
   gap: 0;
 }
 
+/* Every field keeps its gap, Password too (v2.8674): 18px under Email and 18px under Password. The gap under
+   Password used to come off through `:last-of-type`, which counts every div in the form, so the card had one
+   spacing with the "or" rule or the magic-link offer under the press and another without. */
 .auth-public-landing .auth-public-landing__signin-field {
   margin-bottom: 1.125rem;
-}
-
-.auth-public-landing .auth-public-landing__signin-field:last-of-type {
-  margin-bottom: 0;
 }
 
 .auth-public-landing .auth-public-landing__signin-input {
@@ -300,6 +299,11 @@
     opacity 0.15s ease;
 }
 
+/* In the form, what stands above the press gives the whole gap: the Password field, or a refusal's own margin. */
+.auth-public-landing .auth-public-landing__signin-form .auth-public-landing__signin-submit {
+  margin-top: 0;
+}
+
 .auth-public-landing .auth-public-landing__signin-submit:hover:not(:disabled) {
   background: #1d4ed8;
 }
@@ -341,7 +345,8 @@
   justify-content: center;
   gap: 0.625rem;
   width: 100%;
-  padding: 0.6875rem 1rem;
+  /* Sign in has no border, so this press gives its 1px border back out of the padding to stand as tall. */
+  padding: calc(0.6875rem - 1px) 1rem;
   font-family: inherit;
   font-size: 0.9375rem;
   font-weight: 600;
