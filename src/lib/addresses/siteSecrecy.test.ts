@@ -15,8 +15,10 @@ import {
   liveSecrecy,
   onCountSentences,
   onSinceSentence,
+  paperSecrecySite,
   parseSecrecyPreview,
   previewValues,
+  secrecyDraws,
   secrecyLead,
   secrecyNotThereYet,
   secrecyPapers,
@@ -65,6 +67,40 @@ describe('a job’s door (4c)', () => {
     expect(secrecyLead({ address: '12 Sample St' })).toMatch(/every job at this address/)
     expect(plainWordsFailures(SITE_SECRECY_WORDS.leadAddress)).toEqual([])
     expect(plainWordsFailures(SITE_SECRECY_WORDS.onDevelopment)).toEqual([])
+  })
+})
+
+describe('Send a paper’s offer (4d)', () => {
+  it('a paper’s site is the block’s site: a development by its id, an address as it is written', () => {
+    expect(paperSecrecySite({ kind: 'development', developmentId: 'dev-1', name: 'Sample Ranch' })).toEqual({ developmentId: 'dev-1' })
+    expect(paperSecrecySite({ kind: 'address', key: '12 sample street', address: ' 12 Sample St ' })).toEqual({ address: '12 Sample St' })
+  })
+  it('a paper that names no site has none, and neither has an empty address', () => {
+    expect(paperSecrecySite(null)).toBeNull()
+    expect(paperSecrecySite(undefined)).toBeNull()
+    expect(paperSecrecySite({ kind: 'address', key: '', address: '   ' })).toBeNull()
+    expect(paperSecrecySite({ kind: 'development', developmentId: '', name: 'Sample Ranch' })).toBeNull()
+  })
+  it('the offer draws for whoever can turn secrecy on, until it is passed over, and says an on site is on', () => {
+    const base = { mode: 'offer' as const, on: false, failed: false, canTurn: true, passed: false }
+    expect(secrecyDraws(base)).toBe(true)
+    expect(secrecyDraws({ ...base, passed: true })).toBe(false)
+    expect(secrecyDraws({ ...base, canTurn: false })).toBe(false)
+    expect(secrecyDraws({ ...base, failed: true })).toBe(false)
+    // On, it says so even after Only send this one was pressed for the site while it was off.
+    expect(secrecyDraws({ ...base, on: true, passed: true })).toBe(true)
+    expect(secrecyDraws({ ...base, on: true, canTurn: false })).toBe(false)
+  })
+  it('the other two modes draw as they did', () => {
+    const base = { on: false, failed: false, canTurn: false, passed: false }
+    expect(secrecyDraws({ ...base, mode: 'door' })).toBe(true)
+    expect(secrecyDraws({ ...base, mode: 'door', failed: true })).toBe(true)
+    expect(secrecyDraws({ ...base, mode: 'reads' })).toBe(false)
+    expect(secrecyDraws({ ...base, mode: 'reads', on: true })).toBe(true)
+  })
+  it('its words pass the plain-words rules', () => {
+    expect(plainWordsFailures(SITE_SECRECY_WORDS.offerLead)).toEqual([])
+    expect(SITE_SECRECY_WORDS.onlySend).toBe('Only send this one')
   })
 })
 

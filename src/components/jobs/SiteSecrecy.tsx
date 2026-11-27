@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { jobPapersChanged } from '../../hooks/useJobsClosedToMe'
 import {
   type SecrecyCounts,
+  type SecrecyMode,
   type SecrecyPreview,
   type SecrecySite,
   type SiteSecrecyRow,
@@ -14,6 +15,7 @@ import {
   onCountSentences,
   onSinceSentence,
   previewValues,
+  secrecyDraws,
   secrecyLead,
   secrecyPapers,
   turnOffConfirm,
@@ -30,13 +32,17 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
- * **Secrecy on this site** (punch list #439, piece 4): the block on a development's page, and on a lone job's
- * Documents tab. Off, it says what turning it on does and offers the press. The press opens a panel in place: the
+ * **Secrecy on this site** (punch list #439, piece 4): the block on a development's page, on a lone job's Documents
+ * tab, and under the site's line in Send a paper. Off, it says what turning it on does and offers the press. The press opens a panel in place: the
  * paper our own people sign, picked from the Contract Book, then the jobs it shuts and the people it asks, counted
  * before the last press. On, it says since when, the paper, the jobs that carry it and who has signed.
  *
  * The four office roles press. The estimator reads and presses nothing. Anyone else sees nothing. While the database
  * has no `site_secrecy` yet the block draws nothing, so a client ahead of its migration offers no dead press.
+ *
+ * In Send a paper (`offer`, 4d) the block asks once while the picked site is off: **Turn on secrecy for this site**,
+ * which opens the same panel in place, or **Only send this one**, after which it says no more of that site. While the
+ * site is on it says so in two lines and offers no press: turning it off is done where the site lives.
  */
 
 const box: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.75rem 0.9rem' }
@@ -59,9 +65,10 @@ export interface SiteSecrecyProps {
   role: string | null | undefined
   /**
    * `door`, the default, offers the presses. `reads` draws the on state alone with no press, and nothing while the
-   * site is off: a job in a development, whose door is the development's page.
+   * site is off: a job in a development, whose door is the development's page. `offer` is Send a paper: one question
+   * while the site is off, two lines while it is on.
    */
-  mode?: 'door' | 'reads'
+  mode?: SecrecyMode
   /** False on a job's Documents tab, whose sections carry no box of their own. */
   boxed?: boolean
   /** Told after secrecy was turned on or off, so a neighbour that lists the job's papers reads again. */
@@ -76,7 +83,8 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   const canRead = canReadSecrecy(role)
-  const canTurn = canTurnSecrecy(role) && mode === 'door'
+  const canTurn = canTurnSecrecy(role) && mode !== 'reads'
+  const offer = mode === 'offer'
   // The site as one string, so the reads run again only when it changes.
   const siteKey = 'developmentId' in site ? `d:${site.developmentId}` : `a:${site.address}`
   const siteOf = useRef(site)
@@ -94,6 +102,8 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
   const [picked, setPicked] = useState<string | null>(null)
   const [busy, setBusy] = useState<'on' | 'off' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** **Only send this one** was pressed for this site: the offer says no more of it. */
+  const [passed, setPassed] = useState(false)
   const live = useRef(true)
   useEffect(() => {
     live.current = true
@@ -102,7 +112,16 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
     }
   }, [])
 
-  // The site's row, then its counts when it is on.
+  // Another site is another question: the offer starts again, and so does the read.
+  useEffect(() => {
+    setPassed(false)
+    setOpen(false)
+    setPicked(null)
+    setError(null)
+    setRead({ kind: 'reading' })
+  }, [siteKey])
+
+  // The site's row, then its counts when it is on. The offer in Send a paper counts nothing: it says the site is on.
   useEffect(() => {
     if (!canRead) return
     let mine = true
@@ -112,7 +131,7 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
         if (!mine) return
         if (row === 'not-there') return setRead({ kind: 'not-there' })
         setRead({ kind: 'read', row })
-        if (!row) return setCounts(null)
+        if (!row || offer) return setCounts(null)
         io.readCounts(row.id).then(
           (c) => mine && setCounts(c),
           () => mine && setCounts(null),
@@ -123,7 +142,7 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
     return () => {
       mine = false
     }
-  }, [canRead, io, siteKey, attempt])
+  }, [canRead, io, siteKey, attempt, offer])
 
   // The panel's own reads, once it is open: the Contract Book and what the press would reach.
   useEffect(() => {
@@ -193,8 +212,9 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
   }, [row, busy, counts, confirmDialog, io, showToast, onChanged])
 
   if (!canRead || read.kind === 'not-there' || read.kind === 'reading') return null
-  // A block that only reads says nothing while the site is off, and nothing of a read that failed: the door is elsewhere.
-  if (mode === 'reads' && !row) return null
+  // A block that only reads says nothing while the site is off, and nothing of a read that failed: the door is
+  // elsewhere. The offer says nothing to someone who cannot turn secrecy on, nor once it was passed over.
+  if (!secrecyDraws({ mode, on: row != null, failed: read.kind === 'failed', canTurn, passed })) return null
 
   const button = turnOnButton(preview, picked != null, busy === 'on')
   const reach = preview ? previewValues(preview) : null
@@ -227,10 +247,12 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
               </ValueLine>
             ) : null}
           </ValueLines>
-          <p style={muted}>
-            {W.once} {W.later}
-          </p>
-          {canTurn ? (
+          {offer ? null : (
+            <p style={muted}>
+              {W.once} {W.later}
+            </p>
+          )}
+          {offer ? null : canTurn ? (
             <button type="button" style={linkPress} disabled={busy != null} onClick={() => void turnOff()}>
               {busy === 'off' ? W.turningOff : W.turnOff}
             </button>
@@ -240,18 +262,27 @@ export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged
         </>
       ) : (
         <>
-          <ValueLines>
-            <ValueLine label={W.labels.state}>
-              <WorkedOutValue>{W.off}</WorkedOutValue>
-            </ValueLine>
-          </ValueLines>
-          <p style={muted}>{secrecyLead(site)}</p>
+          {offer ? null : (
+            <ValueLines>
+              <ValueLine label={W.labels.state}>
+                <WorkedOutValue>{W.off}</WorkedOutValue>
+              </ValueLine>
+            </ValueLines>
+          )}
+          <p style={muted}>{offer ? W.offerLead : secrecyLead(site)}</p>
           {!canTurn ? (
             <p style={muted}>{W.estimator}</p>
           ) : !open ? (
-            <button type="button" style={linkPress} onClick={() => setOpen(true)}>
-              {W.turnOn}
-            </button>
+            <div style={{ display: 'flex', gap: '0.25rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" style={linkPress} onClick={() => setOpen(true)}>
+                {W.turnOn}
+              </button>
+              {offer ? (
+                <button type="button" style={{ ...linkPress, color: 'var(--text-muted)' }} onClick={() => setPassed(true)}>
+                  {W.onlySend}
+                </button>
+              ) : null}
+            </div>
           ) : (
             <div style={panel} data-testid={`${testId}-panel`}>
               <p style={step}>{W.pickPaper}</p>

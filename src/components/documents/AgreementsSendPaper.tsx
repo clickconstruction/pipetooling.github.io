@@ -19,6 +19,8 @@ import { EmptyState } from '../EmptyState'
 import { PaperPartyPicker } from './PaperPartyPicker'
 import { PaperSitePicker } from './PaperSitePicker'
 import { PaperSiteLine } from './PaperSiteLine'
+import { SiteSecrecy } from '../jobs/SiteSecrecy'
+import { paperSecrecySite } from '../../lib/addresses/siteSecrecy'
 import { paperSiteColumns, paperSiteSentence, rowsForSite, signedForSiteWords, sitePrintBox, sitePrintsAtSend, type PaperSite, type SitePrintReady } from '../../lib/addresses/paperSite'
 import type { PlaceAnswer } from '../../lib/addresses/lookAlikes'
 import { readAnswers } from '../../hooks/useAddressLookAlikes'
@@ -44,6 +46,10 @@ import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
  * signer reads the address above the paper before signing, and the words under the box say that line. The box is dead
  * until the signer's page can show an address (`readSignerPageShowsSite`), so it never promises what no signer reads.
  * A new site unticks it.
+ *
+ * Under those sits **Secrecy on this site** (piece 4, part 4d), for a named site whose secrecy is off: one question,
+ * **Turn on secrecy for this site** or **Only send this one**. Turning it on is the site's own press and writes
+ * nothing of this paper. Once Send email has written the row the question is gone: the paper stands as sent.
  *
  * `startOn` lets another door start at the person step for a paper it names: the Contract library's Send to…. And
  * `onOpenLibrary` is where the paper step sends someone who wants to write or change a paper.
@@ -85,7 +91,7 @@ export function AgreementsSendPaper({
   /** Opens the Contract library in place. */
   onOpenLibrary: () => void
 }) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   /** A phone: Send a paper stands a fingertip tall. A desk adds nothing. */
   const pressFloor = paperPressFloor(useNarrowViewport640())
   const { showToast } = useToastContext()
@@ -293,6 +299,8 @@ export function AgreementsSendPaper({
     }
   }, [printSiteKey])
   const printBox = step?.at === 'send-party' && !step.again ? sitePrintBox(step.site ?? null, step.printsAddress === true, printReady) : null
+  // The site as the secrecy block takes it: a new paper that names one, until its row is written.
+  const secrecySite = step?.at === 'send-party' && !step.again && step.kept !== true ? paperSecrecySite(step.site) : null
 
   // Escape closes the three windows this press draws itself: the paper list, Who is it with? and the one that says a
   // paper is already out. Nothing is written in any of them. The Send window keeps its own keys: it holds an address
@@ -497,7 +505,10 @@ export function AgreementsSendPaper({
             siteSlot={
               // A copy that is out keeps the site it was sent for: only a new paper is asked.
               step.again ? null : (
-                <PaperSiteLine site={step.site ?? null} box={printBox} kept={step.kept === true} onPick={() => setSitePicking(true)} onTakeOff={() => void nameSite(null)} onPrint={(on) => setStep({ ...step, printsAddress: on })} />
+                <>
+                  <PaperSiteLine site={step.site ?? null} box={printBox} kept={step.kept === true} onPick={() => setSitePicking(true)} onTakeOff={() => void nameSite(null)} onPrint={(on) => setStep({ ...step, printsAddress: on })} />
+                  {secrecySite ? <SiteSecrecy site={secrecySite} mode="offer" role={role} testId="contract-send-site-secrecy" /> : null}
+                </>
               )
             }
             onRowWritten={() => setStep((s) => (s?.at === 'send-party' && !s.again ? { ...s, kept: true } : s))}

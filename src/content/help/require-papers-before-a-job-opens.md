@@ -195,6 +195,12 @@ Turn it on the same way. Every job at that address takes the paper. So does a jo
 
 A job in a development shows the block only while its development has secrecy on. The block has no press there. Open the development's page to turn it off.
 
+### While you send a paper
+
+**Send a paper** offers the same press. Name a site in the email window. When secrecy is not on for that site, **Secrecy on this site** shows under the site's line.
+
+Press **Turn on secrecy for this site** to turn it on there. Press **Only send this one** to send the one paper and leave secrecy off. More is in [find an agreement we sent or signed](/help/find-an-agreement-we-sent-or-signed#turn-on-secrecy-for-the-site-from-the-email-window).
+
 ## Change a paper's words
 
 The job keeps the words the paper had on the day you required it. Editing the Contract Book later does not change them. To use new words, take the paper off and add it again. Everyone then signs the new words.
