@@ -66,6 +66,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { LienVoidedByHandRecords } from './LienVoidedByHandRecords'
+import { LienVoidedRecords } from './LienVoidedRecords'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { contractorAddressGate, lienOwnerIsPublic } from '../../lib/jobs/lienDeskAffidavits'
@@ -1072,9 +1073,15 @@ export default function LienFilingTabs({
   )
   }
 
-  // Punch list #443, row 1: a dev's list of the job's voided by-hand notice records, with Delete, and on a test job the
-  // Activity lines of records deleted before, with Clear. It draws nothing for anyone else.
-  const voidedByHandBox = <LienVoidedByHandRecords role={authRole} filings={filings} job={job} jobId={job.id} onChanged={onChanged} />
+  // Punch list #443. Row 2: a dev's list of a test job's voided records of every kind, with Put back. Row 1: a dev's
+  // list of the job's voided by-hand notice records, with Delete, and on a test job the Activity lines of records
+  // deleted before, with Clear. Both draw nothing for anyone else.
+  const voidedBoxes = (
+    <>
+      <LienVoidedRecords role={authRole} filings={filings} job={job} onChanged={onChanged} />
+      <LienVoidedByHandRecords role={authRole} filings={filings} job={job} jobId={job.id} onChanged={onChanged} />
+    </>
+  )
 
   const historyBox = live.length > 0 && (
     <div style={{ margin: '0 0 0.9rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' }}>
@@ -1340,7 +1347,7 @@ export default function LienFilingTabs({
       <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
         <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
           {historyBox}
-          {voidedByHandBox}
+          {voidedBoxes}
           {!isSub ? (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               No monthly notice required — this job has no GC on file, so you contracted with the owner (original
@@ -1542,7 +1549,7 @@ export default function LienFilingTabs({
       <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
         <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
           {historyBox}
-          {voidedByHandBox}
+          {voidedBoxes}
           <div style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.55rem 0.7rem', marginBottom: '0.8rem' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.35rem' }}>Before this affidavit can be generated</div>
             {affidavitGates.map((g, i) => (
@@ -1692,7 +1699,7 @@ export default function LienFilingTabs({
     <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
       <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
         {historyBox}
-        {voidedByHandBox}
+        {voidedBoxes}
         {!releaseLien ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             No recorded lien on this job — this release becomes available once an affidavit filing is recorded.

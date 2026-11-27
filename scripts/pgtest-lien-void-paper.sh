@@ -20,6 +20,13 @@
 # failed assertion; ends with
 # "lien_void_paper PASSED".
 #
+# Punch list #443, row 2: *_lien_filing_unvoid_test.sql restates the trigger's function so that a void remembers what
+# it did to a paper, so it runs a second time after the two files above, last, and the bed still ends on what prod
+# runs. Its second run must leave lien_void_memory_since() at its first answer. 20_scenario.sql then proves a void
+# does to a paper what it did before, and 30_unvoid.sql plays the un-void (unvoid_test_lien_filing): each paper a
+# void moved comes back as it stood, and each refusal says its own sentence. Every scenario in the folder ends with
+# "lien_void_paper PASSED".
+#
 # Docker only (GitHub's SQL beds workflow). Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -29,6 +36,7 @@ NAME="pgtest-lien-void-paper"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 MIGRATION="$(ls supabase/migrations/*_lien_void_puts_paper_back.sql)"
 LATER="$(ls supabase/migrations/*_lien_void_puts_notice_back.sql)"
+UNVOID="$(ls supabase/migrations/*_lien_filing_unvoid_test.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,11 +52,17 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 pgtest_migrate
-# A second run of each migration, the later one last, so the bed ends on what prod runs.
-for f in "$MIGRATION" "$LATER"; do
+# A second run of each migration, the newest last, so the bed ends on what prod runs.
+SINCE="$(psql_as postgres -At -c 'SELECT public.lien_void_memory_since()')"
+for f in "$MIGRATION" "$LATER" "$UNVOID"; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
-out="$(psql_as postgres -f - < supabase/tests/lien_void_paper/20_scenario.sql 2>&1 || true)"
-if ! grep -q "lien_void_paper PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
-grep -o "ok: .*" <<<"$out"
+AGAIN="$(psql_as postgres -At -c 'SELECT public.lien_void_memory_since()')"
+if [ -z "$SINCE" ] || [ "$SINCE" != "$AGAIN" ]; then echo "FAILED: lien_void_memory_since() moved on a second run: '$SINCE' then '$AGAIN'"; exit 1; fi
+echo "ok: lien_void_memory_since() kept its first answer on a second run"
+for scenario in supabase/tests/lien_void_paper/*.sql; do
+  out="$(psql_as postgres -f - < "$scenario" 2>&1 || true)"
+  if ! grep -q "lien_void_paper PASSED" <<<"$out"; then echo "FAILED $scenario"; echo "$out" | tail -40; exit 1; fi
+  grep -o "ok: .*" <<<"$out"
+done
 echo "lien-void-paper bed ok"
