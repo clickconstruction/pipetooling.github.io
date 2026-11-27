@@ -123,6 +123,7 @@ import { useSiteIsFar } from '../hooks/useSiteIsFar'
 import { useSiteStartChecks, type SiteStartJob } from '../hooks/useSiteStartChecks'
 import { useLandOnLook } from '../hooks/useLandOnLook'
 import { asksForTripsLook, DEVELOPMENT_LOOK_PARAM, tripIdAsked, tripRowAnchor, tripRowAsked } from '../lib/trips/jobTrips'
+import { asksForMaterialsReport, withoutReport } from '../lib/materials/siteReportDoor'
 import { plansByDateTrips } from '../lib/trips/tripLane'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 import { tripHistoryLines } from '../lib/trips/tripHistory'
@@ -137,7 +138,7 @@ import { foldPhotoBatches } from '../lib/developments/photoLines'
 export default function DevelopmentPage() {
   const { id: developmentId = '' } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
   // The Money look's order and folds, and which looks are folded, remembered on the device.
   const [moneySort, setMoneySort] = useState<MoneySortMode>(() => readMoneySort(developmentId))
@@ -212,10 +213,17 @@ export default function DevelopmentPage() {
   // The material location report (punch list #268): the site's cages and boxes on one paper, read when the window opens.
   const [reportOpen, setReportOpen] = useState(false)
   // `?report=materials` (punch list #330): the site's materials screen links here to print, and the window opens by itself for the office door.
-  const reportAsked = searchParams.get('report') === 'materials'
+  const reportAsked = asksForMaterialsReport(searchParams)
   useEffect(() => {
     if (reportAsked && moneyShown) setReportOpen(true)
   }, [reportAsked, moneyShown])
+  // On close the mark leaves the address too (finding 325): it stayed, so a reload drew the paper again. A replace,
+  // so Back still goes to the materials screen the person came from.
+  const closeReport = () => {
+    setReportOpen(false)
+    const next = withoutReport(searchParams)
+    if (next) setSearchParams(next, { replace: true })
+  }
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
   // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line, the composer's door, and the entries people keep (read with the page, a kept one prepended).
@@ -1926,7 +1934,7 @@ export default function DevelopmentPage() {
           site={{ name: dev.name, customer: data.customer?.name ?? null, address: address || null }}
           jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), name: (j.job_name ?? '').trim() }))}
           printedBy={profileName}
-          onClose={() => setReportOpen(false)}
+          onClose={closeReport}
         />
       ) : null}
     </div>
