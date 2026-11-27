@@ -2361,6 +2361,13 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.7800 a trip is kept too, and the trips office reads a site's own deleted trips through a function of its own (see *Trips*, **Deleted trips**).
 - **Access**: The archive table is **dev-only** — RLS `SELECT USING (public.is_dev())`, and **no** INSERT/UPDATE/DELETE policy (only the `SECURITY DEFINER` trigger, owned by postgres, writes it).
   Not in the realtime publication.
+- **Voided test bills** (v2.8682, `20261127024428_voided_test_bills.sql`, punch list #443, row 7): **`public.voided_test_bills`** holds one row a voided bill of a ZZ test job, beside the archive's copy of the bill's row and not in place of it.
+  **Read** by a dev alone, through `voided_test_bills_select_dev` (`(SELECT public.is_dev())`).
+  **Written** by nobody signed in: `authenticated` holds `SELECT` alone, `anon` holds nothing, and there is no INSERT, UPDATE or DELETE policy.
+  The `void-stripe-invoice-for-revert` edge function writes it as the service role, right before it deletes the bill, and only for a job whose name or stored customer name starts with ZZ.
+  Who may void a bill is unchanged, and a bill of a real job leaves no row.
+  A dev reads the rows under the folded line *Voided test bills · N* at the foot of Bill Customer on that job, where nothing can be pressed (`BillCustomerVoidedTestBills`).
+  A row goes with its job and nothing else removes one.
 - **Restore (v2.698, `20260716180000_deleted_records_restore.sql`)**: two **dev-only** RPCs — `list_deleted_records(p_limit)` (restorable bundles;
   a non-dev gets zero rows) and `restore_deleted_records(p_group_key, p_dry_run)` → `{ok, dry_run, inserted, warnings, blockers}`.
   Both `SECURITY DEFINER` with an inlined `role = 'dev'` gate (`EXECUTE` is granted to `authenticated`;

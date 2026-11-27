@@ -56,6 +56,7 @@ import { rememberBillEmailSent, sendStripeBillEmail } from '../../lib/billing/se
 import { GC_OFFICE_TEAM } from '../../lib/gc/access'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
+import { BillCustomerVoidedTestBills } from './BillCustomerVoidedTestBills'
 import { StripeInvoiceLinesSummary } from './StripeInvoiceLinesSummary'
 import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
@@ -3201,6 +3202,8 @@ export default function SendRecordInvoiceModal({
             )}
           </div>
         )}
+        {/* Punch list #443, row 7: for a dev on a ZZ test job, the bills voided here before, read only. */}
+        <BillCustomerVoidedTestBills role={authRole} jobId={jobRaw?.id} job={jobRaw} />
       </div>
     </div>
     {editDueDateOpen ? (

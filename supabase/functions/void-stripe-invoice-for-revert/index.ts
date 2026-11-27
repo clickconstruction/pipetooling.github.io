@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
   anyStripeApiKeyConfigured,
@@ -13,6 +13,13 @@ import {
   STRIPE_OOB_META_REFERENCE,
 } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import {
+  VOIDED_TEST_BILLS_TABLE,
+  VOIDED_TEST_BILL_SENDS_CAP,
+  VOIDED_TEST_BILL_SENT_COPY_COLS,
+  voidedTestBillKept,
+  voidedTestBillRecord,
+} from '../_shared/voidedTestBill.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +82,91 @@ function isMissingStripeInvoiceError(e: unknown): boolean {
   if (msg.includes('no such invoice')) return true
   if (o.code === 'resource_missing' && msg.includes('invoice')) return true
   return false
+}
+
+/**
+ * Punch list #443, row 7 — a voided test bill leaves a record. The delete below takes the bill's row and, by their
+ * foreign key, the rows of its Stripe emails. For a bill of a ZZ test job, and for no other, the function copies
+ * the row and its sends first and writes one `voided_test_bills` row right before the delete.
+ *
+ * The record never stops a void. Every read and the insert are caught here: a table that is not on the database
+ * yet, a read that is refused or a row the table will not take is logged, and the delete runs exactly as it did
+ * before. A bill of a real job costs one read of its job's two names and nothing more.
+ */
+type TestBillCopy = {
+  bill: unknown
+  emailSends: unknown[]
+  sentCopies: unknown[]
+  actor: { name?: string | null; email?: string | null } | null
+}
+
+/** What the record needs, read before anything is deleted. Null for a job that is no ZZ test job, and when a read fails. */
+async function readTestBillCopy(admin: SupabaseClient, invoiceId: string, jobId: string, userId: string): Promise<TestBillCopy | null> {
+  try {
+    const { data: job, error: jobErr } = await admin
+      .from('jobs_ledger')
+      .select('job_name, customer_name')
+      .eq('id', jobId)
+      .maybeSingle()
+    if (jobErr) {
+      console.error('void-stripe-invoice-for-revert: test bill record, job read', jobErr)
+      return null
+    }
+    if (!voidedTestBillKept(job)) return null
+
+    const [bill, emailSends, sentCopies, actor] = await Promise.all([
+      admin.from('jobs_ledger_invoices').select('*').eq('id', invoiceId).maybeSingle(),
+      admin
+        .from('jobs_ledger_invoice_stripe_email_sends')
+        .select('id, sent_at, stripe_invoice_id, copy_emails')
+        .eq('jobs_ledger_invoice_id', invoiceId)
+        .order('sent_at', { ascending: true })
+        .limit(VOIDED_TEST_BILL_SENDS_CAP),
+      admin
+        .from('sent_documents')
+        .select(VOIDED_TEST_BILL_SENT_COPY_COLS)
+        .eq('source_table', 'jobs_ledger_invoices')
+        .eq('source_id', invoiceId)
+        .order('sent_at', { ascending: true })
+        .limit(VOIDED_TEST_BILL_SENDS_CAP),
+      admin.from('users').select('name, email').eq('id', userId).maybeSingle(),
+    ])
+    if (bill.error || !bill.data || emailSends.error || sentCopies.error) {
+      console.error('void-stripe-invoice-for-revert: test bill record, copy read', bill.error ?? emailSends.error ?? sentCopies.error ?? 'bill row not read')
+      return null
+    }
+    return {
+      bill: bill.data,
+      emailSends: Array.isArray(emailSends.data) ? emailSends.data : [],
+      sentCopies: Array.isArray(sentCopies.data) ? sentCopies.data : [],
+      // Who voided it is a name on the record, and a record with no name is still a record.
+      actor: actor.error ? null : (actor.data ?? null),
+    }
+  } catch (e) {
+    console.error('void-stripe-invoice-for-revert: test bill record, copy read', e)
+    return null
+  }
+}
+
+/**
+ * Write the record, right before the delete. True when a record of this bill stands afterwards. A second try of the
+ * same void keeps the first record (`invoice_id` is unique, and a duplicate is passed over).
+ */
+async function keepTestBillRecord(admin: SupabaseClient, copy: TestBillCopy | null, stripeAction: string, userId: string): Promise<boolean> {
+  if (!copy) return false
+  try {
+    const record = voidedTestBillRecord({ ...copy, stripeAction, voidedBy: userId })
+    if (!record) return false
+    const { error } = await admin.from(VOIDED_TEST_BILLS_TABLE).upsert(record, { onConflict: 'invoice_id', ignoreDuplicates: true })
+    if (error) {
+      console.error('void-stripe-invoice-for-revert: test bill record not kept', error)
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error('void-stripe-invoice-for-revert: test bill record not kept', e)
+    return false
+  }
 }
 
 serve(async (req) => {
@@ -238,6 +330,13 @@ serve(async (req) => {
     const isStripeChannel = row.external_send_channel === 'stripe'
     const isSubCollectSendBack = Boolean(collectBackJobId)
 
+    // Punch list #443, row 7: a ZZ test job's bill is copied after the payment check of its path, before the Stripe
+    // step and before the delete. Null for every other bill, and when the copy could not be read: the void then
+    // runs as it always has.
+    const billJobId = String(row.job_id)
+    const callerId = user.id
+    const readCopy = () => readTestBillCopy(admin, invoiceId, billJobId, callerId)
+
     if (!stripeInvId && !isStripeChannel) {
       if (!isSubCollectSendBack) {
         return jsonResponse({ error: 'Not a Stripe-backed invoice' }, 400)
@@ -256,12 +355,13 @@ serve(async (req) => {
       if (paymentRows && paymentRows.length > 0) {
         return jsonResponse({ error: PAYMENTS_BLOCK }, 409)
       }
+      const keptRecord = await keepTestBillRecord(admin, await readCopy(), 'db_only_non_stripe_collect_send_back', user.id)
       const { error: delErr } = await admin.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
       if (delErr) {
         console.error('void-stripe-invoice-for-revert: db delete (non-stripe collect send-back)', delErr)
         return jsonResponse({ error: 'Failed to delete invoice' }, 500)
       }
-      return jsonResponse({ success: true, stripe_action: 'db_only_non_stripe_collect_send_back' })
+      return jsonResponse({ success: true, stripe_action: 'db_only_non_stripe_collect_send_back', kept_record: keptRecord })
     }
 
     const PAYMENTS_BLOCK =
@@ -280,13 +380,16 @@ serve(async (req) => {
     }
 
     if (!stripeInvId) {
+      const keptRecord = await keepTestBillRecord(admin, await readCopy(), 'db_only_no_stripe_id', user.id)
       const { error: delErr } = await admin.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
       if (delErr) {
         console.error('void-stripe-invoice-for-revert: db delete (no stripe id)', delErr)
         return jsonResponse({ error: 'Failed to delete invoice' }, 500)
       }
-      return jsonResponse({ success: true, stripe_action: 'db_only_no_stripe_id' })
+      return jsonResponse({ success: true, stripe_action: 'db_only_no_stripe_id', kept_record: keptRecord })
     }
+
+    const testBillCopy = await readCopy()
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
     let stripeAction: 'delete_draft' | 'void' | 'noop' | 'noop_missing' | 'reverse_oob_mark' = 'noop'
@@ -373,6 +476,8 @@ serve(async (req) => {
       }
     }
 
+    // The Stripe step is done. The record names what it did, and is written right before the row goes.
+    const keptRecord = await keepTestBillRecord(admin, testBillCopy, stripeAction, user.id)
     const { error: delErr } = await admin.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
     if (delErr) {
       console.error('void-stripe-invoice-for-revert: db delete', delErr)
@@ -410,6 +515,7 @@ serve(async (req) => {
       success: true,
       stripe_action: stripeAction,
       stripe_credit_note_id: reversedCreditNoteId,
+      kept_record: keptRecord,
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
