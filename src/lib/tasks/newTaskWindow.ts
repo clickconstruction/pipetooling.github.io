@@ -298,6 +298,12 @@ export interface NewTaskSentenceInput extends TaskSendWho {
    * The giver is then named where the sentence would say *You*.
    */
   giverName?: string | null
+  /**
+   * The task is already given: the window is Edit task, not New task. A day that has passed then reads *has had it
+   * since*, where *gets it on* a day long past read as a mistake (punch list #348, call 8). A new task keeps *gets it
+   * on* for any day, since nobody has it yet.
+   */
+  alreadyGiven?: boolean
 }
 
 export interface NewTaskSentence {
@@ -306,13 +312,23 @@ export interface NewTaskSentence {
   dead: boolean
 }
 
-function whoGetsIt(who: TaskSendWho): string {
-  if (onlyMe(who)) return 'It goes on your list'
-  if (who.assigneeIds.length > 3) return `${who.assigneeIds.length} people each get it`
+/** `had`: the task was given on a day that has passed, so the people have had it since then. */
+function whoGetsIt(who: TaskSendWho, had = false): string {
+  if (onlyMe(who)) return had ? 'It has been on your list' : 'It goes on your list'
+  if (who.assigneeIds.length > 3) return `${who.assigneeIds.length} people ${had ? 'have each had it' : 'each get it'}`
   const names = who.assigneeIds.map((id) => (id === who.meId ? 'You' : who.nameOf(id)))
   // "You" leads, so the sentence never opens on a lower-case word.
   names.sort((a, b) => Number(b === 'You') - Number(a === 'You'))
-  return names.length === 1 ? `${names[0]} gets it` : `${joinAnd(names)} each get it`
+  if (names.length === 1) return `${names[0]} ${had ? 'has had it' : 'gets it'}`
+  return `${joinAnd(names)} ${had ? 'have each had it' : 'each get it'}`
+}
+
+/**
+ * True when a task already given names one day that has passed. Both days are the company's own calendar days, as
+ * `YYYY-MM-DD`, so the test is of days and never of an instant's first ten letters.
+ */
+export function taskDayHasPassed(day: string, todayStr: string, alreadyGiven: boolean | undefined): boolean {
+  return Boolean(alreadyGiven) && day < todayStr
 }
 
 function onDay(ymd: string, todayStr: string): string {
@@ -353,7 +369,9 @@ export function newTaskSentence(input: NewTaskSentenceInput): NewTaskSentence {
     const day = input.when === 'today' ? input.todayStr : input.startDate
     if (!day) return { text: 'Pick a day.', dead: true }
     if (input.dueDate && input.dueDate < day) return { text: 'The due day is before the task starts.', dead: true }
-    parts.push(`${who} ${onDay(day, input.todayStr)}.`)
+    // A task already given on a day that has passed: its people have had it since then (punch list #348, call 8).
+    if (taskDayHasPassed(day, input.todayStr, input.alreadyGiven)) parts.push(`${whoGetsIt(input, true)} since ${taskDayWords(day)}.`)
+    else parts.push(`${who} ${onDay(day, input.todayStr)}.`)
     if (input.dueDate && input.dueDate !== day) {
       parts.push(`It is late after ${taskDayWords(input.dueDate)}.`)
       parts.push('It stays until it is done.')

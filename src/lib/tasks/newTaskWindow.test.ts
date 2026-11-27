@@ -21,6 +21,7 @@ import {
   type NewTaskSentenceInput,
   type TaskAddRowInput,
   newTaskWindowRole,
+  taskDayHasPassed,
 } from './newTaskWindow'
 
 // Made-up people. Rosa gives the tasks.
@@ -207,6 +208,43 @@ describe('newTaskSentence', () => {
     expect(say({ assigneeIds: ['theo', 'rosa'] }).text).toBe('You and Theo each get it today. It stays until it is done. You hear when it is done.')
     expect(say({ assigneeIds: ['theo', 'imani', 'wes'] }).text).toMatch(/^Theo, Imani and Wes each get it today\./)
     expect(say({ assigneeIds: ['theo', 'imani', 'wes', 'nell'] }).text).toMatch(/^4 people each get it today\./)
+  })
+
+  it('a task already given on a day that has passed reads has had it since (punch list #348, call 8)', () => {
+    // Edit task, a task given long ago: *gets it on* a day long past read as a mistake.
+    expect(say({ alreadyGiven: true, when: 'date', startDate: '2026-02-17' }).text).toMatch(/^Theo has had it since Tue, Feb 17\./)
+    // Yesterday has passed too.
+    expect(say({ alreadyGiven: true, when: 'date', startDate: '2026-11-11' }).text).toMatch(/^Theo has had it since Wed, Nov 11\./)
+    // Today and a day to come keep *gets it*.
+    expect(say({ alreadyGiven: true, when: 'date', startDate: TODAY }).text).toMatch(/^Theo gets it today\./)
+    expect(say({ alreadyGiven: true, when: 'today' }).text).toMatch(/^Theo gets it today\./)
+    expect(say({ alreadyGiven: true, when: 'date', startDate: '2026-11-13' }).text).toMatch(/^Theo gets it tomorrow\./)
+    expect(say({ alreadyGiven: true, when: 'date', startDate: '2026-11-16' }).text).toMatch(/^Theo gets it on Mon, Nov 16\./)
+    // The rest of the sentence is as it was.
+    expect(say({ alreadyGiven: true, when: 'date', startDate: '2026-02-17' }).text).toBe('Theo has had it since Tue, Feb 17. It stays until it is done. You hear when it is done.')
+  })
+
+  it('says it for whoever has it: the giver alone, two people and a crowd', () => {
+    const past = { alreadyGiven: true, when: 'date' as const, startDate: '2026-02-17' }
+    expect(say({ ...past, assigneeIds: ['rosa'] }).text).toMatch(/^It has been on your list since Tue, Feb 17\./)
+    expect(say({ ...past, assigneeIds: ['theo', 'rosa'] }).text).toMatch(/^You and Theo have each had it since Tue, Feb 17\./)
+    expect(say({ ...past, assigneeIds: ['theo', 'imani', 'wes'] }).text).toMatch(/^Theo, Imani and Wes have each had it since Tue, Feb 17\./)
+    expect(say({ ...past, assigneeIds: ['theo', 'imani', 'wes', 'nell'] }).text).toMatch(/^4 people have each had it since Tue, Feb 17\./)
+  })
+
+  it('a new task keeps gets it on for any day, since nobody has it yet', () => {
+    expect(say({ when: 'date', startDate: '2026-02-17' }).text).toMatch(/^Theo gets it on Tue, Feb 17\./)
+    expect(say({ alreadyGiven: false, when: 'date', startDate: '2026-02-17' }).text).toMatch(/^Theo gets it on Tue, Feb 17\./)
+  })
+
+  it('the day has passed by the calendar day alone, never by an instant', () => {
+    // Both are the company's days as YYYY-MM-DD. The day before today has passed, today has not.
+    expect(taskDayHasPassed('2026-11-11', '2026-11-12', true)).toBe(true)
+    expect(taskDayHasPassed('2026-11-12', '2026-11-12', true)).toBe(false)
+    expect(taskDayHasPassed('2026-11-13', '2026-11-12', true)).toBe(false)
+    expect(taskDayHasPassed('2025-12-31', '2026-01-01', true)).toBe(true)
+    expect(taskDayHasPassed('2026-02-17', '2026-11-12', false)).toBe(false)
+    expect(taskDayHasPassed('2026-02-17', '2026-11-12', undefined)).toBe(false)
   })
 
   it('names the day, the due day and a task that leaves', () => {

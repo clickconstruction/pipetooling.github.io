@@ -437,6 +437,8 @@ export function ChecklistItemEditModal({
     tellMe: form.notify_creator_on_complete && !onlyGivers,
     tellOtherName: form.notify_on_complete_user_id ? nameOf(form.notify_on_complete_user_id) : null,
     giverName,
+    // This window edits a task that is already given, so a day long past reads *has had it since* (punch list #348, call 8).
+    alreadyGiven: true,
   })
   const dueLine = when !== 'repeat' && form.due_date ? originallyDueLine(summarizeDuePushes(dueChanges, form.due_date)) : null
 
