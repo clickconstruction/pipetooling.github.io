@@ -1,8 +1,8 @@
 ---
-name: "The type check in parts: three programs and the memory line are built; left, the app program itself, which only project references cut"
+name: "The type check in parts: three programs and the memory line are built; the app program is cut by project references, by layer, and step 1 of that train, the layering check, is built"
 number: 434
 group: ready
-status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine · PR 1 built the same day (v2.8505): npm run typecheck runs three programs, the largest 8.6 GB, and the build checks the app part alone · PR 2 built 2026-11-27 (v2.8696, its line corrected in v2.8707): every tsc ends with a line on its memory and warns from four fifths of its cap · measured again 2026-11-27: the largest part peaks at 9.3 GB, 70% of a runner's cap; no short list of heavy files; the typed database client holds 80 MB; TypeScript 7 is five times as fast and no lighter · left: PR 3, whose way is not chosen
+status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine · PR 1 built the same day (v2.8505): npm run typecheck runs three programs, the largest 8.6 GB, and the build checks the app part alone · PR 2 built 2026-11-27 (v2.8696, its line corrected in v2.8707): every tsc ends with a line on its memory and warns from four fifths of its cap · measured again 2026-11-27: the largest part peaks at 9.3 GB, 70% of a runner's cap; no short list of heavy files; the typed database client holds 80 MB; TypeScript 7 is five times as fast and no lighter · PR 3's way chosen 2026-11-27: project references, by layer first · sized the same day as a train of its own · its step 1 built (v2.8749): check:layers refuses a new import that reaches up a layer · one measure run is reading what declarations cost and save
 summary: >
   One tsc over all of src needed 12.3 GB of heap on 2026-11-24 and grew about 190 MB a day, and a
   GitHub runner can give about 13.3 GB. Since v2.8505 the check runs the same files as three
@@ -10,13 +10,14 @@ summary: >
   That leaves a runner about 4.7 GB over the largest part, four to five weeks at today's pace.
   Since v2.8696 every tsc ends with a line on its memory, and warns from four fifths of its cap.
   Left: cut the app program itself. Measured on 2026-11-27, nothing cheap cuts it: the memory follows
-  the lines of code, so only fewer source files in one program does. This card holds the numbers,
-  the plan and the measuring script.
-next: Choose PR 3's way from *Measured 2026-11-27* below. The question went to Taunya's managing session that day with four ways: wait for the first NEAR ITS HEAP line, start project references by feature area now, take TypeScript 7 for its speed alone, or a larger runner. Until it is answered, read the deploy's build log for the app program's cold line on any merge.
-size: M as a train of three (M · S · L); left: PR 3 (L)
+  the lines of code, so only fewer source files in one program does. That is project references,
+  by layer first. Since v2.8749 a check refuses a new import that reaches up a layer. This card holds
+  the numbers, the plan, the train's sizes and the measuring script.
+next: Read the measure run of 2026-11-27 (run 46039016437 on the throwaway branch measure/434-declarations) into *The split, sized 2026-11-27* below, beside each estimate, and show the numbers before anything past step 1 is built. Then step 2, a sweep that merges alone: the type UserRole gets its home under src/types and 92 files of the lowest folders read it from there.
+size: M as a train of three (M · S · L); PR 3 (L) is a train of its own, sized in the card; its step 1 (S) is built
 blocker: none
-ver: v2.8482 · 8505 · 8696 · 8707
-opinion: decide — the numbers are in and no cheap way cuts memory; the largest part is at 70% of the cap and grew 26 to 67 MB a day over three days, so PR 3 can wait for the first NEAR ITS HEAP line, and not past it
+ver: v2.8482 · 8505 · 8696 · 8707 · 8749
+opinion: build, a step at a time — the way is chosen and step 1 holds the tangle where it is; the measure run's numbers say how far the train pays; the largest part is at 70% of the cap and grew 26 to 67 MB a day over three days, so the room lasts 20 to 50 days
 mockup: not required — build tooling, no screen
 ---
 
@@ -64,6 +65,9 @@ run. This card is the real cut. Its first PR shipped as v2.8505, and
 - **On 2026-11-27 the largest part peaked at 9,337 MB cold**, 70% of a runner's 13,312 MB cap. The
   warning starts at 10,650 MB. The app program ended holding 7,995 MB on the deploy, against
   8,087 MB measured the same way on 2026-11-24.
+- **PR 3's step 1 is built (v2.8749).** `npm run check:layers` fails a pull request that adds an
+  import reaching up a layer, a type included. The 232 that do today are rows of
+  `scripts/layers-allowed.txt`, a list that only shrinks.
 
 ## What was measured for the cut
 
@@ -207,8 +211,10 @@ memory in `to-dos/owner-decisions-pending.md`. As built:
 - The deploy's `tsc -b` is cold on every merge, so its line is the app program's cold number, daily.
 - The warning reads the larger of the two numbers, so it was right on every run measured.
 
-**PR 3 (L): the app program itself.** It is 8.0 GB and grows with the app's lines. Its way is not
-chosen. What each way measured on 2026-11-27, with the numbers in the section above:
+**PR 3 (L): the app program itself.** It is 8.0 GB and grows with the app's lines. Its way is
+project references, by layer first: the answer of 2026-11-27 to the four ways was *Start the split
+now*, and the train is sized in *The split, sized 2026-11-27* below. What each way measured on
+2026-11-27, with the numbers in the section above:
 
 - **Find what is heavy: measured, and there is no short list.** The 10 slowest files hold 6% of the
   check time and the 1,000 slowest 72%. The typed query builders are 22% of the instantiations and
@@ -231,6 +237,46 @@ chosen. What each way measured on 2026-11-27, with the numbers in the section ab
 
 Also still open from v2.7134, the owner's decision 1: drop the deploy's `tsc -b`, since the merge
 queue has checked the same content. PR 1 makes it the app program alone, which is the smaller ask.
+
+## The split, sized 2026-11-27
+
+Counted on `origin/main` that day with a read-only import map. Nothing but step 1 is built.
+
+**What the map says.**
+
+- **The feature folders are one ring.** 62 of the 80 folders under `src/components`, with the 142
+  files at its root, import each other in a ring that holds 728,583 of its 780,283 lines. So the
+  split goes by layer first.
+- **The lowest folders reach up from 168 files**: `src/lib`, `src/utils`, `src/types` and
+  `src/constants` read hooks, components and contexts through 178 imports. 92 of them are one type,
+  `UserRole`, read from the sign-in hook. 18 files import a value, the rest types alone.
+- **The hooks reach into the components from 39 files**, and 50 hooks read 8 contexts. 10 of the 32
+  contexts import components.
+- **The edge kernels and `src/lib` import each other.** `src` reads 346 of the 897 files under
+  `supabase/functions/_shared`, so the lowest project takes a generated list of them.
+- **The big cut needs no ring cut.** Components, hooks and contexts as one project under `src/pages`
+  need two files untangled. The test programs then read declarations where they read source today.
+
+**The train.** The savings are estimates from this card's 4.5 KB a line until the measure run is read.
+
+| Step | Touches | PRs | Size | Would save |
+|---|---|---|---|---|
+| 1. The layering check. **Built, v2.8749** | a script, its kernel, its test, a list of 232 rows | 1 | S | nothing; it holds the tangle where it is |
+| 2. `UserRole`'s home | 92 files, one line each; a sweep that merges alone | 1 | S | nothing; the lowest files reaching up fall from 168 to 79 |
+| 3. The other lowest files that reach up | 79 files and 50 targets, 71 names, 767 lines of types and 97 of values | 4 | M | nothing; it opens step 4 |
+| 4a. The lowest project: `lib`, `utils`, `types`, `constants`, the kernels | 4,739 files, 745,913 lines; tooling of about 15 files; the exports that cannot be named are not counted | 2 | M, or L by the mends | 1.2 to 2.7 GB off the app part and off `tests-rest` |
+| 4b. `src/content` as a plain fourth part, any day | 6,551 files, 100,123 lines; tooling of about 8 files | 1 | S | 0.4 to 0.5 GB off the app part alone, so no room on the largest part |
+| 5. The hooks as a project | 524 files; 39 files and 3 contexts to untangle | 3 to 4 | M | about 0.3 GB; it can be skipped, since the hooks fit inside 6a |
+| 6a. Components, hooks and contexts as one project | 3,352 files, 847,277 lines; 2 files to untangle; the mends not counted | 1 to 2 | M, or L by the mends | the largest program from 9.3 GB to about 4 to 5 GB |
+| 6b. The components by feature area | at most 375 imports in 227 files to turn round, 360 of them values | 15 to 30 | L | not sizable; each area gets its own heap |
+
+The short way to the big cut is 1, 2, 3, 4a, 6a. No step owes anything on prod.
+
+**What only a measure run answers**, and one run was started on 2026-11-27 to answer them: the
+exports that cannot be named in a declaration, by layer; what the lowest project saves each part as
+declarations; what the components save `tests-rest` the same way; what declaration emit adds to a
+cold check; whether an `@/` import reads a referenced project's declarations. The run swaps the
+sources for their own declarations in the runner's checkout, so it needs no untangle.
 
 ## How to measure again
 
