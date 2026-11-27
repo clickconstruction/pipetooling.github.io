@@ -497,6 +497,16 @@ describe('BidsPricingTab render smoke', () => {
     await settle()
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByRole('dialog').textContent).toContain('Water closet')
+    // The window's dollars are the row the Workbench derived (`lib/bids/derivePricingWorkbench.ts`, punch list #46
+    // row 1). Six at $800. Cost: $1,200 material + $99 tax at 8.25% + 12 h x $50. Pinned before the move, on the tab as it stood.
+    const said = screen.getByRole('dialog').textContent ?? ''
+    expect(said).toContain('Sale Price$800.00$4,800.00')
+    expect(said).toContain('Materials (from Takeoffs)$200.00$1,200.00')
+    expect(said).toContain('Tax (8.25%)$16.50$99.00')
+    expect(said).toContain('Labor$100.00$600.00')
+    expect(said).toContain('Our cost$316.50$1,899.00')
+    expect(said).toContain('Profit$483.50$2,901.00')
+    expect(said).toContain('60.4%')
   })
 
   it('an unsent bid has no frozen-price chip', async () => {

@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { addressesOnFile, onFileMatches, type AddressOnFile } from '../../lib/addresses/addressesOnFile'
 import { PAPER_SITE_WORDS, paperSiteOfEntry, paperSiteRowNote, type PaperSite } from '../../lib/addresses/paperSite'
+import { PICKER_PHONE_QUERY, pickerRoom } from '../../lib/addresses/paperSitePickerFrame'
+import { isPagePinched } from '../../lib/messages/threadWindowFrame'
+import { visibleBand } from '../../lib/visibleBand'
 import { readAddresses } from '../../hooks/useAddressesOnFile'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { useVisualViewportBox } from '../../hooks/useVisualViewportBox'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
@@ -16,6 +21,10 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
  *
  * A site is an address already on file, never a new one typed here, so a paper's site is always a place a job or a
  * bid is at.
+ *
+ * On a phone the backdrop follows the part of the page that shows, and the head never scrolls, so the title and the ×
+ * stay on the screen with the keyboard up (finding 337, `paperSitePickerFrame.ts`). While that part is short the lead
+ * gives way, and the first choice too once something is typed.
  */
 
 const ROWS = 8
@@ -79,70 +88,82 @@ export function PaperSitePicker({
     return () => window.removeEventListener('keydown', onKey)
   }, [closesOnEscape, busy, isTopmost, onClose])
 
+  // On a phone the window follows the part of the page that shows. A page pinched larger is left pinned, since what
+  // shows is then a corner under two fingers.
+  const phone = useMatchMedia(PICKER_PHONE_QUERY)
+  const shown = useVisualViewportBox()
+  const pinched = typeof window !== 'undefined' && isPagePinched(window.visualViewport?.width, document.documentElement.clientWidth)
+  const room = pickerRoom(phone, pinched ? null : visibleBand(shown), typed)
+
   const typedEnough = typed.trim().replace(/\s/g, '').length >= 3
   const rows = useMemo(() => (list ? onFileMatches(list, typed, ROWS).filter((m) => paperSiteOfEntry(m) != null) : []), [list, typed])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 715, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
+    <div data-testid="paper-site-backdrop" style={{ position: 'fixed', ...room.place, boxSizing: 'border-box', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 715, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={PAPER_SITE_WORDS.title}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1rem 1.1rem', width: 'min(92vw, 460px)', maxHeight: 'min(80vh, 100%)', overflow: 'auto', boxSizing: 'border-box', boxShadow: '0 10px 30px rgba(0,0,0,0.18)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1rem 1.1rem', width: 'min(92vw, 460px)', maxHeight: 'min(80vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box', boxShadow: '0 10px 30px rgba(0,0,0,0.18)' }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+        {/* The head never scrolls: the way out stays on the screen. */}
+        <div data-testid="paper-site-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', flexShrink: 0 }}>
           <h3 style={{ margin: 0, fontSize: '1rem', lineHeight: 1.35 }}>{PAPER_SITE_WORDS.title}</h3>
           <button type="button" onClick={onClose} aria-label="Close" style={closeX}>
             ×
           </button>
         </div>
-        <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{lead}</p>
-        <button type="button" style={choice} disabled={busy} onClick={() => onPick(null)}>
-          {none.label}
-          <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }}>{none.hint}</span>
-        </button>
-        <input
-          type="search"
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          placeholder={PAPER_SITE_WORDS.find}
-          aria-label={PAPER_SITE_WORDS.find}
-          autoFocus
-          style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', background: 'var(--surface)', color: 'var(--text-strong)', margin: '0.6rem 0 0.2rem' }}
-        />
-        {failure ? <OfflineRetryPanel failure={failure} onRetry={() => setAttempt((n) => n + 1)} surface="paper-site-picker" idempotent /> : null}
-        {!failure && list == null ? <p style={hint}>Reading the addresses on file…</p> : null}
-        {list != null && !typedEnough ? (
-          <p style={hint} data-testid="paper-site-hint">
-            {PAPER_SITE_WORDS.typeMore}
-          </p>
-        ) : null}
-        {list != null && typedEnough && rows.length === 0 ? (
-          <>
-            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'addresses on file', query: typed }), { onPress: () => setTyped('') })} />
-            <p style={hint} data-testid="paper-site-hint">
-              {PAPER_SITE_WORDS.onFileOnly}
-            </p>
-          </>
-        ) : null}
-        <div>
-          {rows.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              style={{ ...row, ...(busy ? { cursor: 'wait' } : {}) }}
-              disabled={busy}
-              data-testid="paper-site-row"
-              onClick={() => {
-                const site = paperSiteOfEntry(m)
-                if (site) onPick(site)
-              }}
-            >
-              {m.address}
-              <span style={rowNote}>{paperSiteRowNote(m)}</span>
+        <div data-testid="paper-site-body" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', margin: '0 -0.3rem', padding: '0 0.3rem 0.15rem' }}>
+          {room.lead ? <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{lead}</p> : null}
+          {room.none ? (
+            <button type="button" style={choice} disabled={busy} onClick={() => onPick(null)}>
+              {none.label}
+              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }}>{none.hint}</span>
             </button>
-          ))}
+          ) : null}
+          <input
+            type="search"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={PAPER_SITE_WORDS.find}
+            aria-label={PAPER_SITE_WORDS.find}
+            autoFocus
+            style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', background: 'var(--surface)', color: 'var(--text-strong)', margin: '0.6rem 0 0.2rem' }}
+          />
+          {failure ? <OfflineRetryPanel failure={failure} onRetry={() => setAttempt((n) => n + 1)} surface="paper-site-picker" idempotent /> : null}
+          {!failure && list == null ? <p style={hint}>Reading the addresses on file…</p> : null}
+          {list != null && !typedEnough ? (
+            <p style={hint} data-testid="paper-site-hint">
+              {PAPER_SITE_WORDS.typeMore}
+            </p>
+          ) : null}
+          {list != null && typedEnough && rows.length === 0 ? (
+            <>
+              <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'addresses on file', query: typed }), { onPress: () => setTyped('') })} />
+              <p style={hint} data-testid="paper-site-hint">
+                {PAPER_SITE_WORDS.onFileOnly}
+              </p>
+            </>
+          ) : null}
+          <div>
+            {rows.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                style={{ ...row, ...(busy ? { cursor: 'wait' } : {}) }}
+                disabled={busy}
+                data-testid="paper-site-row"
+                onClick={() => {
+                  const site = paperSiteOfEntry(m)
+                  if (site) onPick(site)
+                }}
+              >
+                {m.address}
+                <span style={rowNote}>{paperSiteRowNote(m)}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -78,7 +78,7 @@ export function ResearchMapCard({
       </div>
       <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
         {pins.length > 0 ? (
-          <PinsMapFrame surface="research-map" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }} pins={pins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} cluster timeDotsWords={MAP_TIME_PINS_WORDS} scrollZoomAfterClick />
+          <PinsMapFrame surface="research-map" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }} pins={pins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} cluster clusterNoun="permits" timeDotsWords={MAP_TIME_PINS_WORDS} scrollZoomAfterClick />
         ) : (
           <div style={{ position: 'relative', height: mapHeight, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', border: '1px solid var(--border)' }}>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>

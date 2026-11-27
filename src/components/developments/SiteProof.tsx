@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import {
   type ProofLine,
@@ -14,10 +14,15 @@ import {
   proofPacketHtml,
   proofSentTitle,
 } from '../../lib/addresses/siteProof'
+import { fetchSignedCopy } from '../../lib/addresses/siteProofCopiesIo'
+import { type ProofCopyFetch, buildProofPacket, downloadLabel, downloadOutcomeWords, proofFileName } from '../../lib/addresses/siteProofPdf'
 import type { SecrecySite } from '../../lib/addresses/siteSecrecy'
 import { type SiteSecrecyIo, supabaseSiteSecrecyIo } from '../../lib/addresses/siteSecrecyIo'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { saveBlobAs } from '../../lib/storageSave'
 import { plainSentence } from '../../lib/valuesInPlace'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 /**
@@ -31,7 +36,12 @@ import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
  * read when the packet opens: a help, so a count that cannot be read is said and never guessed, and a site whose
  * secrecy is off says nothing of them.
  *
- * Looking at the packet writes nothing. The signed copies, **Download** and **Send to the client** are part 5b.
+ * **Download** (part 5b) makes the packet as one PDF: the list, then each signed copy, the paper's own PDF as its
+ * record opens it. It does what is ready: a copy that cannot be had is left out and named with its reason, on the
+ * list and under the presses, and the rest are attached. The press names how many copies it goes for. A download
+ * goes to the client as a print does, so it keeps a copy under Sent copies too, the file itself.
+ *
+ * Looking at the packet writes nothing. **Send to the client** and the client's own page are later parts.
  */
 
 const heading: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }
@@ -57,8 +67,14 @@ export interface SiteProofProps {
   todayYmd: string
   /** The reads of the site's secrecy. A smoke hands a fake. */
   io?: SiteSecrecyIo
+  /** One signed paper's own PDF. A smoke hands a fake. */
+  fetchCopy?: ProofCopyFetch
+  /** Hands the finished PDF to the browser. A smoke hands a spy. */
+  save?: (blob: Blob, fileName: string) => void
   /** Prints a page and files its copy. False when the print window was blocked. A smoke hands a spy. */
   print?: typeof printAndFile
+  /** Files the downloaded PDF under Sent copies. Resolves to whether it was kept. A smoke hands a spy. */
+  file?: typeof fileSentCopy
 }
 
 /** The count of our own people for the packet: secrecy off says nothing, a count that fails is said. */
@@ -91,11 +107,21 @@ function Lines({ lines, signerLabel, dayLabel }: { lines: ReadonlyArray<ProofLin
   )
 }
 
-export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = supabaseSiteSecrecyIo, print = printAndFile }: SiteProofProps) {
+export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = supabaseSiteSecrecyIo, fetchCopy = fetchSignedCopy, save = saveBlobAs, print = printAndFile, file = fileSentCopy }: SiteProofProps) {
   const [open, setOpen] = useState(false)
   const [own, setOwn] = useState<ProofOwnPeople | null>(null)
   /** What the last press of Print did: a copy kept, or the window blocked. */
   const [printed, setPrinted] = useState<'kept' | 'blocked' | null>(null)
+  const [making, setMaking] = useState(false)
+  /** What the last download did, or why it could not be made. `kept` once its copy is filed. */
+  const [outcome, setOutcome] = useState<{ words: string; failed: boolean; kept: boolean } | null>(null)
+  const live = useRef(true)
+  useEffect(() => {
+    live.current = true
+    return () => {
+      live.current = false
+    }
+  }, [])
   const siteKey = 'developmentId' in site ? `d:${site.developmentId}` : `a:${site.address}`
 
   // The count of our own people, once the packet is open.
@@ -103,6 +129,7 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
     if (!open) return
     let mine = true
     setOwn(null)
+    setOutcome(null)
     setPrinted(null)
     void readOwnPeople(io, site).then((o) => mine && setOwn(o))
     return () => {
@@ -122,19 +149,41 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  const ownWords = own ? ownPeopleWords(own) : null
+  // What a kept copy says about itself, for a print and for a download alike.
+  const siteId = 'developmentId' in site ? site.developmentId : null
+  const filing = useMemo(
+    () => ({ kind: SITE_PROOF_SENT_KIND, title: proofSentTitle(clientName, siteName), recipientName: (clientName ?? '').trim() || null, source: siteId ? { table: 'developments', id: siteId } : null }),
+    [clientName, siteName, siteId],
+  )
+  const download = useCallback(async () => {
+    if (making) return
+    setMaking(true)
+    setOutcome(null)
+    try {
+      const packet = await buildProofPacket({ proof, clientName, siteName, ownWords, todayYmd }, fetchCopy)
+      if (!live.current) return
+      const fileName = proofFileName(siteName)
+      save(packet.blob, fileName)
+      const said = { words: downloadOutcomeWords(packet.attached, packet.held), failed: false, kept: false }
+      setOutcome(said)
+      // A download is a send: the file is kept, and the line says so once it is.
+      void file({ ...filing, how: 'download' }, { blob: packet.blob, fileName, contentType: 'application/pdf' }).then((kept) => {
+        if (kept && live.current) setOutcome((now) => (now === said ? { ...said, kept: true } : now))
+      })
+    } catch (e) {
+      if (live.current) setOutcome({ words: formatErrorMessage(e, 'The PDF could not be made.'), failed: true, kept: false })
+    } finally {
+      if (live.current) setMaking(false)
+    }
+  }, [making, proof, clientName, siteName, ownWords, todayYmd, fetchCopy, save, file, filing])
+
   if (!proofDraws(proof)) return null
   const title = proofHeading(clientName)
-  const ownWords = own ? ownPeopleWords(own) : null
   const site_ = (siteName ?? '').trim()
   // The page that prints is the page on the screen, as a document of its own, and its copy is kept.
   const printPacket = () => {
-    const html = proofPacketHtml({ proof, clientName, siteName, ownWords, todayYmd })
-    const went = print(html, {
-      kind: SITE_PROOF_SENT_KIND,
-      title: proofSentTitle(clientName, siteName),
-      recipientName: (clientName ?? '').trim() || null,
-      source: 'developmentId' in site ? { table: 'developments', id: site.developmentId } : null,
-    })
+    const went = print(proofPacketHtml({ proof, clientName, siteName, ownWords, todayYmd }), filing)
     setPrinted(went ? 'kept' : 'blocked')
   }
 
@@ -154,9 +203,12 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
               <div role="dialog" aria-modal="true" aria-label={W.windowLabel} style={{ display: 'grid', gap: 10, alignContent: 'start', width: 816, maxWidth: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '8px 12px' }}>
                   <b>{W.windowLabel}</b>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button" onClick={() => setOpen(false)} style={plainPress}>
                       {W.close}
+                    </button>
+                    <button type="button" onClick={() => void download()} disabled={making || own == null} style={{ ...plainPress, ...(making || own == null ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' } : {}) }}>
+                      {downloadLabel(proof, making)}
                     </button>
                     <button type="button" onClick={printPacket} style={bluePress}>
                       {W.print}
@@ -165,6 +217,11 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
                   {printed ? (
                     <p role={printed === 'blocked' ? 'alert' : 'status'} data-testid="site-proof-print-outcome" style={{ ...muted, flexBasis: '100%', color: printed === 'blocked' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
                       {printed === 'blocked' ? W.printBlocked : W.printKept}
+                    </p>
+                  ) : null}
+                  {outcome ? (
+                    <p role={outcome.failed ? 'alert' : 'status'} data-testid="site-proof-download-outcome" style={{ ...muted, flexBasis: '100%', color: outcome.failed ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                      {outcome.kept ? `${outcome.words} ${W.downloadKept}` : outcome.words}
                     </p>
                   ) : null}
                 </div>
@@ -195,7 +252,7 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
                   ) : null}
 
                   <p style={{ ...muted, borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.4rem' }} data-testid="site-proof-foot">
-                    {asOfWords(todayYmd)} {W.listAlone}
+                    {asOfWords(todayYmd)} {W.downloadAdds}
                   </p>
                 </div>
               </div>
