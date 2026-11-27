@@ -109,10 +109,32 @@ describe('paceReading: hours used against work done, in hours', () => {
     expect(paceReading({ ...base, hoursUsed: null })).toMatchObject({ state: 'early' })
   })
 
-  it('money never makes the headline: it is one calm line, and silent when the hours already say it', () => {
-    const calm = paceReading({ ...base, pctDone: 52, hoursUsed: 80, money: { leads: true, wrong: false } })
-    expect(calm).toMatchObject({ state: 'track', tone: 'calm', headline: 'On track.', moneyLine: 'Money spent is ahead of the work. The office watches that.' })
-    expect(paceReading({ ...base, pctDone: 52, hoursUsed: 80, money: { leads: true, wrong: true } }).moneyLine).toBe('The office’s money budget for this job looks wrong. There is nothing for you to do.')
+  it('money ahead of the work while the hours are not is a warning of its own, in amber (Taunya, 2026-11-27)', () => {
+    const warned = paceReading({ ...base, pctDone: 52, hoursUsed: 80, money: { leads: true, wrong: false } })
+    expect(warned).toMatchObject({ state: 'track', tone: 'amber', headline: 'Money spent is ahead of the work.', moneyLine: null, setPctAsk: null, stillPct: null, finishAsk: null })
+    expect(warned.lines).toEqual(['Hours and work are moving together.', 'More has been spent on this job than the work done accounts for.', 'If parts were bought ahead, tell the office so they know why.'])
+    // The bars are the hours' own, as on a calm card, and no dollar is said.
+    expect(warned.bars).toEqual(paceReading({ ...base, pctDone: 52, hoursUsed: 80 }).bars)
+    expect(JSON.stringify(warned)).not.toMatch(/\$/)
+    // With the work ahead of the hours the card would be green. The money still warns, and the hours' line stays.
+    const under = paceReading({ ...base, pctDone: 80, hoursUsed: 80, money: { leads: true, wrong: false } })
+    expect(under).toMatchObject({ state: 'under', tone: 'amber', headline: 'Money spent is ahead of the work.', moneyLine: null })
+    expect(under.lines[0]).toBe(paceReading({ ...base, pctDone: 80, hoursUsed: 80 }).lines[0])
+    expect(under.lines).toHaveLength(3)
+  })
+
+  it('when the hours are ahead too, the hours’ warning wins, exactly as it was', () => {
+    for (const money of [{ leads: true, wrong: false }, { leads: true, wrong: true }]) {
+      expect(paceReading({ ...base, money })).toEqual(paceReading({ ...base }))
+    }
+    expect(paceReading({ ...base })).toMatchObject({ tone: 'red', headline: 'Hours are ahead of the work.', moneyLine: null })
+  })
+
+  it('a money budget that looks wrong, and a card that cannot compare, keep the one calm line', () => {
+    const wrong = paceReading({ ...base, pctDone: 52, hoursUsed: 80, money: { leads: true, wrong: true } })
+    expect(wrong).toMatchObject({ tone: 'calm', headline: 'On track.', moneyLine: 'The office’s money budget for this job looks wrong. There is nothing for you to do.' })
+    // Under 8 hours the card cannot compare hours and work, so it does not warn: the money is the grey line it was.
+    expect(paceReading({ ...base, hoursUsed: 6, money: { leads: true, wrong: false } })).toMatchObject({ state: 'early', tone: 'calm', moneyLine: 'Money spent is ahead of the work. The office watches that.' })
     expect(paceReading({ ...base, money: { leads: true, wrong: false } }).moneyLine).toBeNull()
     expect(paceReading({ ...base, pctDone: 52, hoursUsed: 80, money: { leads: false, wrong: false } }).moneyLine).toBeNull()
   })
@@ -139,7 +161,7 @@ describe('the words a first-timer reads keep the plain-words rules', () => {
       W.stillRight('40%'), W.oldWhy('Fri, Oct 23', '18 hours'), W.stillSaved(40), W.stillFailed,
       W.track, W.trackWhy, W.under, W.underBy('19 hours'),
       W.noPercent, W.noPercentNext, W.noBudget, W.noBudgetNext, W.early, W.earlyWhy,
-      W.left('56 hours', '2 days'), W.leftShort('10 hours'), W.moneyLeads, W.moneyWrong, W.gapKey,
+      W.left('56 hours', '2 days'), W.leftShort('10 hours'), W.moneyLeads, W.moneyWrong, W.moneyAhead, W.moneyAheadWhy, W.moneyAheadNext, W.gapKey,
       ...W.whatLines, paceStillNote(40),
     ].map(plainSentence)
     expect(said.flatMap(plainWordsFailures)).toEqual([])

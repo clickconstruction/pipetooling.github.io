@@ -113,7 +113,7 @@ that bundles it reading as behind. The owner, 2026-11-20: "Yes, do it".
 | Nobody has set a percent | *Nobody has set the work percent yet.* **Set the %**. |
 | Under 8 hours | *Too early to tell.* |
 | No hours budget | *This job has no hours budget yet.* The office sets it. |
-| Money ahead, hours not | The hours' own headline, and one grey line that the office watches the money. |
+| Money ahead, hours not | *Money spent is ahead of the work.* Amber. The hours' own line, then *More has been spent on this job than the work done accounts for.* and *If parts were bought ahead, tell the office so they know why.* No dollar, no press. When the hours are ahead too, the hours' warning wins. |
 
 ## The four calls left for the owner (two answered 2026-11-27)
 
@@ -236,3 +236,21 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 - **Not settled on that look.** A page not opened before, pressed two minutes after a deploy ended, read *Loading…* for 22 to 33 seconds and never *Updating app…*. The page may already have been on the new build, so it neither passes nor fails the mend.
 - **Still not walked.** The second look, a deploy landing while View as is on. No phone has seen the mend. Which wait hung on the simulator was never seen there, since no log came off it. Both looks are the walkers', with the recipe the build thread left in its hand-over note.
 - **It is not the pace card's own fault.** The card was only on screen. The reload path's earlier mends are on the legal portal's card (#85), under the main chunk's split.
+
+## Call 1 flipped: the money warns (2026-11-27)
+
+Call 1 was built to stay calm. Taunya saw the card as built beside a mock-up of the warning on 2026-11-27 and said:
+
+> I don't want to stay calm, I want the warning, hours are ahead of the work
+
+So the pick is flipped, and the crew's card warns. When a job's money is ahead of the work and its hours are not,
+the card is amber, its headline reads *Money spent is ahead of the work.*, and under the hours' own line it says
+*More has been spent on this job than the work done accounts for.* and *If parts were bought ahead, tell the office
+so they know why.* It shows no dollar and adds no press. The words are the mock-up's, and Taunya may change them.
+
+What stays as it was. When the hours are ahead of the work the card is red and reads *Hours are ahead of the work.*,
+and when both are true that warning wins. A money budget that looks wrong is still one calm line. A card that cannot
+compare hours and work (no percent, no hours budget, under 8 hours) still says the money in one grey line.
+
+The rule is in `src/lib/jobMode/paceReading.ts`, which no edge function copies, so nothing is owed after the merge.
+Built as v2.8720. Not yet seen live.
