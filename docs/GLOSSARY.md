@@ -3358,6 +3358,7 @@ The train and its calls: `to-dos/task-places/README.md`.
 ### Painted map
 Lines somebody walked, drove or drew by hand on the view from above, and named places with a word and a photo, on a job or a development (punch list #345;
 Since v2.8627 a dev reads **Reopen…** under *Ended links* on a test map's Share sheet, which puts an ended link not past its day back through `desk.reopen` on `painted-map-link` (punch list #443, row 14).
+Since v2.8678 a dev's **Throw this map away** on a test map keeps a copy through `throw_away_test_painted_map` and leaves the map's photos, and *Recently deleted* puts the map back for 90 days with its lines, places and links (punch list #443, row 15).
 the tables since v2.7202, drawing by hand, places and the line under a job's address since v2.7211, the shared link since v2.7223).
 It says what a street address cannot: which gate, where to park, where the meter is.
 Tables `painted_maps`, `painted_map_lines`, `painted_map_places`;

@@ -1316,6 +1316,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos;
   removing one is its uploader's and the office's.
   Once the map is thrown away (`20261116234500_painted_map_photos_after_the_map.sql`), a file under its id is listed and removed by its uploader and the office and read by nobody else (`painted_map_stands` tells a map that is gone from one the caller cannot read), so a maker who is not office takes their own uploads with the map and a teammate's photo stays until the office removes it.
+  Since v2.8678 (punch list #443, row 15, `20261127023116_test_painted_map_keeps_a_copy.sql`) a dev alone throws away a map whose name starts with ZZ through `throw_away_test_painted_map`, which copies the map with its lines, places, links and link opens into `deleted_records_archive` and deletes it, and the app then leaves its photos in the bucket.
+  `restore_deleted_records` puts that map back as it stood, for a dev alone, and a task, a roadmap task or a Materials place that carried the map does not get it back.
+  Everyone else's **Throw this map away**, and a dev's on a map not named ZZ, is the table's own delete, which keeps no copy.
 - **A line is a shape**: `points` holds pairs of numbers, with no time for a point.
   Nothing here records where a person was or when.
 - **Walking a line reads the walker's phone and nobody else's** (v2.7220).

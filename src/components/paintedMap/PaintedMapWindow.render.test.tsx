@@ -22,6 +22,12 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
   },
 }))
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
+/** The toast host, stood in for: it keeps what the window said after it closed. */
+const toasts = vi.hoisted(() => [] as Array<{ message: string; type?: string }>)
+vi.mock('../../contexts/ToastContext', async (real) => ({
+  ...(await real<typeof import('../../contexts/ToastContext')>()),
+  useOptionalToastContext: () => ({ showToast: (message: string, type?: string) => { toasts.push({ message, type }) }, showActionToast: () => {} }),
+}))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 /**
@@ -82,6 +88,7 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
     savePaintedLineMeasure: async (lineId: string, measured: { feet: number; how: string } | null) => { io.calls.push({ fn: 'savePaintedLineMeasure', args: [lineId, measured] }); return landed({ ...(io.whole as PaintedMapWhole).lines.find((l) => l.id === lineId)!, measuredFt: measured?.feet ?? null, measuredHow: measured?.how ?? null }) },
     deletePaintedLine: async (lineId: string) => { io.calls.push({ fn: 'deletePaintedLine', args: [lineId] }); return landed(true) },
     deletePaintedMap: async (mapId: string) => { io.calls.push({ fn: 'deletePaintedMap', args: [mapId] }); return landed(true) },
+    throwAwayTestPaintedMap: async (mapId: string) => { io.calls.push({ fn: 'throwAwayTestPaintedMap', args: [mapId] }); return landed({ copied: 4, tasks: 1, places: 2 }) },
     putPaintedMapOnJob: async (mapId: string, jobId: string) => { io.calls.push({ fn: 'putPaintedMapOnJob', args: [mapId, jobId] }); return landed({ ...(io.whole as PaintedMapWhole).map, jobId, developmentId: null }) },
     savePaintedMapWords: async (mapId: string, input: { name: string; words: string }) => { io.calls.push({ fn: 'savePaintedMapWords', args: [mapId, input] }); return landed({ ...(io.whole as PaintedMapWhole).map, ...input }) },
     paintedPlacePhotoUrls: async (paths: Array<string | null>) => new Map(paths.filter((p): p is string => !!p).map((p) => [p, `https://signed.test/${p}`])),
@@ -221,6 +228,7 @@ afterEach(() => {
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   geo.asked = 0
   opened.length = 0
+  toasts.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
   device.phone = null
   here.fix = { lat: 29.6, lng: -98.3, accuracyM: 5 }
@@ -499,6 +507,74 @@ describe('a saved map', () => {
     io.whole = null
     render(<PaintedMapWindow ask={{ mapId: 'gone' }} onClose={() => {}} />)
     expect(await screen.findByText('This painted map is gone, or it is not yours to open.')).toBeTruthy()
+  })
+})
+
+describe('throwing a map away (punch list #443, row 15)', () => {
+  const TEST_MAP: PaintedMap = { ...MAP, name: 'ZZ Test way in' }
+  const TODAY = 'The map, its lines and its places go for everyone. This cannot be undone.'
+
+  it('asks a dev on a test map in the words that say a copy is kept, and sends the map through the function alone', async () => {
+    auth.value = { user: { id: 'me' }, role: 'dev' }
+    io.whole = { map: TEST_MAP, lines: [LINE()], places: [] }
+    const onClose = vi.fn()
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={onClose} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Throw this map away' }))
+    const ask = screen.getByRole('alertdialog')
+    expect(ask.textContent).toContain('Throw this test map away?')
+    expect(ask.textContent).toContain('A developer can put this test map back from Recently deleted for 90 days.')
+    expect(ask.textContent).toContain('Its photos stay.')
+    expect(ask.textContent).not.toContain('cannot be undone')
+    expect(names()).not.toContain('throwAwayTestPaintedMap')
+    fireEvent.click(screen.getByRole('button', { name: 'Throw the test map away' }))
+    await waitFor(() => expect(io.calls.find((c) => c.fn === 'throwAwayTestPaintedMap')?.args).toEqual(['m1']))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    // Today's delete sweeps the photos, so it is never sent beside the function.
+    expect(names()).not.toContain('deletePaintedMap')
+    expect(toasts).toEqual([{ message: 'The test map was thrown away. A developer can put it back from Recently deleted for 90 days. 1 task and 2 places on Materials on site lost the map.', type: 'success' }])
+  })
+
+  it('shows the function’s refusal as its own sentence, keeps the window open and never falls back to today’s delete', async () => {
+    auth.value = { user: { id: 'me' }, role: 'dev' }
+    io.whole = { map: TEST_MAP, lines: [LINE()], places: [] }
+    const onClose = vi.fn()
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={onClose} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Throw this map away' }))
+    io.refuse = 'The map is not there any more. Read the list again.'
+    fireEvent.click(screen.getByRole('button', { name: 'Throw the test map away' }))
+    await waitFor(() => expect(document.querySelector('[data-painted-error]')?.textContent).toBe('The map is not there any more. Read the list again.'))
+    expect(names()).not.toContain('deletePaintedMap')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(toasts).toEqual([])
+  })
+
+  it('leaves a dev on a real map on today’s words and today’s delete', async () => {
+    auth.value = { user: { id: 'me' }, role: 'dev' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Throw this map away' }))
+    const ask = screen.getByRole('alertdialog')
+    expect(ask.textContent).toContain('Throw this map away?')
+    expect(ask.textContent).toContain(TODAY)
+    fireEvent.click(screen.getByRole('button', { name: 'Throw the map away' }))
+    await waitFor(() => expect(io.calls.find((c) => c.fn === 'deletePaintedMap')?.args).toEqual(['m1']))
+    expect(names()).not.toContain('throwAwayTestPaintedMap')
+    expect(toasts).toEqual([])
+  })
+
+  it('leaves a test map’s own maker and the office, who are not devs, on today’s words and today’s delete', async () => {
+    for (const who of [{ user: { id: 'dana' }, role: 'helpers' }, { user: { id: 'office' }, role: 'assistant' }, { user: { id: 'owner' }, role: 'master_technician' }]) {
+      auth.value = who
+      io.whole = { map: TEST_MAP, lines: [LINE()], places: [] }
+      io.calls = []
+      const view = render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Throw this map away' }))
+      expect(screen.getByRole('alertdialog').textContent).toContain(TODAY)
+      fireEvent.click(screen.getByRole('button', { name: 'Throw the map away' }))
+      await waitFor(() => expect(io.calls.find((c) => c.fn === 'deletePaintedMap')?.args).toEqual(['m1']))
+      expect(names()).not.toContain('throwAwayTestPaintedMap')
+      view.unmount()
+    }
   })
 })
 
