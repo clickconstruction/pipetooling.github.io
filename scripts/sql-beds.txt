@@ -189,3 +189,4 @@ pay-log-screen
 portal-link-delete
 paper-site
 lien-notice-record-delete
+site-secrecy
