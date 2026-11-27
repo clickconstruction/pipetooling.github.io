@@ -200,6 +200,39 @@ Two addresses answered **Same place** are one site. See [answer addresses that l
 
 The site is kept when **Send email** is pressed, and not before. Someone on your own team is not asked for a site here.
 
+## Print the site's address on the paper
+
+A paper that names a site says nothing about the site to the person who signs. Every paper starts that way.
+
+Under the site's line sits the box **Print the site’s address on the paper**. The box is not ticked. The words under the box read *The signer reads nothing about the site.*
+
+Tick the box when the signer should read the address before they sign.
+
+1. Name the site, as above.
+2. Tick **Print the site’s address on the paper**.
+3. Read the words under the box. The words say the line the signer will read.
+4. Press **Send email**.
+
+:::example What the signer reads
+You tick the box for 118 Old Quarry Trl. Above the paper, the signer's page reads *Site address* and then 118 Old Quarry Trl, Sampleton, TX.
+:::
+
+Here is what the tick changes.
+
+- The signer's page shows the address on its own line, above the paper.
+- A signed paper's PDF prints the same line above its words. The copy the signer is emailed has it too.
+- A form's PDF is the form itself. A form prints no address.
+
+The signer reads only the address. The signer does not read which jobs are there, or the development's name.
+
+Naming another site takes the tick off. Tick the box again for the new address.
+
+The site and the box are kept when **Send email** is pressed. If the email then fails, the window stays open and they stay as sent. The line reads *Kept with the paper when Send email was pressed.* Press **Send email** again to send the same paper.
+
+The box can be grey, with a reason under it. Then the signer's page cannot show an address yet. Leave the box as it is and send the paper, or try again later.
+
+Whether a paper may print the address is your attorney's call. Leave the box off until they say so.
+
 ## See a site's papers on its jobs
 
 A paper that names a site shows on every job at that address.

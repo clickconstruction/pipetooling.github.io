@@ -15,6 +15,7 @@ import { normalizeAddressKey } from '../developments/notInIt'
 import { val } from '../valuesInPlace'
 import { onFileCountWords, type AddressOnFile } from './addressesOnFile'
 import { samePlaceKeys, type PlaceAnswer } from './lookAlikes'
+import { SITE_PRINT_LABEL } from '../../../supabase/functions/_shared/paperSitePrint'
 
 /** The longest key and the longest address as written the paper's row takes. */
 export const SITE_KEY_MAX = 300
@@ -26,8 +27,8 @@ export type PaperSite = { kind: 'address'; key: string; address: string } | { ki
 /** The two columns of a paper's row that say which site it is for. */
 export type PaperSiteRow = { site_development_id?: string | null; site_address_key?: string | null }
 
-/** The four columns as a new row writes them. The print starts off: the box that turns it on ships with the signer's page. */
-export type PaperSiteColumns = { site_development_id: string | null; site_address_key: string | null; site_address: string | null; site_prints_address: false }
+/** The four columns as a new row writes them. The print is off unless the office ticked its box, and only an address prints. */
+export type PaperSiteColumns = { site_development_id: string | null; site_address_key: string | null; site_address: string | null; site_prints_address: boolean }
 
 const oneSpace = (s: string): string => s.trim().replace(/\s+/g, ' ')
 
@@ -42,11 +43,14 @@ export function paperSiteOfEntry(entry: Pick<AddressOnFile, 'key' | 'address'>):
   return { kind: 'address', key, address }
 }
 
-/** What a new row writes for a site, and for none. */
-export function paperSiteColumns(site: PaperSite | null): PaperSiteColumns {
+/**
+ * What a new row writes for a site, and for none. `printsAddress` is the box **Print the site's address on the
+ * paper**: it is kept only beside an address, since the row refuses a print with no address to print.
+ */
+export function paperSiteColumns(site: PaperSite | null, printsAddress = false): PaperSiteColumns {
   if (!site) return { site_development_id: null, site_address_key: null, site_address: null, site_prints_address: false }
   if (site.kind === 'development') return { site_development_id: site.developmentId, site_address_key: null, site_address: null, site_prints_address: false }
-  return { site_development_id: null, site_address_key: site.key, site_address: site.address, site_prints_address: false }
+  return { site_development_id: null, site_address_key: site.key, site_address: site.address, site_prints_address: printsAddress === true }
 }
 
 /** True when a paper's row names no site. */
@@ -100,11 +104,50 @@ export const PAPER_SITE_WORDS = {
   notForASiteHint: 'The paper names no place.',
   typeMore: 'Type three letters or more of the address.',
   onFileOnly: 'A site is an address a job or a bid already has.',
+  /** In place of the presses once the paper's row is written: the site and the box are the row's from then on. */
+  kept: 'Kept with the paper when Send email was pressed.',
 } as const
 
 /** The line once a site is named: `For the site at 118 Old Quarry Trl, Sampleton, TX.` */
 export function paperSiteSentence(site: PaperSite): string {
   return site.kind === 'address' ? `For the site at ${val('address', site.address)}.` : `For the site ${val('development', site.name)}.`
+}
+
+/**
+ * Whether the signer's page can show an address yet (part 3e). The page reads through `get-contract-for-signer`, and
+ * the box is live only once that function's answer says whether its paper prints one. `checking` is the look under
+ * way, `no` an answer from a function that does not know the rule, `unread` a look that failed.
+ */
+export type SitePrintReady = 'checking' | 'yes' | 'no' | 'unread'
+
+/** The box's name. It says what the tick does to the paper. */
+export const SITE_PRINT_BOX_LABEL = 'Print the site’s address on the paper'
+
+/** The words under the box for each state it can be in. Each says exactly what the signer reads. */
+export const SITE_PRINT_HINTS = {
+  off: 'The signer reads nothing about the site.',
+  checking: 'Checking the signer’s page…',
+  no: 'The signer’s page cannot show an address yet. This stays off until it can.',
+  unread: 'The signer’s page did not answer, so this stays off. Close this window and try again.',
+} as const
+
+/** The box as the email window draws it: ticked or not, dead or live, and the words under it. */
+export type SitePrintBox = { label: string; checked: boolean; dead: boolean; hint: string }
+
+/**
+ * The box **Print the site's address on the paper** for a paper's site, or null when there is no box: the paper names
+ * no site, or its site is a development, which has no address. The box is dead until the signer's page can show an
+ * address, and a dead box is never ticked. Ticked, its words say the line the signer reads, with the address itself.
+ */
+export function sitePrintBox(site: PaperSite | null, on: boolean, ready: SitePrintReady): SitePrintBox | null {
+  if (!site || site.kind !== 'address') return null
+  if (ready !== 'yes') return { label: SITE_PRINT_BOX_LABEL, checked: false, dead: true, hint: SITE_PRINT_HINTS[ready] }
+  return { label: SITE_PRINT_BOX_LABEL, checked: on, dead: false, hint: on ? `Above the paper the signer reads ${SITE_PRINT_LABEL.en}: ${val('address', site.address)}.` : SITE_PRINT_HINTS.off }
+}
+
+/** True when a send writes the print as on: a live box, ticked, on a site that is an address. */
+export function sitePrintsAtSend(site: PaperSite | null, on: boolean, ready: SitePrintReady): boolean {
+  return sitePrintBox(site, on, ready)?.checked === true
 }
 
 /** What is at an address on file, for its row in the window: `25 jobs · Old Quarry Ranch`. */

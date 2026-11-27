@@ -42,6 +42,8 @@ export type QuickSendPersonRow = {
   /** The site the paper names, when a read asks for it (punch list #439): a development, or an address by its cleaned key. */
   site_development_id?: string | null
   site_address_key?: string | null
+  /** Whether the paper prints its site's address for the signer, when a read asks for it. */
+  site_prints_address?: boolean | null
 }
 
 export type QuickSendSource =

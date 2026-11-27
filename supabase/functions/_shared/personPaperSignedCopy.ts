@@ -15,6 +15,7 @@ import { buildPersonPaperPdf, paperAuditLine, paperMakesAPdf, paperParagraphs, p
 import { buildSignedCopyEmail, signedCopyFileName, signedCopyHold, type SignedCopyHold } from './personPaperSignedCopyEmail.ts'
 import { isPartyPaperName, paperWord, partyFileWords, signerEmailWord } from './paperSigner.ts'
 import { isCompanyPaperName } from './companyPaper.ts'
+import { withSitePrintLine } from './paperSitePrint.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 import { hasOfficeBoxes, type FormSchema } from './formSchema.ts'
 import { sendEmailViaResend } from './resendSendEmail.ts'
@@ -29,7 +30,7 @@ const SIGNATURE_BUCKET = 'contract-signer-signatures'
 
 /** The columns both callers read. */
 export const SIGNED_PAPER_COLUMNS =
-  'id, status, doc_type, person_id, person_name, party_name, document_name, signing_body_html, signing_body_format, clause_versions, form_template_id, form_pdf_storage_path, office_completed_at, signed_at, signer_consented_at, signer_ip, signer_printed_name, signer_name, signer_title, signing_for, signer_email, signer_signature_storage_path, signed_pdf_storage_path, signed_copy_sent_at'
+  'id, status, doc_type, person_id, person_name, party_name, document_name, signing_body_html, signing_body_format, clause_versions, form_template_id, form_pdf_storage_path, office_completed_at, signed_at, signer_consented_at, signer_ip, signer_printed_name, signer_name, signer_title, signing_for, signer_email, signer_signature_storage_path, signed_pdf_storage_path, signed_copy_sent_at, site_address, site_prints_address'
 
 export interface SignedPaperRow {
   id: string
@@ -56,6 +57,9 @@ export interface SignedPaperRow {
   signer_signature_storage_path: string | null
   signed_pdf_storage_path: string | null
   signed_copy_sent_at: string | null
+  /** The site's address as written, and whether the paper prints it (punch list #439). Absent on a row read without them. */
+  site_address?: string | null
+  site_prints_address?: boolean | null
 }
 
 type Admin = { from(table: string): any; storage: { from(bucket: string): any } }
@@ -106,7 +110,8 @@ export async function drawPaperPdf(admin: Admin, lib: PdfLibLike, row: SignedPap
     company: PORTAL_COMPANY.name,
     companyLine: company || null,
     forWords: paperPdfForWords(row),
-    paragraphs: paperParagraphs(row),
+    // A paper that prints its site's address opens with that line, as the signer's page showed it (punch list #439).
+    paragraphs: withSitePrintLine(paperParagraphs(row), row),
     signature: {
       printedName: paperWord(row.signer_printed_name) ?? paperWord(row.signer_name) ?? '',
       capacity: paperPdfCapacity(row),

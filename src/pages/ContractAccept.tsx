@@ -16,6 +16,8 @@ import { partyRegions, type PartyRegion } from '../lib/forms/formParties'
 import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
 import { esignConsentText, type EsignAudience } from '../lib/esignConsent'
 import { paperSaysLine } from '../lib/contracts/paperParty'
+import { SITE_PRINT_LABEL } from '../../supabase/functions/_shared/paperSitePrint'
+import { ValueLine, ValueLines, WorkedOutValue } from '../components/valuesInPlace/ValuesInPlace'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -76,6 +78,11 @@ type LoadPayload = {
   form: FormPayload | null
   /** Messages, cut 4c (v2.5294): the paper built from clauses, in English and Spanish, at the revision signed. */
   clause_paper: ClausePaperPayload | null
+  /**
+   * The site's address, when the office ticked the box that prints it on the paper (punch list #439); else null. Shown
+   * above the paper, and sent back with the signature so it is taken only from a page that showed it.
+   */
+  site_address: string | null
 }
 
 export default function ContractAccept() {
@@ -172,8 +179,10 @@ export default function ContractAccept() {
             headers: await publicFunctionHeaders(sample),
           },
         )
-        const json = (await res.json()) as Omit<LoadPayload, 'form' | 'says'> & {
+        const json = (await res.json()) as Omit<LoadPayload, 'form' | 'says' | 'site_address'> & {
           form?: FormPayload | null
+          /** Absent from a function older than the box that prints it: the page then shows none. */
+          site_address?: unknown
           signer_name?: string | null
           signer_title?: string | null
           signing_for?: string | null
@@ -211,6 +220,7 @@ export default function ContractAccept() {
             typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
           clause_paper: json.clause_paper && typeof json.clause_paper.revision === 'number' ? json.clause_paper : null,
+          site_address: typeof json.site_address === 'string' && json.site_address.trim() ? json.site_address.trim() : null,
           // Two-party forms (v2.2802): the signer sees only their boxes; the office's half is completed from the record.
           form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer'), officeRegions: partyRegions(json.form.schema, 'office') } : null,
         })
@@ -269,10 +279,13 @@ export default function ContractAccept() {
       const shownSeal = payload?.clause_paper?.[paperLang]?.sha256
       const clausePart = payload?.clause_paper && !payload.form ? { paperRevision: payload.clause_paper.revision, paperLang, ...(shownSeal ? { paperSeal: shownSeal } : {}) } : {}
       const consentPart = p.consent ? { esignConsent: p.consent } : {}
+      // A paper that prints its site's address (punch list #439) is signed only from a page that showed it: the page
+      // says which address it showed, and a signature with none is turned back to read the paper again.
+      const sitePart = payload?.site_address ? { siteAddress: payload.site_address } : {}
       const inPersonPart = inPerson ? { inPerson: true as const } : {}
       const body =
         p.mode === 'type'
-          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...clausePart, ...consentPart, ...inPersonPart }
+          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...clausePart, ...consentPart, ...inPersonPart, ...sitePart }
           : {
               token,
               printedName: p.printedName,
@@ -282,6 +295,7 @@ export default function ContractAccept() {
               ...clausePart,
               ...consentPart,
               ...inPersonPart,
+              ...sitePart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-contract`, {
         method: 'POST',
@@ -426,6 +440,17 @@ export default function ContractAccept() {
             <p data-testid="contract-accept-says" style={{ margin: '-0.4rem 0 1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               {payload.says}
             </p>
+          ) : null}
+          {payload.site_address ? (
+            // The site's address, when the paper prints it (punch list #439): one fact on its own line above the paper,
+            // so it is read before anything is signed. Its label follows the language the paper is read in.
+            <div data-testid="contract-accept-site" style={{ margin: '0 0 1rem', padding: '0.6rem 0.8rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontSize: '0.95rem', overflowWrap: 'anywhere' }}>
+              <ValueLines>
+                <ValueLine label={SITE_PRINT_LABEL[payload.form ? formLang : payload.clause_paper ? paperLang : 'en']}>
+                  <WorkedOutValue>{payload.site_address}</WorkedOutValue>
+                </ValueLine>
+              </ValueLines>
+            </div>
           ) : null}
 
           {canonical ? (

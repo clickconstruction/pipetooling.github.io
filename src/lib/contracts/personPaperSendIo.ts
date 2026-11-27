@@ -132,6 +132,15 @@ export async function materializeQuickSendRow(pending: {
   return inserted.id
 }
 
+/**
+ * Set whether a paper that is there already prints its site's address (punch list #439): a send that lands on a copy
+ * written before keeps that copy's site, and takes the box as the office left it now. Called from Send email only.
+ * The row refuses a print with no address beside it. Throws with the reason.
+ */
+export async function writePaperPrintsAddress(documentId: string, printsAddress: boolean): Promise<void> {
+  await withSupabaseRetry(async () => supabase.from('person_contract_documents').update({ site_prints_address: printsAddress }).eq('id', documentId), 'set whether the paper prints its site')
+}
+
 /** Whether the person has a live portal address: a saved slug and an unrevoked link. Nothing is minted. */
 export async function readPortalSlugIfLive(personId: string): Promise<string | null> {
   const [slugRes, linkRes] = await Promise.all([

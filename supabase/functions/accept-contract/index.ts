@@ -12,6 +12,7 @@ import { JOB_PAPER_NOT_READY, PAPER_CHANGED, SETTINGS_PAPER_BARE, clauseFreeze, 
 import { statedByWords, statedDaysFromFormValues } from '../_shared/hoursStatementForm.ts'
 import { sendSignerCopy, SIGNED_PAPER_COLUMNS, type SignedPaperRow } from '../_shared/personPaperSignedCopy.ts'
 import type { PdfLibLike } from '../_shared/jobContractPdf.ts'
+import { siteShownAtSigning } from '../_shared/paperSitePrint.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 // Contract Forms (v2.2797): the uploaded template lives here…
@@ -107,6 +108,8 @@ serve(async (req) => {
       paperSeal?: unknown
       /** Signed on the office's device, handed over in person (`?inperson=1` on the page, punch list #212, v2.6411). */
       inPerson?: unknown
+      /** The site's address the page showed above the paper, when it showed one (punch list #439). */
+      siteAddress?: unknown
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -149,7 +152,7 @@ serve(async (req) => {
     const { data: row, error: fetchErr } = await admin
       .from('person_contract_documents')
       .select(
-        'id, status, public_token_expires_at, signer_printed_name, form_template_id, applied_contract_template_document_id, company_id, document_name, job_required_paper_id',
+        'id, status, public_token_expires_at, signer_printed_name, form_template_id, applied_contract_template_document_id, company_id, document_name, job_required_paper_id, site_address, site_prints_address',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -170,6 +173,8 @@ serve(async (req) => {
       company_id: string | null
       document_name: string
       job_required_paper_id: string | null
+      site_address: string | null
+      site_prints_address: boolean | null
     }
 
     if (doc.status === 'signed') {
@@ -190,6 +195,16 @@ serve(async (req) => {
     if (!Number.isNaN(exp) && exp < Date.now()) {
       return new Response(JSON.stringify({ error: 'Link expired', code: 'expired' }), {
         status: 410,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // A paper that prints its site's address (punch list #439) signs only from a page that showed that address. A page
+    // that showed none, an older one among them, is told the paper changed: it reads the paper again and shows it.
+    // Checked before anything is stored, so a refusal leaves nothing behind. A paper that prints none is not asked.
+    if (!siteShownAtSigning(doc, body.siteAddress)) {
+      return new Response(JSON.stringify({ error: PAPER_CHANGED, code: 'paper_changed' }), {
+        status: 409,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
