@@ -1,20 +1,20 @@
 ---
-name: "The type check in parts: three programs are built; left, the peak on every CI run and the app program itself"
+name: "The type check in parts: three programs and the memory line are built; left, the app program itself"
 number: 434
 group: ready
-status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine · PR 1 built the same day (v2.8505): npm run typecheck runs three programs, the largest 8.6 GB, and the build checks the app part alone · left: PR 2 and PR 3
+status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine · PR 1 built the same day (v2.8505): npm run typecheck runs three programs, the largest 8.6 GB, and the build checks the app part alone · PR 2 built 2026-11-27 (v2.8696): every tsc ends with a line on its memory and warns from four fifths of its cap · left: PR 3
 summary: >
   One tsc over all of src needed 12.3 GB of heap on 2026-11-24 and grew about 190 MB a day, and a
   GitHub runner can give about 13.3 GB. Since v2.8505 the check runs the same files as three
   programs by plain include lists, which need 8.1, 6.5 and 8.6 GB, with no project references.
   That leaves a runner about 4.7 GB over the largest part, four to five weeks at today's pace.
-  Left: print the peak on every CI run so the next wall is seen coming, and cut the app program
-  itself. This card holds the numbers, the plan and the measuring script.
-next: Build PR 2 below, the peak printed on every CI run with a warning near the cap, so the next wall shows weeks ahead. Then measure the app program with a trace before choosing PR 3's way.
-size: M as a train of three (M · S · L); left: PR 2 (S) and PR 3 (L)
+  Since v2.8696 every tsc ends with a line on its memory, and warns from four fifths of its cap.
+  Left: cut the app program itself. This card holds the numbers, the plan and the measuring script.
+next: Measure the app program with a trace (PR 3 below, *Find what is heavy*), then choose PR 3's way from the numbers. Read the deploy's build log for the app program's cold line on any merge.
+size: M as a train of three (M · S · L); left: PR 3 (L)
 blocker: none
-ver: v2.8482 · 8505
-opinion: build — PR 2 is small and turns the next wall from a surprise into a line in the log; PR 3 can wait for its numbers
+ver: v2.8482 · 8505 · 8696
+opinion: build — the warning now gives about three weeks of notice, so PR 3 can wait for its numbers, and not past the first NEAR ITS HEAP line
 mockup: not required — build tooling, no screen
 ---
 
@@ -52,7 +52,11 @@ run. This card is the real cut. Its first PR shipped as v2.8505, and
   8,607 MB at the end, which leaves a 13,312 MB cap about 4.7 GB. The build's `tsc -b` checks the
   app part alone: 5:05 cold and 8,813 MB resident, against about 10 minutes and 12,536 MB.
 - **That is four to five weeks, not a year.** The largest part is 70% of the whole, so it grows
-  perhaps 130 MB a day. PR 2 and PR 3 are what is left.
+  perhaps 130 MB a day. PR 3 is what is left.
+- **PR 2 is built (v2.8696).** Every tsc that answers ends with one line: its time, the heap it held
+  against its cap and the most it held resident. On CI a collection is forced first, so the heap
+  number is the one in the tables below. A run that held four fifths of its cap gets a
+  `NEAR ITS HEAP` line and, on GitHub Actions, a warning on the run's page. Its exit code is tsc's.
 
 ## What was measured for the cut
 
@@ -110,10 +114,20 @@ change: every file under `src` is still checked, by `npm run typecheck`. As buil
 - `npm run typecheck:config` and the lint of the config files (#9621) are untouched.
 - Measured with the script below on a throwaway branch: each part's peak, cold and warm.
 
-**PR 2 (S): the peak on every CI run.** The owner's decision 3 of v2.7134, still open in
-`to-dos/owner-decisions-pending.md`. `runTsc.mjs` already prints the cap. Add `--extendedDiagnostics`'
-*Memory used* line, or the peak resident size, to each part's last line in CI, and fail a part that
-ends within 10% of its cap with words that point here. Then the next wall is seen weeks ahead.
+**PR 2 (S): the peak on every CI run. Built, v2.8696.** The third way of the row on the type check's
+memory in `to-dos/owner-decisions-pending.md`. As built:
+
+- A hook preloaded into tsc (`scripts/lib/tscMemoryHook.cjs`) writes the heap in use and the peak
+  resident size as tsc exits. `scripts/lib/runTsc.mjs` prints them as each part's last line, with the
+  time, for `npm run typecheck` and for the build's `tsc -b`.
+- CI forces a collection first, so its heap number is what the program needs. A dev machine does
+  not, unless `TYPECHECK_COLLECT=1`.
+- It warns and does not fail, from 20% of the cap and not 10%. A fail would stop every merge and the
+  deploy about ten days before the heap would, with a check that still passes. A fifth of a
+  runner's cap is about three weeks at 130 MB a day.
+- The deploy's `tsc -b` is cold on every merge, so its line is the app program's cold number, daily.
+- A warm run that finds nothing changed lets its program go before it exits. Its heap reads about
+  28 MB and its peak, about 3.5 GB, is its number. The warning reads the larger of the two.
 
 **PR 3 (L): the app program itself.** It is 8.1 GB today and grows with the app, so PR 1 buys it
 about three weeks at today's pace, not a year. Two ways, measure before choosing:
