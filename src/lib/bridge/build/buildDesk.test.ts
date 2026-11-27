@@ -102,7 +102,7 @@ describe('buildBuildDesk (v2.5929)', () => {
       ['Ate hours, moved nothing', '65h on 3 jobs', 'amber'],
       ['Stalled', '$77.9k, nobody on it', 'red'],
     ])
-    expect(desk.tiles[2].words).toBe('2 jobs with no field hours in 14 days.')
+    expect(desk.tiles[2]!.words).toBe('2 jobs with no field hours in 14 days.')
     expect(desk.subLine).toBe('by hours the field builds $52.9k a week. By the percents $32.7k. These rows are where the missing $20.2k a week hides. 7.3 weeks to build what is already sold at that pace.')
     expect(desk.movedFold).toBeNull()
     expect(desk.noPctLine).toBe('')
@@ -227,7 +227,7 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(d.movedFold).toEqual({ count: 2, usd: 21_000, words: '2 more jobs moving, $21k' })
     const stalledOnly = buildBuildDesk({ ...input, openJobs: [job('x', 'X', 50_000, 40)], points: [pt('x', '2026-09-01', 40)], sessions: [sess('x', '2026-10-01', 5)], reads: null })
     expect(stalledOnly.verdict).toBe('1 job holds $30k and saw nobody. That is the week.')
-    expect(stalledOnly.tiles[1].value).toBe('0h on 0 jobs')
+    expect(stalledOnly.tiles[1]!.value).toBe('0h on 0 jobs')
   })
 
   it('reads a priced job with no %: hours but no movement, the no-% line, and a first % set inside the window', () => {
