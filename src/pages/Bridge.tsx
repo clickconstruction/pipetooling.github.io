@@ -1562,7 +1562,7 @@ export default function Bridge() {
               {door === 'flow' && (
                 <>
           {/* The rule (link PR 1): one line, the longer reading behind its ? */}
-          <BridgeRule />
+          <BridgeRule phone={narrow} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
           {shownFlow && (

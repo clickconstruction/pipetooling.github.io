@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useRef, type CSSProperties } from 'react'
 import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS } from '../../lib/bridge/stageFlow'
+import { RULE_ASK_DRAWN, ruleAskPress } from '../../lib/bridge/ruleAskPress'
 import { RULE_READING_SHUT, ruleReadingAfter } from '../../lib/bridge/ruleReading'
 
 /**
@@ -10,13 +11,20 @@ import { RULE_READING_SHUT, ruleReadingAfter } from '../../lib/bridge/ruleReadin
  * A press is kept apart from a look (punch list #321, finding 275, `ruleReading.ts`): hover and focus open the
  * reading while they last, one press keeps it open however the pointer got there, and the next press, Escape or a
  * press off the line shuts it. Before, the look opened it and the same press's click toggled it shut.
+ *
+ * On a phone (`phone`, the page's own narrow screen) the press around the ? stands a thumb square (finding 282,
+ * `ruleAskPress.ts`). The circle is drawn the same 24 px and the line is as tall as it was.
  */
 
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 
-export function BridgeRule() {
+/** The circle the ? is drawn in. The press around it is `ruleAskPress`'s: the circle itself at a desk, a thumb's square on a phone. */
+const ASK_CIRCLE: CSSProperties = { boxSizing: 'border-box', width: RULE_ASK_DRAWN, height: RULE_ASK_DRAWN, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
+
+export function BridgeRule({ phone = false }: { phone?: boolean }) {
   const [reading, said] = useReducer(ruleReadingAfter, RULE_READING_SHUT)
   const open = reading.open
+  const ask = ruleAskPress(phone)
   const lineRef = useRef<HTMLDivElement | null>(null)
   // While the reading is open, Escape shuts it, and so does a press anywhere off the line and its reading.
   useEffect(() => {
@@ -37,7 +45,7 @@ export function BridgeRule() {
   }, [open])
   return (
     <div ref={lineRef} style={{ position: 'relative', marginTop: '0.4rem' }} onMouseEnter={() => said('look')} onMouseLeave={() => said('lookEnded')} data-testid="bridge-rule">
-      <div style={{ fontSize: '0.95rem', borderLeft: '3px solid #2563eb', padding: '0.35rem 0.7rem', background: 'var(--surface)', borderRadius: '0 8px 8px 0', display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
+      <div style={{ fontSize: '0.95rem', borderLeft: '3px solid #2563eb', padding: '0.35rem 0.7rem', background: 'var(--surface)', borderRadius: '0 8px 8px 0', display: 'flex', gap: ask.rowGap, alignItems: 'baseline' }}>
         <span>{STAGE_RULE_LINE}</span>
         <button
           type="button"
@@ -46,9 +54,10 @@ export function BridgeRule() {
           onClick={() => said('press')}
           aria-label="Why this rule"
           aria-expanded={open}
-          style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          data-testid="bridge-rule-ask"
+          style={{ marginLeft: 'auto', ...ask.press, borderRadius: '50%', border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
         >
-          ?
+          <span aria-hidden style={ASK_CIRCLE}>?</span>
         </button>
       </div>
       {open && (

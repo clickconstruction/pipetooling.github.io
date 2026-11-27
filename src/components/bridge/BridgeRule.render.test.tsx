@@ -54,6 +54,29 @@ describe('BridgeRule: the ? beside the rule line', () => {
     expect(reading()).toBeNull()
   })
 
+  it('on a phone the press is a thumb square around the same 24 px circle, and the line is no taller (finding 282)', () => {
+    renderWithProviders(<BridgeRule phone />)
+    const box = press().style
+    expect(box.minHeight).toBe('44px')
+    expect(box.width).toBe('44px')
+    // What it grew by comes back off its margins, so the row and the circle stand where they did.
+    expect([box.marginTop, box.marginBottom, box.marginRight]).toEqual(['-10px', '-10px', '-10px'])
+    const circle = press().querySelector('span') as HTMLElement
+    expect([circle.style.width, circle.style.height]).toEqual(['24px', '24px'])
+    // One press still opens it, and the next shuts it.
+    fireEvent.focus(press())
+    fireEvent.click(press())
+    expect(reading()).not.toBeNull()
+    fireEvent.click(press())
+    expect(reading()).toBeNull()
+  })
+
+  it('at a desk the press is the circle itself, as it was', () => {
+    renderWithProviders(<BridgeRule />)
+    const box = press().style
+    expect([box.width, box.height, box.minHeight, box.marginTop]).toEqual(['24px', '24px', '', ''])
+  })
+
   it('Escape and a press outside shut a pressed reading, and a press inside the reading does not', () => {
     renderWithProviders(<BridgeRule />)
     fireEvent.click(press())
