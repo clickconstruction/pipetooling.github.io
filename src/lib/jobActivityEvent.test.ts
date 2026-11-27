@@ -59,6 +59,8 @@ const ALL_TYPES: JobActivityEventType[] = [
   'hazmat_fee_voided',
   'hazmat_fee_deleted',
   'hazmat_notice_emailed',
+  'build_wait_marked',
+  'build_wait_lifted',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
@@ -139,6 +141,17 @@ describe('the hazmat fee and its notice (v2.5635)', () => {
     expect(eventRenderMeta('hazmat_fee_edited')).toMatchObject({ tag: 'Hazmat', bucket: 'billing' })
     expect(eventRenderMeta('hazmat_fee_voided')).toMatchObject({ tag: 'Hazmat', bucket: 'billing' })
     expect(eventRenderMeta('hazmat_fee_deleted')).toMatchObject({ tag: 'Hazmat', bucket: 'billing' })
+  })
+
+  it('knows the two types a Build job’s wait writes, word for word, and reads them with the status changes (v2.8713)', () => {
+    const root = resolve(__dirname, '../..')
+    const sql = readFileSync(resolve(root, 'supabase/migrations/20261127074500_job_build_waits.sql'), 'utf8')
+    const written = [...sql.matchAll(/'(build_wait_[a-z]+)'/g)].map((m) => m[1]!)
+    expect([...new Set(written)].sort()).toEqual(['build_wait_lifted', 'build_wait_marked'])
+    for (const t of written) expect(JOB_ACTIVITY_EVENT_RENDER, t).toHaveProperty(t)
+    expect(eventRenderMeta('build_wait_marked')).toMatchObject({ tag: 'Waits', bucket: 'status' })
+    expect(eventRenderMeta('build_wait_lifted')).toMatchObject({ tag: 'Waits', bucket: 'status' })
+    expect(bucketForEvent('build_wait_marked')).toBe('status')
   })
 
   it('knows every type the notice email and the fee’s RPCs write, word for word', () => {
