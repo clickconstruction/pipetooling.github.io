@@ -3,7 +3,8 @@
  * app's tests run it over a database and a sender that are stood in. No network import: the function builds the doors
  * (`supabase/functions/receipt-request/index.ts`) and this file decides, reads, writes and sends through them.
  *
- * The order of one sweep, and why a charge is never texted twice, is said on the function.
+ * The order of one sweep, and why a charge is never texted twice, is said on the function. The office's Text again
+ * (`runReceiptAgain`, at the foot) goes through the same doors.
  */
 import { mintReceiptLinkCode, receiptChargeDead, receiptFirstName, receiptLinkExpiry } from './receiptLink.ts'
 import {
@@ -12,6 +13,9 @@ import {
   RECEIPT_TEXT_TRIES,
   foldReceiptCharges,
   parseReceiptTextsSetting,
+  receiptAgainBody,
+  receiptAgainHold,
+  receiptAgainRefusalWords,
   receiptChargeAsks,
   receiptHolderInTrial,
   receiptLinkUrl,
@@ -20,6 +24,7 @@ import {
   receiptReminderDue,
   receiptSweepFloor,
   receiptTextBody,
+  type ReceiptAgainRefusal,
   type ReceiptChargeRow,
   type ReceiptTextsSetting,
 } from './receiptText.ts'
@@ -129,6 +134,19 @@ async function ticketsByCharge(admin: Admin, chargeIds: readonly string[]): Prom
 
 type SendItem = { request: RequestRow; charge: Charge }
 
+/** A new link on the requests it names: the code to hand out and the row that keeps its hash. Throws when none could be made. */
+async function mintLink(doors: ReceiptSweepDoors, a: { requestIds: string[]; madeFor: 'text' | 'reminder' | 'again'; madeBy: string | null; expiresAt: string; nowIso: string }): Promise<{ code: string; linkId: string }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const code = mintReceiptLinkCode(doors.randomBytes)
+    const { data, error } = await doors.admin.from('receipt_links').insert({ code_hash: await doors.sha256Hex(code), request_ids: a.requestIds, made_for: a.madeFor, ...(a.madeBy ? { made_by: a.madeBy } : {}), made_at: a.nowIso, expires_at: a.expiresAt }).select('id').single()
+    // A code the table already holds is minted again.
+    if (error?.code === '23505') continue
+    if (error) throw new Error(`the link: ${error.message}`)
+    return { code, linkId: (data as { id: string }).id }
+  }
+  throw new Error('no free code after three tries')
+}
+
 /**
  * One text to one holder for the requests it names. Claims them first, mints the link, sends, and stamps what went. A
  * text that could not go gives the claim back and says why on the request.
@@ -148,22 +166,10 @@ async function sendRun(doors: ReceiptSweepDoors, kind: 'text' | 'reminder', item
 
   // A reminder's link closes when its request does; a first text's link opens its fourteen days.
   const expiresAt = kind === 'text' ? receiptLinkExpiry(nowIso) : mine.reduce((m, i) => (i.request.closes_at > m ? i.request.closes_at : m), mine[0]!.request.closes_at)
-  let code = ''
-  let linkId = ''
-  for (let attempt = 0; attempt < 3 && !linkId; attempt++) {
-    code = mintReceiptLinkCode(doors.randomBytes)
-    const { data, error } = await admin.from('receipt_links').insert({ code_hash: await doors.sha256Hex(code), request_ids: mineIds, made_for: kind, made_at: nowIso, expires_at: expiresAt }).select('id').single()
-    if (error?.code === '23505') continue
-    if (error) {
-      await unclaim()
-      throw new Error(`the link: ${error.message}`)
-    }
-    linkId = (data as { id: string }).id
-  }
-  if (!linkId) {
+  const { code, linkId } = await mintLink(doors, { requestIds: mineIds, madeFor: kind, madeBy: null, expiresAt, nowIso }).catch(async (e: unknown) => {
     await unclaim()
-    throw new Error('no free code after three tries')
-  }
+    throw e
+  })
   const dropLink = async () => {
     await admin.from('receipt_links').delete().eq('id', linkId)
   }
@@ -362,4 +368,98 @@ export async function runReceiptSweep(doors: ReceiptSweepDoors, ask: { dry?: boo
     if (e instanceof SweepStop) return { ok: true, state: e.state as 'textsOff' | 'not-set-up' | 'paused' | 'not-registered' | 'daily-cap' }
     throw e
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Text again: one more text on one charge, by a person's press (v2.8697).
+
+export type ReceiptAgainAnswer =
+  | { ok: true; state: 'sent'; segments: number; againCount: number }
+  | { ok: false; why: ReceiptAgainRefusal | 'refused'; words: string }
+
+type AgainRow = RequestRow & { again_at: string | null; again_by: string | null; again_count: number | null }
+
+/**
+ * The office's Text again on one request: a third text to a holder who was texted and reminded and sent no receipt.
+ * The function has checked that the caller is the office; this decides whether the text may go and sends it.
+ *
+ * Both switches hold it as they hold the sweep, and so does a trial. The rule is `receiptAgainHold`. A charge the
+ * bank took back, a charge that has its ticket, a holder who has left, no cell or a STOP each send nothing and say
+ * so. The press is claimed by the request's count before the text goes, so two presses at once send one text, and a
+ * text that could not go gives the claim back. The link is new, made for `again` by the person who pressed, and
+ * closes when the request does.
+ */
+export async function runReceiptAgain(doors: ReceiptSweepDoors, ask: { requestId: string; byUserId: string }): Promise<ReceiptAgainAnswer> {
+  const { admin, nowMs } = doors
+  const nowIso = new Date(nowMs).toISOString()
+  const no = (why: ReceiptAgainRefusal, who = ''): ReceiptAgainAnswer => ({ ok: false, why, words: receiptAgainRefusalWords(why, who) })
+
+  const setting = parseReceiptTextsSetting(await doors.settingText(RECEIPT_TEXTS_KEY))
+  if (!setting.on) return no('off')
+  if (!(await doors.textsOn())) return no('texts_off')
+
+  const r = (await rows<AgainRow>(admin.from('receipt_requests').select(`${REQUEST_COLUMNS}, again_at, again_by, again_count`).eq('id', ask.requestId).limit(1), 'the request'))[0]
+  if (!r) return no('gone')
+  const who = receiptFirstName(r.holder_name)
+  const hold = receiptAgainHold(r, nowMs)
+  if (hold) return no(hold, who)
+  if (!receiptHolderInTrial(setting, r.holder_user_id)) return no('not_in_trial', who)
+
+  const charge = (await rows<Charge>(admin.from('mercury_transactions').select(CHARGE_COLUMNS).eq('id', r.mercury_transaction_id).limit(1), 'the charge'))[0]
+  if (!charge || receiptChargeDead(charge.status)) return no('dead')
+  const ticketId = (await ticketsByCharge(admin, [r.mercury_transaction_id])).get(r.mercury_transaction_id)
+  if (ticketId) {
+    // The receipt came through another door: the request is answered, as the sweep marks it, and nobody is texted.
+    await admin.from('receipt_requests').update({ answered_at: nowIso, ticket_id: ticketId, updated_at: nowIso }).eq('id', r.id).is('answered_at', null)
+    return no('has_ticket')
+  }
+  const holder = r.holder_user_id ? (await rows<Holder>(admin.from('users').select('id, name, phone, archived_at').eq('id', r.holder_user_id).limit(1), 'the holder'))[0] : undefined
+  if (!holder || holder.archived_at) return no('no_holder')
+  const cell = doors.cellOf(holder.phone ?? '')
+  const placed = cell ? await doors.place(cell) : null
+  if (!placed) return no('no_cell', who)
+  if (placed.optedOut) {
+    await admin.from('receipt_requests').update({ no_text_why: 'opted_out', updated_at: nowIso }).eq('id', r.id)
+    return no('opted_out', who)
+  }
+
+  const count = r.again_count ?? 0
+  const claimed = await rows<{ id: string }>(
+    admin.from('receipt_requests').update({ again_at: nowIso, again_by: ask.byUserId, again_count: count + 1, updated_at: nowIso }).eq('id', r.id).eq('again_count', count).is('answered_at', null).is('closed_at', null).select('id'),
+    'the claim',
+  )
+  if (claimed.length === 0) return no('taken')
+  const unclaim = async (more: Record<string, unknown> = {}) => {
+    await admin.from('receipt_requests').update({ again_at: r.again_at ?? null, again_by: r.again_by ?? null, again_count: count, updated_at: nowIso, ...more }).eq('id', r.id)
+  }
+
+  const link = await mintLink(doors, { requestIds: [r.id], madeFor: 'again', madeBy: ask.byUserId, expiresAt: r.closes_at, nowIso }).catch(async (e: unknown) => {
+    await unclaim()
+    throw e
+  })
+
+  let out: ReceiptSendOutcome
+  try {
+    const last = await doors.lastTextAt(placed.channelId)
+    out = await doors.send(placed, receiptAgainBody({ charge: { amount: Number(charge.amount), store: charge.counterparty_name, posted_at: charge.posted_at }, url: receiptLinkUrl(link.code) }), last)
+  } catch (e) {
+    out = { ok: false, refused: 'error', words: e instanceof Error ? e.message : String(e) }
+  }
+  if (out.ok) {
+    doors.log?.({ event: 'receipt_text', kind: 'again', requests: 1, segments: out.segments, link: link.linkId, again: count + 1 })
+    return { ok: true, state: 'sent', segments: out.segments, againCount: count + 1 }
+  }
+
+  await admin.from('receipt_links').delete().eq('id', link.linkId)
+  doors.log?.({ event: 'receipt_text_failed', kind: 'again', refused: out.refused })
+  if (out.refused === 'stopped') {
+    await unclaim({ no_text_why: 'opted_out' })
+    return no('opted_out', who)
+  }
+  if (out.refused === 'not-a-number' || out.refused === 'no-number') {
+    await unclaim({ no_text_why: 'no_cell' })
+    return no('no_cell', who)
+  }
+  await unclaim()
+  return { ok: false, why: 'refused', words: `No text went. ${out.words}`.trim() }
 }

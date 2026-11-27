@@ -93,7 +93,9 @@ describe('Recently deleted: a job deleted earlier (punch list #443, row 18)', ()
   it('says the press and the link by their own names', () => {
     expect(DELETED_BUNDLE_FOLDER_PRESS).toBe('Send its Drive folder to the trash…')
     expect(DELETED_BUNDLE_FOLDER_OPEN).toBe('Open it in Drive ↗')
-    expect(DELETED_BUNDLE_FOLDER_LINE).toBe('This test job kept a Drive folder. Deleting the job did not remove it.')
+    expect(DELETED_BUNDLE_FOLDER_LINE).toBe('This test job had a Drive folder. Press Open it in Drive to see whether it is still there.')
+    // It never says the folder is still there: the kept copy cannot know (finding 292).
+    expect(DELETED_BUNDLE_FOLDER_LINE).not.toMatch(/kept|did not remove|left/)
   })
   it('says what the function answered: where the folder went, or why it stays, in the function’s own words', () => {
     expect(deletedBundleFolderOutcome({ answer: { act: 'trashed', words: 'Its Drive folder went to Drive’s trash.' } })).toEqual({ words: 'Its Drive folder went to Drive’s trash.', tone: 'done' })

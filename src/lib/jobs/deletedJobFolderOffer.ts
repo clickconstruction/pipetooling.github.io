@@ -79,8 +79,12 @@ export function deletedBundleFolderOffered(role: string | null | undefined, kind
   return kind === 'job' && jobFolderTrashOffered(role, job)
 }
 
-/** The line a bundle's card says above the press. */
-export const DELETED_BUNDLE_FOLDER_LINE = 'This test job kept a Drive folder. Deleting the job did not remove it.'
+/**
+ * The line a bundle's card says above the press. It says the job had a folder and never that the folder is still
+ * there: the kept copy holds the job's Drive link whether or not the delete sent the folder to the trash, and only
+ * Drive knows which (finding 292, the walk of 2026-11-27: the entry of a job whose folder went said the delete left it).
+ */
+export const DELETED_BUNDLE_FOLDER_LINE = 'This test job had a Drive folder. Press Open it in Drive to see whether it is still there.'
 
 /** The press on a bundle's card. */
 export const DELETED_BUNDLE_FOLDER_PRESS = 'Send its Drive folder to the trash…'

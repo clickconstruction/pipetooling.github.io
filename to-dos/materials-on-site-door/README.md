@@ -10,7 +10,7 @@ summary: >
   live data and drew three ways on a phone mock-up. He picked the second: the door stays on every job
   as a proper press beside Job calendar, and it shows a count when the job's site holds boxes.
 next: >
-  Ask the owner whether a crew may see the boxes under a site's other jobs. Also left is a real estimator's read, since the walk of the three doors kept the dev's sign-in.
+  Ask the owner whether a crew may see the boxes under a site's other jobs. Also left is a real estimator's read, since the walk of the three doors kept the dev's sign-in. Answered 2026-11-27 by Taunya, *Second nine stand*, to the pick *Keep it to their own jobs*: a crew sees the boxes of the jobs they may open, and not a site's other jobs. The card is retired on one look at the Job Mode card as a crew member on the site with boxes, through View as, on her yes by name.
 size: S (one client-only PR)
 blocker: >
   The owner's answer on whether a crew may see the boxes under a site's other jobs.

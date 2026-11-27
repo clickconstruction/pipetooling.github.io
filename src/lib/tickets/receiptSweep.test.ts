@@ -2,10 +2,12 @@
  * The receipt text's sweep (punch list #299, PR 2) over a database and a sender that are stood in. What these prove:
  * the switch off sends and writes nothing, a charge is texted once, charges that wait together share a text, every
  * reason a text cannot go is written and never texted, a trial texts only its people, a refused text loses nothing,
- * and the one reminder goes in its evening. Every name and number is made up.
+ * and the one reminder goes in its evening. Then the office's Text again (v2.8697): one more text by a person's press,
+ * held by both switches and every rule, claimed before it goes, and given back when it does not go. Every name and
+ * number is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { runReceiptSweep, type ReceiptPlaced, type ReceiptSendOutcome, type ReceiptSweepDoors } from '../../../supabase/functions/_shared/receiptSweep'
+import { runReceiptAgain, runReceiptSweep, type ReceiptPlaced, type ReceiptSendOutcome, type ReceiptSweepDoors } from '../../../supabase/functions/_shared/receiptSweep'
 import { RECEIPT_TEXTS_KEY } from './receiptText'
 
 type Row = Record<string, unknown>
@@ -479,5 +481,149 @@ describe('the one reminder', () => {
     for (let i = 0; i < 4; i++) await runReceiptSweep(w.doors)
     expect(tries).toBe(1)
     expect(w.links()).toEqual([])
+  })
+})
+
+describe('Text again, the office’s press', () => {
+  const TESS = '00000000-0000-0000-0000-0000000000a1'
+  // Texted Tue 6:14 PM and reminded Wed 6:00 PM, with no receipt.
+  const twice = (id: string, more: Row = {}): Row => ({ id: `req-${id}`, mercury_transaction_id: id, holder_user_id: JORDAN, holder_name: 'Jordan Vance', no_text_why: null, texted_at: '2026-11-04T00:14:00.000Z', reminded_at: '2026-11-05T00:00:00.000Z', answered_at: null, closed_at: null, closes_at: '2026-11-18T00:14:00.000Z', text_tries: 0, again_at: null, again_by: null, again_count: 0, created_at: '2026-11-04T00:10:00.000Z', ...more })
+  // Thu Nov 5, 9:00 AM on the company's clock.
+  const MORNING = Date.parse('2026-11-05T15:00:00.000Z')
+  const MORNING_ISO = '2026-11-05T15:00:00.000Z'
+  const one = (more: Partial<Parameters<typeof world>[0]> = {}, request: Row = {}) => world({ charges: [charge('c1', '2026-11-03T23:00:00.000Z')], requests: [twice('c1', request)], setting: JSON.stringify({ on: true, since: '2026-11-03T00:00:00.000Z', only: [] }), now: MORNING, ...more })
+  const press = (w: ReturnType<typeof world>) => runReceiptAgain(w.doors, { requestId: 'req-c1', byUserId: TESS })
+
+  it('sends one text with a new link, and writes who pressed and when', async () => {
+    const w = one()
+    expect(await press(w)).toEqual({ ok: true, state: 'sent', segments: 1, againCount: 1 })
+    expect(w.sent).toHaveLength(1)
+    expect(w.sent[0]!.to).toBe('+15125550100')
+    expect(w.sent[0]!.body).toMatch(/^The office still needs the receipt for \$228\.58 at Ridgeway Supply\. Snap it here: https:\/\/my\.clickplumbing\.com\/r\/[a-z0-9]{10}$/)
+    expect(w.requests()[0]).toMatchObject({ again_at: MORNING_ISO, again_by: TESS, again_count: 1, reminded_at: '2026-11-05T00:00:00.000Z', no_text_why: null })
+    // The link is the press's own: made for `again`, by the person who pressed, closing when the request does.
+    expect(w.links()).toHaveLength(1)
+    expect(w.links()[0]).toMatchObject({ request_ids: ['req-c1'], made_for: 'again', made_by: TESS, made_at: MORNING_ISO, expires_at: '2026-11-18T00:14:00.000Z' })
+  })
+
+  it('either switch off sends nothing and touches no row', async () => {
+    for (const [more, why, words] of [
+      [{ setting: '{"on":false}' }, 'off', 'Receipt texts are off in Settings, so no text went.'],
+      [{ textsOn: false }, 'texts_off', 'Send texts is off in Settings, so no text went.'],
+    ] as const) {
+      const w = one(more)
+      w.doors.admin = new Proxy({}, { get: () => () => { throw new Error('the database was touched') } })
+      expect(await press(w), why).toEqual({ ok: false, why, words })
+      expect(w.sent).toEqual([])
+    }
+  })
+
+  it('a trial holds a holder it does not name', async () => {
+    const w = one({ setting: JSON.stringify({ on: true, since: '2026-11-03T00:00:00.000Z', only: [SAM] }) })
+    expect(await press(w)).toEqual({ ok: false, why: 'not_in_trial', words: 'Receipt texts are on for a trial, and Jordan is not in it. No text went.' })
+    expect(w.sent).toEqual([])
+    expect(w.db.writes).toEqual([])
+  })
+
+  it('the rule holds it: not yet reminded, inside twelve hours, answered, closed, held, and a request that is gone', async () => {
+    const cases: [Row, string][] = [
+      [{ reminded_at: null }, 'not_twice'],
+      [{ reminded_at: '2026-11-05T06:00:00.000Z' }, 'not_twice'],
+      [{ answered_at: '2026-11-05T14:00:00.000Z' }, 'answered'],
+      [{ closed_at: '2026-11-05T14:00:00.000Z' }, 'closed'],
+      [{ closes_at: '2026-11-05T14:00:00.000Z' }, 'closed'],
+      [{ no_text_why: 'opted_out' }, 'held'],
+      [{ again_at: '2026-11-05T10:00:00.000Z', again_count: 1 }, 'resting'],
+      [{ again_at: '2026-11-04T10:00:00.000Z', again_count: 2 }, 'cap'],
+      [{ id: 'req-other' }, 'gone'],
+    ]
+    for (const [request, why] of cases) {
+      const w = one({}, request)
+      expect(await press(w), why).toMatchObject({ ok: false, why })
+      expect(w.sent, why).toEqual([])
+      expect(w.db.writes, why).toEqual([])
+    }
+  })
+
+  it('a charge the bank took back, and a receipt that came meanwhile, send nothing', async () => {
+    const dead = one({ charges: [charge('c1', '2026-11-03T23:00:00.000Z', { status: 'reversed' })] })
+    expect(await press(dead)).toMatchObject({ ok: false, why: 'dead' })
+    const got = one({ tickets: [{ id: 't1', mercury_transaction_id: 'c1', removed_at: null }] })
+    expect(await press(got)).toEqual({ ok: false, why: 'has_ticket', words: 'That charge has its receipt now, so no text went.' })
+    // The request is marked answered, as the sweep marks it, so the row leaves the office's list.
+    expect(got.requests()[0]).toMatchObject({ answered_at: MORNING_ISO, ticket_id: 't1', again_count: 0 })
+    expect([...dead.sent, ...got.sent]).toEqual([])
+  })
+
+  it('a holder who has left, no cell and a STOP each send nothing, and the STOP is written as the reason', async () => {
+    const left = one({ users: [user(JORDAN, 'Jordan Vance', '(512) 555-0100', { archived_at: '2026-11-05T01:00:00.000Z' })] })
+    expect(await press(left)).toMatchObject({ ok: false, why: 'no_holder' })
+    const noCell = one({ users: [user(JORDAN, 'Jordan Vance', '555-0100')] })
+    expect(await press(noCell)).toEqual({ ok: false, why: 'no_cell', words: 'Jordan has no cell on file now, so no text went. Add the cell on People.' })
+    const stop = one({ stopped: ['+15125550100'] })
+    expect(await press(stop)).toEqual({ ok: false, why: 'opted_out', words: 'Jordan replied STOP, so no text went. Ask for the receipt another way.' })
+    expect(stop.requests()[0]).toMatchObject({ no_text_why: 'opted_out', again_count: 0, again_at: null })
+    expect([...left.sent, ...noCell.sent, ...stop.sent]).toEqual([])
+    expect([...left.links(), ...noCell.links(), ...stop.links()]).toEqual([])
+  })
+
+  it('two presses at once send one text: the second finds the count moved and stops', async () => {
+    const w = one()
+    const place = w.doors.place
+    // Another press claims the request after this one has read it and before this one claims.
+    w.doors.place = async (cell) => {
+      Object.assign(w.requests()[0]!, { again_count: 1, again_at: MORNING_ISO, again_by: SAM })
+      return place(cell)
+    }
+    expect(await press(w)).toEqual({ ok: false, why: 'taken', words: 'Someone else pressed Text again on this charge a moment ago. One text went.' })
+    expect(w.sent).toEqual([])
+    expect(w.links()).toEqual([])
+    expect(w.requests()[0]).toMatchObject({ again_count: 1, again_by: SAM })
+  })
+
+  it('a text the phone service turns away gives the press back, drops its link and says why', async () => {
+    const w = one({ send: () => ({ ok: false, refused: 'quo', words: 'Quo answered 500.' }) })
+    expect(await press(w)).toEqual({ ok: false, why: 'refused', words: 'No text went. Quo answered 500.' })
+    expect(w.requests()[0]).toMatchObject({ again_at: null, again_by: null, again_count: 0, no_text_why: null })
+    expect(w.links()).toEqual([])
+    // The office can press again at once: nothing was spent.
+    const after = one()
+    after.db.tables.receipt_requests = w.requests()
+    expect(await press(after)).toMatchObject({ ok: true, againCount: 1 })
+  })
+
+  it('a STOP or a bad number found at the send becomes the request’s reason, and a throw is a reason too', async () => {
+    const stop = one({ send: () => ({ ok: false, refused: 'stopped', words: 'That number sent STOP.' }) })
+    expect(await press(stop)).toMatchObject({ ok: false, why: 'opted_out' })
+    expect(stop.requests()[0]).toMatchObject({ no_text_why: 'opted_out', again_count: 0, again_at: null })
+    const bad = one({ send: () => ({ ok: false, refused: 'not-a-number', words: 'Not a number.' }) })
+    expect(await press(bad)).toMatchObject({ ok: false, why: 'no_cell' })
+    expect(bad.requests()[0]).toMatchObject({ no_text_why: 'no_cell', again_count: 0 })
+    const thrown = one({ send: () => { throw new Error('the line dropped') } })
+    expect(await press(thrown)).toEqual({ ok: false, why: 'refused', words: 'No text went. the line dropped' })
+    expect(thrown.requests()[0]).toMatchObject({ again_count: 0, again_at: null })
+    expect([...stop.links(), ...bad.links(), ...thrown.links()]).toEqual([])
+  })
+
+  it('a second press twelve hours on is the last: the third is held at the cap', async () => {
+    const w = one()
+    expect(await press(w)).toMatchObject({ ok: true, againCount: 1 })
+    const later = Date.parse('2026-11-06T03:00:00.000Z')
+    w.doors.nowMs = later - 60_000
+    expect(await press(w)).toMatchObject({ ok: false, why: 'resting' })
+    w.doors.nowMs = later
+    expect(await press(w)).toMatchObject({ ok: true, againCount: 2 })
+    w.doors.nowMs = Date.parse('2026-11-07T15:00:00.000Z')
+    expect(await press(w)).toEqual({ ok: false, why: 'cap', words: 'The office has texted Jordan again twice about this charge. Ask for the receipt another way.' })
+    expect(w.sent).toHaveLength(2)
+    expect(w.links().map((l) => l.made_for)).toEqual(['again', 'again'])
+    expect(w.requests()[0]).toMatchObject({ again_count: 2, again_at: '2026-11-06T03:00:00.000Z' })
+  })
+
+  it('the sweep reads none of the press’s columns, and a charge texted again is not reminded a second time', async () => {
+    const w = one({ now: Date.parse('2026-11-06T00:30:00.000Z') }, { again_at: MORNING_ISO, again_by: TESS, again_count: 1 })
+    expect(await runReceiptSweep(w.doors)).toMatchObject({ state: 'on', texted: 0, reminded: 0 })
+    expect(w.sent).toEqual([])
+    expect(w.requests()[0]).toMatchObject({ again_count: 1, again_at: MORNING_ISO })
   })
 })

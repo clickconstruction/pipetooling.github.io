@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/receipt_texts against a throwaway copy of the WHOLE schema (v2.7142 and v2.7148, punch list #299:
-# the text when a charge posts, migration *_receipt_texts; the office's receipt items, migration
-# *_receipt_requests_office).
+# Runs supabase/tests/receipt_texts against a throwaway copy of the WHOLE schema (v2.7142, v2.7148 and v2.8697, punch
+# list #299: the text when a charge posts, migration *_receipt_texts; the office's receipt items, migration
+# *_receipt_requests_office; the office's Text again, migration *_receipt_text_again).
 #
 #   npm run test:pg:receipt-texts
 #
 # The same bed as scripts/pgtest-counter-tickets.sh: the Supabase Postgres image with every file in supabase/migrations
-# applied in order, then these two migrations a second time, which must change nothing. Two probes, each inside one
-# transaction that rolls back.
+# applied in order, then the first and the last of these migrations a second time, which must change nothing. The
+# middle one is not applied again: the last gave its function, receipt_requests_to_chase(), two more columns, and the
+# older file's CREATE OR REPLACE cannot take them away. Three probes, each inside one transaction that rolls back.
 #
 # 20_scenario.sql, the text: the switch ships off and the cron is one row that calls only when receipt_texts_due(); only
 # the owner or a dev changes the switch; the day it went on is the database's clock whatever the write says, a write
@@ -20,6 +21,11 @@
 # nine that are settled, too young or gone; Got it takes a request off the list and names who pressed, and Undo puts it
 # back; a helper, an assistant in training, one who has left and nobody at all change nothing.
 #
+# 40_again.sql, Text again: a request carries when the office last pressed, who and how many times; a link is made for
+# one of four words under one check; the list is made again with its rights as they were; a charge texted again rests
+# off the list for twelve hours and comes back with its count; a press claimed by the count lands once; the office
+# cannot write the press itself, and the holder reads none of the list.
+#
 # Each raises on its first failed assertion and ends with its own PASSED line. PGTEST_KEEP=1 leaves the container up.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never
 # touches prod, and sends nothing: the bed has no function to call and no number to text.
@@ -29,7 +35,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55618}"
 NAME="pgtest-receipt-texts"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_receipt_texts.sql supabase/migrations/*_receipt_requests_office.sql)"
+WRITES="$(ls supabase/migrations/*_receipt_texts.sql supabase/migrations/*_receipt_text_again.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -56,5 +62,8 @@ if ! grep -q "receipt_texts PASSED" <<<"$out"; then echo "$out" | tail -40; exit
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/receipt_texts/30_office.sql 2>&1 || true)"
 if ! grep -q "receipt_office PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/receipt_texts/40_again.sql 2>&1 || true)"
+if ! grep -q "receipt_again PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "receipt-texts bed ok"
