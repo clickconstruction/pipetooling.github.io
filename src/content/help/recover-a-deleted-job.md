@@ -2,7 +2,7 @@
 title: recover a deleted job or bid
 category: Office
 roles: dev
-keywords: deleted, delete, recover, restore, undo, trash, archive, recently deleted, mistake, removed, gone, data loss
+keywords: deleted, delete, recover, restore, undo, trash, archive, recently deleted, mistake, removed, gone, data loss, test person, put a person back, ZZ
 order: 71
 ---
 When a job or bid is deleted, everything that went with it goes too. That used to be permanent, but now you can put the whole thing back.
@@ -41,6 +41,18 @@ The preview actually performs the restore and then rolls it back, so the counts 
 ## Deleted price options
 
 A price option deleted from a bid's Pricing tab shows up as its own **price option** entry, like *Scenario B · Bid 398*. Restoring it brings back the whole set. That is the price option, its price entries, custom prices, fixture assignments, and hidden rows. Some of those pieces are also listed under the bid's own "Under bid …" entry. Either entry restores the complete set. Whichever you use, both clear from the list together.
+
+## Put a deleted test person back
+
+A test person is a person whose name starts with **ZZ**. Deleting one keeps a copy of their account for 90 days, so they can come back. A real person cannot. Their delete is for good.
+
+Find the person's entry in the list. Its type is **Person**, and its chips include {{chip:gray|account row}}. Click {{button:outline|Preview restore}}, then {{button:blue|Restore}}. The account, the roster record, the pay row and the workday template come back together.
+
+The preview says why when it cannot be done. The person may be on the roster again. Another person may hold their email. A pay row may stand under their name. Fix that first, then preview again.
+
+The pay row also has an entry of its own, under the person's name. Leave that one alone and use the person's entry. It takes the pay row with it.
+
+A test person deleted before this was built has no copy of their account. Their preview is refused, and they stay deleted.
 
 ## Sweep ZZ test jobs
 

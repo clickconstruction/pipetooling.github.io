@@ -41,6 +41,13 @@ describe('humanizeArchiveTable', () => {
     expect(humanizeArchiveTable('bid_submittal_takeoff_choices')).toBe('submittal picks')
   })
 
+  it('names the three rows a deleted person leaves beside the People record (punch list #443, row 12)', () => {
+    expect(humanizeArchiveTable('users')).toBe('account row')
+    expect(humanizeArchiveTable('salary_work_schedule_templates')).toBe('workday template')
+    expect(humanizeArchiveTable('people_pay_config')).toBe('pay row')
+    expect(humanizeArchiveTable('people')).toBe('person')
+  })
+
   it('falls back to underscores → spaces for unmapped tables', () => {
     expect(humanizeArchiveTable('some_future_table')).toBe('some future table')
   })

@@ -22,7 +22,16 @@ export type FreshDeleteAnswer = {
   holds: FreshDeleteHold[]
   /** What went, or would go, with the person: the setup rows the Hire form wrote. */
   removed: string[]
+  /**
+   * True for a test person, whose name starts with ZZ (punch list #443, row 12): the delete keeps a copy of the
+   * account row, so a developer can put the person back from Recently deleted. False when the answer does not say,
+   * as before migration `20261127022551`.
+   */
+  copyKept: boolean
 }
+
+/** How long Deleted records keeps a copy: its daily purge takes rows older than this (`20260716120000`). */
+export const DELETED_COPY_KEPT_DAYS = 90
 
 /**
  * Who sees Delete… beside Archive…: the people who may archive (dev, controller, pay-approved leader), on a row with no
@@ -38,7 +47,7 @@ export function canOfferFreshDelete(args: { loginAttachedAt: string | null | und
 
 /** The answer's shape, or a thrown error with plain words when it is not one. */
 export function readFreshDeleteAnswer(data: unknown): FreshDeleteAnswer {
-  const d = data as { deleted?: unknown; dry_run?: unknown; name?: unknown; user_id?: unknown; person_id?: unknown; holds?: unknown; removed?: unknown } | null
+  const d = data as { deleted?: unknown; dry_run?: unknown; name?: unknown; user_id?: unknown; person_id?: unknown; holds?: unknown; removed?: unknown; copy_kept?: unknown } | null
   if (!d || typeof d.deleted !== 'boolean' || typeof d.user_id !== 'string') throw new Error('The answer had no verdict.')
   const holds = Array.isArray(d.holds)
     ? (d.holds as Array<{ table?: unknown; column?: unknown; count?: unknown }>)
@@ -54,6 +63,7 @@ export function readFreshDeleteAnswer(data: unknown): FreshDeleteAnswer {
     personId: typeof d.person_id === 'string' ? d.person_id : null,
     holds,
     removed,
+    copyKept: d.copy_kept === true,
   }
 }
 
@@ -110,12 +120,20 @@ export function foldHolds(holds: FreshDeleteHold[]): FreshDeleteHold[] {
   return [...byTable.values()]
 }
 
-/** The confirm for a clean row: what goes, and that nothing else points at them. The button carries the verb. */
-export function freshDeleteConfirmWords(name: string, removed: string[]): { title: string; message: string; confirmLabel: string } {
+/**
+ * The confirm for a clean row: what goes, and that nothing else points at them. The button carries the verb.
+ * `copyKept` is the dry run's word that this is a test person whose account row is copied on the delete (punch list
+ * #443, row 12). Then the confirm says a developer can put them back, and no longer says *for good*. For everyone
+ * else the words are as they were.
+ */
+export function freshDeleteConfirmWords(name: string, removed: string[], copyKept = false): { title: string; message: string; confirmLabel: string } {
   const withThem = removed.length > 0 ? ` Their ${joinWords(removed)} ${removed.length === 1 ? 'goes' : 'go'} too.` : ''
+  const message = copyKept
+    ? `Made by mistake? This removes ${name} from the roster. Nothing points at them yet: no hours, no pay, no paperwork.${withThem} This is a test person, so a copy is kept for ${DELETED_COPY_KEPT_DAYS} days. A developer can put them back from Recently deleted. Someone who worked here is archived instead, so their history stays.`
+    : `Made by mistake? This removes ${name} from the roster for good. Nothing points at them yet: no hours, no pay, no paperwork.${withThem} Someone who worked here is archived instead, so their history stays.`
   return {
     title: `Delete ${name}?`,
-    message: `Made by mistake? This removes ${name} from the roster for good. Nothing points at them yet: no hours, no pay, no paperwork.${withThem} Someone who worked here is archived instead, so their history stays.`,
+    message,
     confirmLabel: `Delete ${name}`,
   }
 }
@@ -161,7 +179,7 @@ export async function runFreshDelete(args: {
     if (go && args.archiveInstead) args.archiveInstead()
     return 'held'
   }
-  const words = freshDeleteConfirmWords(name, probe.removed)
+  const words = freshDeleteConfirmWords(name, probe.removed, probe.copyKept)
   const ok = await args.confirm({ ...words, danger: true })
   if (!ok) return 'cancelled'
   const done = await deleteFreshPerson(args.client, { userId: args.userId })

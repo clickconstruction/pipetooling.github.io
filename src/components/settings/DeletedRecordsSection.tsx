@@ -482,7 +482,7 @@ export default function DeletedRecordsSection() {
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         <button
                           type="button"
-                          onClick={() => void runPreview(b.group_key)}
+                          onClick={() => void runPreview(b)}
                           disabled={submitting}
                           style={{
                             padding: '0.35rem 0.75rem',
@@ -501,7 +501,7 @@ export default function DeletedRecordsSection() {
                           disabled={!canRestore || submitting}
                           title={canRestore ? undefined : 'Preview first'}
                           onClick={async () => {
-                            const res = await runRestore(b.group_key)
+                            const res = await runRestore(b)
                             if (res?.ok) {
                               showToast(`Restored ${res.total ?? 0} row${res.total === 1 ? '' : 's'}.`, 'success')
                             }

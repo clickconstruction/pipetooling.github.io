@@ -2389,6 +2389,7 @@ since v2.6789 also the Hire form's end and the roster form's *Also attach a logi
 since v2.7901 the desk's form asks *How they sign in*, **Email them a link** (the sign-in email) or **Set a password now** (typed twice, **Attach with this password**, no email: `attachFormProblem` in `src/lib/people/attachLogin.ts`);
 deleting the sign-in detaches it (`on_auth_user_deleted`) and the person stays — the desk's Sign-in row's **Remove the login…** (dev, v2.6532, punch list #266, `detach-login` by the row's id) is the press, with *Attach a login…* the way back on the same id.
 A person made by mistake is deleted, not archived, while nothing points at them yet: **Delete…** on the desk's Status row or the row's ⋯ (v2.6789, `delete_fresh_person`, [ACCESS_CONTROL.md](./ACCESS_CONTROL.md)).
+A deleted **test person**, one whose name or card name starts with ZZ, can be put back by a dev for 90 days: the delete keeps a copy of the users row and the workday template, its confirm says so, and **Preview restore** then **Restore** on the person's line in Recently deleted return the users row, the People record, the pay row and the workday template together (v2.8677, punch list #443 row 12, `restore_deleted_test_person`, `restoreFunctionFor`, `freshDeleteConfirmWords`).
 The three hide flags (sample, twin, walk tester) never cover a person with no login: every roster, crew, approval and pay list shows them;
 only the pickers that hand someone an app task, a pin or an imitation ask `activeUsersQuery` for `withLogin` (v2.6519).
 The rule in code (#264, v2.6527): the column is required on every row type a login is drawn from, `=== null` is *no login*, and a kernel that takes rows from an older reader treats an unstamped row as a login.
@@ -2463,6 +2464,7 @@ Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_delete
 rows auto-purge after 90 days.
 Two dev-only RPCs drive restore: `list_deleted_records(p_limit)` and `restore_deleted_records(p_group_key, p_dry_run)` — all-or-nothing with a dry-run preview (dangling nullable FKs are nulled + warned;
 dangling NOT NULL FKs block the restore).
+A third, `restore_deleted_test_person(p_group_key, p_dry_run)`, puts back a deleted test person, whose users row no trigger copies (v2.8677, see *A person made by mistake*).
 Surfaced in **Settings → Data & recovery → Recently deleted (dev)**.
 
 **Database**: `deleted_records_archive`;

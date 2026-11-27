@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { RESTORE_BUNDLE_FUNCTION, RESTORE_TEST_PERSON_FUNCTION, type RestoreFunctionName } from './deletedRecordsRestoreDoor'
 
 /** One restorable bundle in deleted_records_archive (a deleted job/bid and everything that went with it). */
 export type DeletedRecordBundle = {
@@ -23,10 +24,10 @@ export type DeletedRecordBundle = {
   owner_name?: string | null
 }
 
-/** Envelope returned by restore_deleted_records (dry-run and real runs share the shape). */
+/** Envelope returned by restore_deleted_records and restore_deleted_test_person (dry-run and real runs share the shape). */
 export type RestoreDeletedRecordsResult = {
   ok: boolean
-  /** Present on ok:false — 'forbidden' | 'not_found' | 'blocked' | a SQLSTATE. */
+  /** Present on ok:false — 'not_authenticated' | 'forbidden' | 'not_found' | 'not_test' | 'blocked' | a SQLSTATE. */
   code?: string
   error?: string
   dry_run?: boolean
@@ -81,8 +82,27 @@ export async function listDeletedRecords(limit = 50): Promise<DeletedRecordBundl
 /**
  * Dev-only: put a whole deleted bundle back. All-or-nothing.
  * Pass dryRun=true to preview real per-table counts, warnings and blockers without committing.
+ *
+ * `fn` is the function the bundle goes back through (`restoreFunctionFor`). A deleted test person goes through
+ * `restore_deleted_test_person` (punch list #443, row 12), which answers in the same shape. It is not in the
+ * generated types until the types PR after the push, so it is called by name, as the other take-backs call theirs.
+ * Its real run is sent once: a second send after a lost answer would read as *no copy was kept*.
  */
-export async function restoreDeletedRecords(groupKey: string, dryRun: boolean): Promise<RestoreDeletedRecordsResult> {
+export async function restoreDeletedRecords(
+  groupKey: string,
+  dryRun: boolean,
+  fn: RestoreFunctionName = RESTORE_BUNDLE_FUNCTION,
+): Promise<RestoreDeletedRecordsResult> {
+  if (fn === RESTORE_TEST_PERSON_FUNCTION) {
+    // The name is written out here, not read from the constant: check:calls-ahead finds a call by its literal name,
+    // and it is what holds the deploy until the migration that makes this function is pushed.
+    const answer = await withSupabaseRetry(
+      async () => supabase.rpc('restore_deleted_test_person' as never, { p_group_key: groupKey, p_dry_run: dryRun } as never),
+      dryRun ? 'preview putting the test person back' : 'put the test person back',
+      dryRun ? {} : { maxRetries: 0 },
+    )
+    return (answer ?? { ok: false, error: 'No response from restore.' }) as unknown as RestoreDeletedRecordsResult
+  }
   const data = await withSupabaseRetry(
     async () =>
       supabase.schema('public').rpc('restore_deleted_records', {
