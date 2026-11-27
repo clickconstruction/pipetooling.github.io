@@ -1688,6 +1688,7 @@ export default function Settings() {
       {(isControllerOrDev(myRole) || isOwnerOrDev(myRole)) && (
         <SettingsDataTab
           myRole={myRole}
+          myUserId={authUser?.id ?? null}
           dataBackupSectionOpen={dataBackupSectionOpen}
           setDataBackupSectionOpen={setDataBackupSectionOpen}
           exportError={exportError}
