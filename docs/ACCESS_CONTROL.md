@@ -2182,6 +2182,9 @@ The section **Papers before this job opens** on the job window's Documents tab a
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
 It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings`, `job_paper_remove` and the setters of a row's marks (`job_paper_set_basis`, `job_paper_set_gc_view`, `job_paper_set_gc_own`), all office only.
+Since v2.8679 (punch list #443, row 10) a dev alone deletes one taken-off paper of a ZZ test job through `delete_test_job_required_paper()`, `SECURITY DEFINER` behind `is_dev()`, `job_is_zz_test()` and a count of each of the four things that can point at the paper: a person's copy, a GC proposal made on it, a GC proposal taken as it and a later revision (migration `20261127023400`).
+`list_test_job_removed_papers()`, behind the same two checks, reads a test job's taken-off papers with those four counts, for the folded line **Taken-off papers** that a dev alone reads under the section on a ZZ test job (`removedPapersDrawn`).
+Both are granted to `authenticated` and revoked from `anon`, and the table's writes stay revoked, so a direct delete is still refused for everyone.
 A job's settings for a paper built from settings (v2.8145) are the office's to set and never a digital twin's: `job_paper_set_settings` also refuses an archived account and a training account itself, and `job_paper_clauses`, the job's paper as the database reads it, answers the office and the service role alone.
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
 The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).
@@ -4144,7 +4147,7 @@ Row 97's signal is held by the database too since v2.8532: on the private Realti
 | 80 | Settings rail → **View as…** · `/settings#view-as` | dev (not while imitating) | imitation is a real session as another person, with their writes |
 | 81 | Settings → Your account → **Dev MCP keys** · `/settings#settings-dev-mcp-keys` | dev | a key lets a coding agent read the app as the dev |
 | 82 | Settings → Your account → **Export all backup** (the title's trailing icon) | dev | a full JSON pull of the company's data |
-| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
+| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Today's goals check**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
 | 84 | Settings → **Email templates & testing** (Open Templates, dispatch phone, Tally minimum date, workflow email test, notification and email templates, report review, Easter eggs) | dev | test sends, template HTML and the catalog: plumbing |
 | 85 | Settings → **Digital twins & samples** (fleet admin, sample accounts, the walk tester) | dev | mints robot keys and sample accounts |
 | 86 | Settings → People & teams → **Pay approved leaders** (and Show in Hours) | dev | grants wage visibility; the trigger enforces it, so a client change alone would not open it |

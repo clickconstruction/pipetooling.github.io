@@ -214,6 +214,7 @@ Everyone signs each one, the office too.
 A required paper keeps the words it had in the Contract Book on the day it was required (`job_required_papers`, v2.7641).
 A person's signed copy is a `person_contract_documents` row with its `job_id`, named with the job's number.
 **Take off** removes a paper from the job and keeps every signature.
+A taken-off paper is kept, never deleted by the office, and a dev alone reads **Taken-off papers** under the section on a ZZ test job, with **Delete…** for a paper that no copy, no GC proposal and no later revision names (`removedPaperStaysWhy`, `delete_test_job_required_paper`, v2.8679, punch list #443).
 The roster in the section lists each person who can open the job against each paper, and **Copy the signing link** puts a person's links on the clipboard.
 The chip *2 papers to sign* in the job window's head counts them.
 A sub with no login signs on their own page: the card **Work on J2391** stands in for the job's rows until each paper is signed (v2.7675, `SubPortalJobPapersCard.tsx`).
@@ -2291,6 +2292,8 @@ it does not modify Gross Revenue, Net Revenue, or Profit (after overhead) in the
 Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or assistant in Settings.
 After the **first successful clock-in of a calendar day**, if the user has at least one goal, a full-screen overlay titled **“My Roles Goals”** appears;
 **Continue** writes **`user_daily_goals_ack`** for that local date so the gate stays off until the next calendar day.
+Since v2.8675 (punch list #443, row 19) a dev takes their own record for today back from **Today's goals check** on Settings → Data & recovery, after a confirm (`goalsCheckTakeBack.ts`, `GoalsCheckTakeBackBlock.tsx`).
+The gate then asks again by its own rule: at the next load of the app when a clock session stands that day, and after the first clock in when none does.
 
 ---
 
