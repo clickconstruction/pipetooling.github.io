@@ -186,6 +186,9 @@ describe('SubPaymentsLedger · by sub (PR 3)', () => {
     expect(statement.querySelector('[data-statement-foot]')!.textContent).toContain('settled')
     // No roster figure was handed in, so the foot says what we owe and checks nothing.
     expect(statement.querySelector('[data-statement-check]')!.getAttribute('data-statement-check')).toBe('unknown')
+    // The last line is a sentence that reads, with nothing owed (finding 313).
+    expect(statement.querySelector('[data-statement-check]')!.textContent).toContain('We owe Calloway Tile nothing today.')
+    expect(statement.querySelector('[data-statement-check]')!.textContent).not.toContain('settled today')
     expect(onSubChange).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('searchbox')).toBeNull()
     expect(screen.getByRole('button', { name: 'Print the statement' })).toBeTruthy()

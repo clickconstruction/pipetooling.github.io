@@ -20,8 +20,9 @@
  * no verdict. The build's `tsc -b` (scripts/tsc-build.mjs) goes through the same runner.
  *
  * Each part ends with one line on its memory (scripts/lib/typecheckMemory.mjs): the time, the heap it held
- * against its cap and the most it held resident, with a warning from four fifths of the cap. CI forces a
- * collection first, so its number is what the program needs; TYPECHECK_COLLECT=1 does the same anywhere.
+ * against its cap and the most it held resident, with a warning from four fifths of the cap. The heap is
+ * named only when tsc still held its program as it exited, which `tsc -p` here mostly does not, so a part's
+ * line is usually the peak alone. The build's `tsc -b` holds it, and CI forces a collection there first.
  */
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'

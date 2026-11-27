@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -213,6 +213,7 @@ The office sets them on the job window's Documents tab, in **Papers before this 
 Everyone signs each one, the office too.
 A required paper keeps the words it had in the Contract Book on the day it was required (`job_required_papers`, v2.7641).
 A person's signed copy is a `person_contract_documents` row with its `job_id`, named with the job's number.
+Since v2.8692 (punch list #439, piece 4) a required paper can be one a **site** wrote, a development or an address whose secrecy is on (`site_secrecy`, `job_required_papers.site_secrecy_id`): every job at the site carries it, one signature a person covers them all, and a sub is not asked it.
 **Take off** removes a paper from the job and keeps every signature.
 A taken-off paper is kept, never deleted by the office, and a dev alone reads **Taken-off papers** under the section on a ZZ test job, with **Delete…** for a paper that no copy, no GC proposal and no later revision names (`removedPaperStaysWhy`, `delete_test_job_required_paper`, v2.8679, punch list #443).
 The roster in the section lists each person who can open the job against each paper, and **Copy the signing link** puts a person's links on the clipboard.
@@ -3118,7 +3119,10 @@ a charge still without a receipt gets one reminder in the evening, one a charge.
 On the Team queue the charge wears a chip, *Texted 6:14 PM* or *No text*, with the reason under it: the card tied to no one, no cell on file, a person who has left, a STOP, or a text that did not go (`receiptLineWords`).
 The charges the text cannot finish are a **Needs you** line, *N card charges wait on a receipt the text cannot get* (`receipts-to-chase`, v2.7148), and rows of Quickfill's Fill them in deck (`lib/needsYou/fillInReceipts.ts`): each says why and names its door, **Copy the receipt link** sends the link by hand, and **Got it** takes the row off the office's list while the link stays open.
 The same state shows as a chip beside a recent card charge on Banking's ledger and User Sort and in the **Receipt** column of Job Summary's card-charge drill-down (`lib/tickets/receiptState.ts`, `components/tickets/ReceiptStateChip.tsx`, v2.7152).
+A row for a charge texted and reminded with no receipt also has **Text again** (v2.8697, `receiptAgainPress`): the press reads *Text Jordan again*, a window asks first, and the office's own text goes on a new link.
+The office may text again twice for one charge, twelve hours apart (`RECEIPT_AGAIN_MAX`, `RECEIPT_AGAIN_REST_HOURS`), and the row rests off the list for twelve hours after each press.
 **Function**: `receipt-request`, called by the cron of the same name.
+The office's Text again calls the same function, signed in.
 **Guides**: *turn on receipt texts for card charges* (the owner), *answer the text about a charge on your card* (the holder), *sort the team's card purchases from the office* (the office).
 
 ### Team purchases and the Team queue (Job Parts Tally)
@@ -8220,6 +8224,7 @@ Since v2.7341 one bill can carry **its own due day** (`invoice_due_days`, `set_i
 it rides with the calendars (`loadPayCalendars`, `indexPayCalendars`' `byInvoice`) and sits at the top of the ladder `calendarSourceFor` reads (`from: 'bill'`, `ownDue`): the bill's own day, the job's calendar, the payer's, the pace guess.
 Such a bill reads **Due** on that day with *This bill's own day · § 9.4* under it, and no record is replayed against it.
 Since v2.7343 the terms have a second shape, **a number of days after the bill** (`payer_pay_calendars.days_after`, `PayCalendar.daysAfter`, 1 to 180): the window's first choice is *How they pay* (`PayCalendarFields`), *On a set day of the month* or *A number of days after the bill*;
+Since v2.8714 that first choice is hidden unless the terms on the form are already in days, by `showsHowTheyPay` and the switch `PAY_CALENDAR_DAYS_AFTER_OFFERED` in `lib/jobs/payTermsInDaysOffer.ts`, which is off (punch list #341, call 4).
 `dueDayFor` adds the days to the day the bill was accepted, `nextCutoff` answers none so no cutoff line draws, and the words read *Paid 45 days after the bill* and *pay terms* (`payTermsNoun`).
 Since v2.7028 a bill of theirs reads **Due** on its [[Bill dates ledger (Pipeline)]] row, with *Usually lands about …* under it, through `billedPayModel` (`src/lib/jobs/billedDuePay.ts`), which wraps the pace guess and leaves it and its edge copies as they were;
 the Payment forecast, the phone rows and the Lien desk's runway read the same model, and since v2.7040 so do the job window's bills list (`useJobBilledExpectedPay` → `invoiceLedgerRow`, *due Nov 10 · 2 d past*) and Call mode (`buildPaymentChaseQueue`).

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { hereNote, travelNote } from '../jobMode/onMyWay'
-import { CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, CLOCK_OUT_NOTE_FROM_PLAN_LINE, clockNoteEmpty, clockNoteIsPlan, clockOutPlanLineShows } from './clockPlanWords'
+import { CLOCK_IN_JOB_OR_BID_QUESTION, CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, CLOCK_OUT_NOTE_FROM_PLAN_LINE, clockNoteEmpty, clockNoteIsPlan, clockOutPlanLineShows } from './clockPlanWords'
 
 describe('the clock’s empty-box lines (punch list #446, v2.8624)', () => {
   it('name the press that comes alive, in plain words', () => {
@@ -9,6 +9,11 @@ describe('the clock’s empty-box lines (punch list #446, v2.8624)', () => {
     expect(CLOCK_OUT_NOTE_EMPTY_LINE).toBe('Say what you worked on today, then Complete clock out.')
     expect(plainWordsFailures(CLOCK_IN_PLAN_EMPTY_LINE)).toEqual([])
     expect(plainWordsFailures(CLOCK_OUT_NOTE_EMPTY_LINE)).toEqual([])
+  })
+  it('asks which job or bid the time is charged to (finding 296: it read change)', () => {
+    expect(CLOCK_IN_JOB_OR_BID_QUESTION).toBe('What job or bid should we charge for your time?')
+    expect(CLOCK_IN_JOB_OR_BID_QUESTION).not.toMatch(/change/)
+    expect(plainWordsFailures(CLOCK_IN_JOB_OR_BID_QUESTION)).toEqual([])
   })
   it('a box of spaces is empty; one word is not', () => {
     expect(clockNoteEmpty('')).toBe(true)

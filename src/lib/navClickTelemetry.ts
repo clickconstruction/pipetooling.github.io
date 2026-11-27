@@ -20,6 +20,18 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 /** `ui_nav_clicks.control` for a press on a Call link or button (v2.5904); the target names the site, `#surface=<site>`. */
 export const CALL_PRESSED_CONTROL = 'call_pressed'
 
+/**
+ * `ui_nav_clicks.control` for a row of the job form's Edit tab whose editor a person opened (v2.8704,
+ * punch list #190): the target is the row's own name, `#Team`. *Open the Edit tab* is half of every press
+ * on a Pipeline row, and nothing said what is pressed behind that door.
+ */
+export const JOB_EDIT_ROW_CONTROL = 'job-edit-row'
+
+/** Pure: the `target` of an Edit tab row's open, its label named as a button's is, so a person's name on a label never reaches the ledger. */
+export function jobEditRowTarget(label: string): string {
+  return `#${navNameFromWords(label) ?? '…'}`
+}
+
 /** Pure: the `target` of a Call press. */
 export function callPressedTarget(site: string): string {
   return `#surface=${site}`
@@ -40,15 +52,15 @@ const BUTTON_NAME_CUTS = [' — ', ' · ', ': ', ' for ', ' at ', ' on ', '’s 
  */
 const NAV_WORDS = new Set([
   'A', 'AIA', 'Account', 'Add', 'All', 'Arrived', 'Ask', 'Assign', 'Back', 'Bid', 'Bill', 'Billed', 'Billing', 'Bills',
-  'Builder', 'Call', 'Clock', 'Close', 'Collect', 'Collections', 'Commercial', 'Complete', 'Conditional', 'Contract',
+  'Builder', 'Call', 'Charging', 'Clock', 'Close', 'Collect', 'Collections', 'Commercial', 'Complete', 'Conditional', 'Contract',
   'Costs', 'Create', 'Crew', 'Current', 'Customer', 'Date', 'Day', 'Development', 'Dispatch', 'Documents', 'Done',
   'Draft', 'Drive', 'Edit', 'Electrical', 'Email', 'Every', 'Expand', 'Expected', 'File', 'Files', 'Final', 'Flag',
   'Folders', 'GC', 'Gas', 'Generator', 'Give', 'Go', 'Google', 'HCP', 'HVAC', 'History', 'In', 'Items', 'Job', 'Jobs',
   'Jump', 'Last', 'Latest', 'Leave', 'Leaving', 'Lien', 'Liens', 'Line', 'Link', 'Man-hours', 'Maps', 'Mark', 'Message',
   'Messages', 'Money', 'Month', 'Move', 'Multiple', 'Next', 'No', 'Not', 'Note', 'Notes', 'Nothing', 'On', 'Only', 'Open',
-  'Out', 'PDF', 'Paid', 'Payment', 'Phone', 'Photos', 'Pictures', 'Pipeline', 'Plans', 'Plumbing', 'Post', 'Progress',
+  'Our', 'Out', 'PDF', 'Paid', 'Pay', 'Payment', 'Phone', 'Photos', 'Pictures', 'Pipeline', 'Plans', 'Plumbing', 'Post', 'Progress',
   'Project', 'Property', 'Put', 'Quo', 'Ready', 'Record', 'Release', 'Remove', 'Replace', 'Report', 'Reports',
-  'Residential', 'Schedule', 'Segment', 'Send', 'Sent', 'Set', 'Share', 'Signed', 'Stages', 'Status', 'Story', 'Summary',
+  'Residential', 'Schedule', 'Segment', 'Send', 'Sent', 'Set', 'Share', 'Show', 'Signed', 'Stages', 'Status', 'Story', 'Sub', 'Summary',
   'Team', 'Test', 'Text', 'Texts', 'The', 'Their', 'This', 'Time', 'Today', 'Tomorrow', 'Turnaway', 'Unconditional',
   'View', 'Waiting', 'Week', 'Working', 'Write', 'Yesterday',
 ])
@@ -79,7 +91,15 @@ function navWordIsSafe(word: string): boolean {
 export function navButtonName(button: Element): string | null {
   const nav = (button.getAttribute('data-nav') ?? '').trim()
   if (nav) return nav.slice(0, 48)
-  const raw = button.getAttribute('aria-label') || button.getAttribute('title') || button.textContent || ''
+  return navNameFromWords(button.getAttribute('aria-label') || button.getAttribute('title') || button.textContent || '')
+}
+
+/**
+ * Pure: the short name a label's own words give (v2.5904's rule, apart from the button since v2.8704): cut
+ * where the words start naming a thing, digits folded to `#`, months and weekdays to `date`, and a
+ * capitalised word the app does not own ends the name with `…`. Null when there are no words.
+ */
+export function navNameFromWords(raw: string): string | null {
   let name = raw.replace(/\s+/g, ' ').trim()
   if (!name) return null
   let cut = name.length

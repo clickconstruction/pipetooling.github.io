@@ -15,7 +15,7 @@ summary: >
   counts. Clocked in with no job, the superintendent sees the pace of the next stop.
 next: The owner looks at the card on a phone and answers the four calls below. Both small mends held on 2026-11-26: v2.8599 live and in the simulator, v2.8598 in the simulator, staged by an Exit from View as. The wider gate waits, on the owner's word, until reloads are timed on the new build.
 size: M, built as one PR, an XS for the Job Budget card and an S for the reload mend, all built; left: the looks (XS)
-blocker: None in the code.
+blocker: None in the code. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8048 · 8058 · 8120 · 8122 · 8562 · 8582 · 8598 · 8599
 opinion: your call — the card is built on the defaults, and each of the four calls is one small change either way
 ---

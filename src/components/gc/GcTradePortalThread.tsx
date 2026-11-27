@@ -81,7 +81,7 @@ export function GcTradePortalThread({ lines: shipped, messages, projects }: { li
         {!whole && (
           <>
             {' '}
-            <button type="button" onClick={() => setOpen((s) => new Set([...s, r.id]))} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-500)', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
+            <button type="button" data-press-in-line="" onClick={() => setOpen((s) => new Set([...s, r.id]))} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-500)', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
               {t('threadMore')}
             </button>
           </>
