@@ -10,7 +10,7 @@ summary: >
   Dispatch inbox are under it too. Each one is shared by many screens, so fixing it on one screen
   would leave the others. This card holds the four with their measures, so one decision covers
   each wherever it shows.
-next: A walk of the four on a real phone. A toast over a card, Retry with no signal, the doors of an inbox row, and a green press in light and in dark. Then the owner's word to close the card.
+next: A walk of the four on a real phone. A toast over a card, Retry with no signal, the doors of an inbox row, and a green press in light and in dark. Then the owner's word to close the card. Read in the iOS Simulator on 2026-11-27 (the simulator thread's sitting 2, 402 points): the shared **Retry** is 74 by 44, and a toast at the foot of the screen leaves the window's name and head readable. Not read there: the doors of a Dispatch inbox row, and a green press again (it measured 44 tall and 5.02 to 1 live on 2026-11-24). Two findings beside the card, with the fixing thread: the red banner's own **Retry** is a smaller pill, and a toast's green fill is paler than the green presses.
 size: M as four small parts (S · S · S · S), each alone
 ver: v2.8359 · 8361 · 8362 · 8364
 blocker: none. All four are on `main`. The walk on a phone is what is left. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
