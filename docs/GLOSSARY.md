@@ -2466,6 +2466,7 @@ Two dev-only RPCs drive restore: `list_deleted_records(p_limit)` and `restore_de
 dangling NOT NULL FKs block the restore).
 A third, `restore_deleted_test_person(p_group_key, p_dry_run)`, puts back a deleted test person, whose users row no trigger copies (v2.8677, see *A person made by mistake*).
 Surfaced in **Settings → Data & recovery → Recently deleted (dev)**.
+Since v2.8688 (punch list #443, row 18) a deleted ZZ test job's entry there that kept a Drive link carries **Send its Drive folder to the trash…**, which asks `job-drive-folders` → `trash` for a job deleted earlier or by the office (`DeletedJobFolderLine`, `deletedBundleFolderOffered`).
 
 **Database**: `deleted_records_archive`;
 migrations `20260716120000` (archive), `20260716150000`/`20260716230000` (coverage), `20260716180000`/`20260716210000` (restore), `20260717210000` (people)
