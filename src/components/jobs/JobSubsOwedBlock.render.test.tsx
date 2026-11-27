@@ -9,6 +9,7 @@ import { JobSubsOwedView } from './JobSubsOwedBlock'
 import { buildJobOwedBlock, type OwedSheetInput } from '../../lib/people/subOwedBreakdown'
 import type { NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/rosterSub'
 import { buildSheetPartiesLookup, sheetParties } from '../../lib/subWorkOrders/sheetParties'
+import { WE_OWE_NOTHING } from '../../lib/subWorkOrders/subPaymentsLedger'
 
 // Made-up people and sheets.
 const ROSTER: NeedsWorkOrderRosterPerson[] = [
@@ -66,6 +67,15 @@ describe('JobSubsOwedView', () => {
     expect(screen.getByRole('alert').textContent).toContain('Top-out')
     fireEvent.click(screen.getByRole('button', { name: 'Show the sheets ›' }))
     expect(onShowSheets).toHaveBeenCalledTimes(1)
+  })
+  it('a person paid in full reads settled, the Ledger’s own word, and never paid up (finding 314)', () => {
+    const block = buildJobOwedBlock([sheet('s1', ['harlan'], [['Top-out', 1800]], 1800), sheet('s2', ['marlow'], [['Trim', 900]])])
+    render(<JobSubsOwedView title="#2041 Cedar Hollow Clinic · subs on this job" block={block} onOpenSheet={vi.fn()} onOpenPerson={vi.fn()} onShowSheets={vi.fn()} />)
+    const text = screen.getByTestId('job-subs-owed').textContent ?? ''
+    expect(text).toContain(`Harlan Mechanical`)
+    expect(text).toContain(WE_OWE_NOTHING)
+    expect(WE_OWE_NOTHING).toBe('settled')
+    expect(text).not.toContain('paid up')
   })
   it('a sheet opens on the Pay view', () => {
     const { onOpenSheet } = draw()

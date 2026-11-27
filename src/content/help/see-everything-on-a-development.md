@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
+keywords: development, site, subdivision, the proof, make the packet, who signed, show the client, print the packet, download the packet, signed copies, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -277,6 +277,41 @@ The papers still to sign come first. One line over the list counts the signed on
 The section is there only when the site has a paper. The office and an estimator see the section. Nothing is sent from the list.
 
 To name a site on a paper, see [name the site a paper is for](/help/find-an-agreement-we-sent-or-signed#name-the-site-a-paper-is-for).
+
+## Show the client who signed
+
+The client may ask who signed a paper for the site. Under the list sits **The proof**, with the client's name. One line counts the companies that signed and the companies still asked.
+
+1. Press **Make the packet**. The packet opens as it prints.
+2. Read the packet. **Signed** lists each company, who signed and the day.
+3. Press {{button:blue|Print}}. The packet opens in a print window of its own.
+4. Press **Close** when you are done.
+
+**Asked, not yet signed** lists each company that has the paper and has not signed.
+
+:::example Our own people on the packet
+The packet reads *18 of 21 have signed*. Workers are counted, not named.
+:::
+
+**Our own people** shows only while secrecy is on for the site. See [ask for one paper across a whole site](/help/require-papers-before-a-job-opens#ask-for-one-paper-across-a-whole-site).
+
+### Download the packet with the signed copies
+
+The packet on the screen is the list. **Download** makes one PDF: the list first, then each signed copy.
+
+1. Press **Make the packet**.
+2. Press the download button. The button names its count, such as {{button:outline|Download with 3 signed copies}}.
+3. Wait for the line under the buttons. The line reads *Downloaded, with 3 signed copies attached.*
+
+The PDF is saved by your browser. The file is named for the site. A copy of the PDF is kept under Documents → Sent copies.
+
+:::example A copy that is not attached
+A signed form keeps its own PDF, so a form's copy is left out. The line under the buttons names the company and the reason. The list in the PDF says the same beside that company.
+:::
+
+With no company signed yet, the button reads **Download the list**.
+
+The office and an estimator can make the packet. Looking at the packet saves nothing. **Print** keeps a copy of the packet under Documents → Sent copies. **Download** keeps a copy of its PDF there too.
 
 ## What an estimator sees
 

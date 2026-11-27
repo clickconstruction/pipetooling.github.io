@@ -376,6 +376,7 @@ export function PermitMarket({
           namesPlumbers={cityNamesPlumbers(market.ground?.builders.find((c) => c.city === opened.city)?.rows ?? [])}
           ground={ground}
           onAnswered={answers.reload}
+          onLookupChecked={market.reloadLookups}
           onClose={() => setOpened(null)}
           onSaved={() => {
             market.reload()
@@ -436,8 +437,8 @@ function ClockBar({ clock, scale }: { clock: MarketClock; scale: number }) {
 }
 
 /** The builder's sheet Builders opens, for a name on a company's row. Its counts say how far back that city's records reach. */
-function MarketBuilderSheet({ opened, authUserId, todayYmd, namesPlumbers, ground, onAnswered, onClose, onSaved }: { opened: Opened; authUserId: string; todayYmd: string; namesPlumbers: boolean; ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
+function MarketBuilderSheet({ opened, authUserId, todayYmd, namesPlumbers, ground, onAnswered, onLookupChecked, onClose, onSaved }: { opened: Opened; authUserId: string; todayYmd: string; namesPlumbers: boolean; ground: BuilderAnswersGround | null; onAnswered: () => void; /** A fact checked on the sheet: the call list behind it reads the lookups again. */ onLookupChecked: () => void; onClose: () => void; onSaved: () => void }) {
   const recordsStart = usePermitRecordsStart(opened.city)
   const reach = useMemo(() => recordsReach(recordsStart, todayYmd), [recordsStart, todayYmd])
-  return <BuilderSheet row={opened.row} city={opened.city} authUserId={authUserId} todayYmd={todayYmd} reach={reach} namesPlumbers={namesPlumbers} ground={ground} onAnswered={onAnswered} onClose={onClose} onSaved={onSaved} />
+  return <BuilderSheet row={opened.row} city={opened.city} authUserId={authUserId} todayYmd={todayYmd} reach={reach} namesPlumbers={namesPlumbers} ground={ground} onAnswered={onAnswered} onLookupChecked={onLookupChecked} onClose={onClose} onSaved={onSaved} />
 }

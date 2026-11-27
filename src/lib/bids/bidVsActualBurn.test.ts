@@ -28,14 +28,14 @@ const today = '2026-09-12'
 function costsTabVerdict(i: JobChargesTimelineInputs, row: JobBudgetRowLike | null, finished: boolean, bidNumber: string | null) {
   const resolved = resolveJobBudget({ row, priceUsd: i.revenue, targetMarginPct: readTargetMarginPct() })
   const burnInputs = i.fallbackPercent == null && finished ? { ...i, fallbackPercent: 100 } : i
-  const burn = buildBurnForVerdict(burnInputs, null, resolved)
+  const burn = buildBurnForVerdict(burnInputs, null, resolved, 1)
   const newest = newestPercentEvent(i.valueEvents)
   return buildCostsVerdict({ burn, priceUsd: i.revenue, spend: spendByComponent(i.chargeEvents), teamHours: i.teamHours, teamPeople: null, resolved, bidLabel: bidNumber, latestReportYmd: newest && newest.kind !== 'manual' ? newest.dateKey : null, jobPct: i.fallbackPercent, jobFinished: finished, todayYmd: today })
 }
 
 describe('bidVsActualJobVerdict (v2.5046)', () => {
   it('is the Costs tab’s verdict for the same job, to the cent', () => {
-    const v = bidVsActualJobVerdict({ inputs, budgetRow, status: 'working', bidNumber: '76', todayYmd: today })
+    const v = bidVsActualJobVerdict({ inputs, budgetRow, status: 'working', bidNumber: '76', todayYmd: today, laborBurden: 1 })
     expect(v).toEqual(costsTabVerdict(inputs, budgetRow, false, '76'))
     // spent $16,500 at 50% done → $33,000 at completion → $8,550 · 20.6% direct
     expect(v.directMargin!.usd).toBeCloseTo(8_550, 6)
@@ -44,7 +44,7 @@ describe('bidVsActualJobVerdict (v2.5046)', () => {
   })
   it('a billed job with no % anywhere reads done, as on the Costs tab; with no budget row it stands on the assumption', () => {
     const noPct = { ...inputs, valueEvents: [], fallbackPercent: null }
-    const v = bidVsActualJobVerdict({ inputs: noPct, budgetRow: null, status: 'billed', bidNumber: null, todayYmd: today })
+    const v = bidVsActualJobVerdict({ inputs: noPct, budgetRow: null, status: 'billed', bidNumber: null, todayYmd: today, laborBurden: 1 })
     expect(v).toEqual(costsTabVerdict(noPct, null, true, null))
     expect(v.pctDone).toBe(100)
     expect(v.directMargin!.usd).toBeCloseTo(41_550 - 16_500, 6)
@@ -57,7 +57,7 @@ describe('bidVsActualJobVerdict (v2.5046)', () => {
 })
 
 describe('bidVsActualDirectWords (v2.5046)', () => {
-  const v = bidVsActualJobVerdict({ inputs, budgetRow, status: 'working', bidNumber: '76', todayYmd: today })
+  const v = bidVsActualJobVerdict({ inputs, budgetRow, status: 'working', bidNumber: '76', todayYmd: today, laborBurden: 1 })
   it('the margin at completion, and the dollars under it', () => {
     expect(bidVsActualDirectWords(v)).toEqual({ big: '21%', sub: '$8,550 at completion' })
     expect(bidVsActualDirectWords({ ...v, directMargin: { usd: -2_400.4, pct: -5.8 } })).toEqual({ big: '-6%', sub: '−$2,400 at completion' })
@@ -66,5 +66,22 @@ describe('bidVsActualDirectWords (v2.5046)', () => {
     expect(bidVsActualDirectWords({ ...v, priceUsd: null })).toEqual({ big: '—', sub: 'no price on the job' })
     expect(bidVsActualDirectWords({ ...v, directMargin: null, pctDone: null })).toEqual({ big: '—', sub: 'needs a % complete' })
     expect(bidVsActualDirectWords({ ...v, directMargin: null, pctDone: 8, timeLeft: { ...v.timeLeft, fieldDays: 2 } })).toEqual({ big: 'too early', sub: '2 field days · 8% done' })
+  })
+})
+
+describe('the burn at the burden (punch list #448)', () => {
+  it('prices the linked job’s labor at the burden, as its Costs tab does', () => {
+    const v = bidVsActualJobVerdict({ inputs, budgetRow, status: 'working', bidNumber: '76', todayYmd: today, laborBurden: 1.2 })
+    // $9,000 of wages × 1.20 = $10,800, with $6,000 of parts and a $1,500 sub sheet: $18,300 spent at 50% done.
+    expect(v.spent.usd).toBeCloseTo(18_300, 6)
+    expect(v.eacUsd).toBeCloseTo(36_600, 6)
+    expect(v.directMargin!.usd).toBeCloseTo(41_550 - 36_600, 6)
+    const labor = v.sections.find((s) => s.key === 'labor')!
+    expect(labor.spentUsd).toBeCloseTo(10_800, 6)
+    expect(labor.sub).toBe('$9,000 wages × 1.20')
+    // The bid figure's ruler: 300 hours at $35 is $10,500, and the burn's labor now reads against it past 100%.
+    expect(labor.pctOfBudget).toBeCloseTo((10_800 / 10_500) * 100, 6)
+    expect(v.sections.find((s) => s.key === 'subs')!.spentUsd).toBe(1_500)
+    expect(v.sections.find((s) => s.key === 'materials')!.spentUsd).toBe(6_000)
   })
 })

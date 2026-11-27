@@ -29,7 +29,7 @@ const inputs: JobChargesTimelineInputs = {
   teamHours: 240,
   cardChargesExcluded: false,
 }
-const verdict = bidVsActualJobVerdict({ inputs, budgetRow: { kind: 'bid', labor_hours: 300, labor_rate: 35, labor_usd: 10_500, materials_usd: 9_000, subs_usd: 2_000, other_usd: 500, total_direct_usd: 22_000, completeness: { usable: true } }, status: 'working', bidNumber: '76', todayYmd: '2026-09-12' })
+const verdict = bidVsActualJobVerdict({ inputs, budgetRow: { kind: 'bid', labor_hours: 300, labor_rate: 35, labor_usd: 10_500, materials_usd: 9_000, subs_usd: 2_000, other_usd: 500, total_direct_usd: 22_000, completeness: { usable: true } }, status: 'working', bidNumber: '76', todayYmd: '2026-09-12', laborBurden: 1 })
 
 describe('BidVsActualRowDetail', () => {
   it('the dollar roles read the job’s burn by section, as its Costs tab does', () => {

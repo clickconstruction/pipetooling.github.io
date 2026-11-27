@@ -1,5 +1,5 @@
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
@@ -16,7 +16,8 @@ import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, filedMark, threadOf } from '../../../lib/messages/thread'
 import { isThreadBeside, isThreadFolded, isThreadShort, threadFolds, THREAD_SHORT_QUERY } from '../../../lib/messages/threadFold'
 import { threadHeaderPlan } from '../../../lib/messages/threadHeader'
-import { isPagePinched, threadRoom, threadWindowPlace } from '../../../lib/messages/threadWindowFrame'
+import { isPagePinched, roomFell, threadRoom, threadWindowPlace } from '../../../lib/messages/threadWindowFrame'
+import { showReplyFoot } from './replyFoot'
 import { visibleBand } from '../../../lib/visibleBand'
 import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
@@ -98,6 +99,16 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   // What waits while the room is tight wears this mark, and one rule in `index.css` hides it unless it holds the field
   // being typed in: hidden, not taken out, so a row keeps what it holds.
   const tightFold = room.rest ? undefined : ''
+  // Finding 319: when the keyboard takes room while the reply box holds the focus, the column follows the box's foot,
+  // so the send press is not left under the keys. Only when the room falls: a room that grows moves nothing.
+  const threadColumnRef = useRef<HTMLDivElement>(null)
+  const roomWas = useRef<number | null>(null)
+  const roomNow = room.columnScrolls ? (shows?.height ?? null) : null
+  useEffect(() => {
+    const fell = roomFell(roomWas.current, roomNow)
+    roomWas.current = roomNow
+    if (fell) showReplyFoot(threadColumnRef.current?.querySelector<HTMLElement>('[data-reply-box]') ?? null)
+  }, [roomNow])
   const [columnRef, columnWidth] = useMeasuredWidth<HTMLDivElement>()
   const folded = isThreadFolded(columnWidth, phone)
   // A short window (v2.6474): the window takes its whole height and the reply box folds to one row. The header is the
@@ -542,7 +553,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
               {/* The lines and the box, and beside them on a short, wide window (v2.6478) what a cut draws above the lines:
                   the column keeps its place in the tree, so a draft in the box lives through a resize across the line. */}
               <div data-thread-body={beside ? 'beside' : 'under'} style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-                <div data-thread-column style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', ...(room.columnScrolls ? { overflowY: 'auto' } : null) }}>
+                <div ref={threadColumnRef} data-thread-column style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', ...(room.columnScrolls ? { overflowY: 'auto' } : null) }}>
                   {/* What a cut draws above the lines (the sort card, Who has it) scrolls on its own when it is taller than the room
                       (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
                   {!beside && slots.aboveLines && (

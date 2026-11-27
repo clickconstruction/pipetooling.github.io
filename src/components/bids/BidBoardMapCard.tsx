@@ -618,6 +618,7 @@ export function BidBoardMapCard({
               anchor={canvasAnchor}
               fitPoints={fitPoints}
               cluster={clustered}
+              clusterNoun="bids"
               clusterRingPriority={CLUSTER_RING_PRIORITY}
               pulseId={isMobile ? null : hoverId}
               timeDotsWords={MAP_TIME_PINS_WORDS}

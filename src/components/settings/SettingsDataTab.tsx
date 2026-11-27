@@ -14,6 +14,7 @@ import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection
 import ZzTestJobSweepSection from './ZzTestJobSweepSection'
 import KeptMapAddressesBlock from './KeptMapAddressesBlock'
 import GoalsCheckTakeBackBlock from './GoalsCheckTakeBackBlock'
+import LaborBurdenSettingsBlock from './LaborBurdenSettingsBlock'
 
 export default function SettingsDataTab({
   myRole,
@@ -194,6 +195,7 @@ export default function SettingsDataTab({
     {isDev && <ZzTestJobSweepSection />}
     {isDev && <KeptMapAddressesBlock role={myRole} />}
     {isDev && <GoalsCheckTakeBackBlock role={myRole} userId={myUserId} />}
+    {isDev && <LaborBurdenSettingsBlock role={myRole} />}
     {isDev && <DeletedRecordsSection />}
     {isDev && <BulkDeleteAlertSettingsBlock />}
     {isOwnerOrDev(myRole) && <BidJobBackfillSettingsBlock />}

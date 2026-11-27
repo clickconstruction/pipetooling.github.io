@@ -59,6 +59,8 @@ export type JobActivityEventType =
   | 'hazmat_fee_voided'
   | 'hazmat_fee_deleted'
   | 'hazmat_notice_emailed'
+  | 'build_wait_marked'
+  | 'build_wait_lifted'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -184,6 +186,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   // The fee's notice emailed to the customer (v2.1039) — written by send-hazmat-notice-email after Resend takes it;
   // not financial, so the job's crew sees it too. Shown since v2.5635, as the Stripe bill email is.
   hazmat_notice_emailed: { tag: 'Emailed', ...BILLING_BLUE, bucket: 'billing' },
+  // A Build job marked as waiting, and the wait lifted (v2.8723, punch list #192 write A): written by set_job_build_wait, read like a status change.
+  build_wait_marked: { tag: 'Waits', ...STATUS_AMBER, bucket: 'status' },
+  build_wait_lifted: { tag: 'Waits', ...STATUS_AMBER, bucket: 'status' },
 }
 
 /**

@@ -46,7 +46,7 @@ import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
 import { LANE_LIST, LONG_NAME_FIT, ONE_COLUMN, SEARCH_HIT_ROW_FIT, SEARCH_HIT_WHEN_FIT, SEARCH_HIT_WORDS_FIT } from '../lib/messages/pageFit'
 import { QUEUES_FOLD_WORDS, queuesFolded } from '../lib/messages/queuesFold'
-import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
+import { queryOf, searchLines, searchListShows, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
 import { keepLens, lensCounts, queueForShow, readLens, SHOW_WORDS, type ShowLens } from '../lib/messages/showLens'
@@ -290,7 +290,8 @@ export default function Messages() {
               </div>
               {/* Punch list #348: the list names its one column, so a hit's long link cannot set the width of every row. */}
               <div style={LANE_LIST} data-testid="search-list">
-                {host.problem ? (
+                {/* Finding 323: a re-read that failed behind a held view is not this list's news; its lines still draw. */}
+                {searchListShows(found, host.problem) === 'problem' ? (
                   <div style={searchAnswer}>{host.problem}</div>
                 ) : !found ? (
                   <div style={searchAnswer}>{SEARCH_WORDS.reading}</div>

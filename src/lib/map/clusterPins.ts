@@ -139,3 +139,15 @@ export function clusterRadiusPx(count: number): number {
 export function clusterLabel(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
+
+/**
+ * What a group of pins is called when its map does not say (finding 327, a walk of 2026-11-27). It was *bids*, so
+ * the permits map and the Jobs map each named a group *N bids here*. A map that groups its pins names them with
+ * `clusterNoun`; one that forgets says *pins*, which is never wrong.
+ */
+export const CLUSTER_NOUN_UNNAMED = 'pins'
+
+/** A group's own name, which a hover and a screen reader read: `12 permits here — click to zoom in`. */
+export function clusterTitle(count: number, noun: string = CLUSTER_NOUN_UNNAMED): string {
+  return `${count} ${noun.trim() || CLUSTER_NOUN_UNNAMED} here — click to zoom in`
+}

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import PeopleSubsTab from './PeopleSubsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { WE_OWE_NOTHING } from '../../lib/subWorkOrders/subPaymentsLedger'
 
 // The sub portal globe (sub-portal train) reads the office role via useAuth, and so do the papers' presses (#350).
 // A dev is signed in, unless a test signs a superintendent in.
@@ -157,6 +158,29 @@ describe('PeopleSubsTab: a sheet with several names (v2.7169)', () => {
       expect(within(block).queryByRole('button', { name: 'Statement of account…' })).toBeNull()
     } finally {
       who.superintendent = false
+      for (const k of Object.keys(TABLE_ROWS)) delete TABLE_ROWS[k]
+      Object.assign(TABLE_ROWS, saved)
+    }
+  })
+})
+
+describe('PeopleSubsTab: a sub we owe nothing (finding 314)', () => {
+  it('reads settled on the Roster, the Ledger’s own word, and never paid up', async () => {
+    const saved = { ...TABLE_ROWS }
+    Object.assign(TABLE_ROWS, {
+      people: [{ id: 'p-core', name: 'Ridgeline Coring LLC', kind: 'sub', archived_at: null, account_user_id: null }],
+      people_labor_jobs: [{ id: 'done', assigned_to_name: 'Ridgeline Coring LLC', address: '12 Quarry Rd', job_number: '901', labor_rate: 0 }],
+      people_labor_job_assignees: [{ labor_job_id: 'done', person_id: 'p-core' }],
+      people_labor_job_items: [{ job_id: 'done', fixture: 'Cutting', count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 2150 }],
+      people_labor_job_payments: [{ id: 'pay-1', job_id: 'done', amount: 2150, memo: null, created_at: '2026-11-02T15:00:00Z' }],
+    })
+    try {
+      renderWithProviders(<PeopleSubsTab />)
+      const press = await screen.findByTestId('subs-owed-press-p-core')
+      expect(press.textContent).toBe(`${WE_OWE_NOTHING} ▸`)
+      expect(WE_OWE_NOTHING).toBe('settled')
+      expect(document.body.textContent).not.toContain('paid up')
+    } finally {
       for (const k of Object.keys(TABLE_ROWS)) delete TABLE_ROWS[k]
       Object.assign(TABLE_ROWS, saved)
     }

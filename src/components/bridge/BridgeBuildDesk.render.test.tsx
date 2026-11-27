@@ -6,7 +6,11 @@
  * opening to its why-line and doors, the percent window mounting from that
  * detail, the price door's path, the folds at the foot (what moved, every
  * open job with the verdict, the tiles and the ledger's rows, how this is
- * counted), the reading and the failed-read lines, and Esc closing.
+ * counted), the reading and the failed-read lines, and Esc closing. Since
+ * v2.8723 (punch list #192, write A): Name why it waits on a quiet job's
+ * detail, the small window and its dead press, the mark and the lift through
+ * a stood-in io, a refusal that keeps the window open, and the waiting jobs
+ * behind their own press at the foot.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -219,5 +223,136 @@ describe('BridgeBuildDesk on the step frame (punch list #334, PR 1)', () => {
     expect(screen.getByTestId('bridge-step-group-none').textContent).toBe('Do this weekNothing waiting on Build. Every job with hours moved its percent.')
     expect(screen.queryByTestId('bridge-step-row')).toBeNull()
     expect(screen.getByTestId('bridge-step-fold-moved').textContent).toBe('What moved (1) ›')
+  })
+})
+
+describe('a Build job waits, with a reason (v2.8723, punch list #192 write A)', () => {
+  const baseReads = input.reads!
+  const waitOn2087 = { jobId: '2087', reason: 'gc_not_ready' as const, note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' }
+  const deskWith = (waits: (typeof waitOn2087)[] | undefined) => buildBuildDesk({ ...input, reads: { ...baseReads, ...(waits ? { waits } : {}) } })
+  function mount(d: ReturnType<typeof buildBuildDesk>, over: { markError?: Error; liftError?: Error } = {}) {
+    const marks: Array<[string, string, string]> = []
+    const lifts: string[] = []
+    const onWaitsChanged = vi.fn()
+    const waitsIo = {
+      mark: async (jobId: string, reason: string, note: string) => {
+        if (over.markError) throw over.markError
+        marks.push([jobId, reason, note])
+      },
+      lift: async (jobId: string) => {
+        if (over.liftError) throw over.liftError
+        lifts.push(jobId)
+      },
+    }
+    renderWithProviders(<BridgeBuildDesk desk={d} readsPending={false} readError={null} isLink={false} readStamp={STAMP} onClose={() => {}} onSavePct={() => {}} onWaitsChanged={onWaitsChanged} waitsIo={waitsIo} />)
+    return { marks, lifts, onWaitsChanged }
+  }
+  const openQuietDetail = () => {
+    fireEvent.click(screen.getByTestId('bridge-build-press-crew'))
+    return screen.getByTestId('bridge-build-row-detail')
+  }
+
+  it('offers no press while the waits could not be read', () => {
+    mount(deskWith(undefined))
+    openQuietDetail()
+    expect(screen.queryByTestId('bridge-build-name-wait')).toBeNull()
+    expect(screen.queryByTestId('bridge-build-lift-wait')).toBeNull()
+  })
+
+  it('a quiet job’s detail offers Name why it waits, which opens the small window with its press dead', () => {
+    mount(deskWith([]))
+    const detail = openQuietDetail()
+    const press = within(detail).getByTestId('bridge-build-name-wait') as HTMLButtonElement
+    expect(press.textContent).toBe('Name why it waits ›')
+    fireEvent.click(press)
+    const win = screen.getByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })
+    expect(win.textContent).toContain('Pick the reason. This window stops counting the $47.1k against the crew until someone lifts the wait.')
+    expect(within(win).getAllByRole('radio').map((r) => (r.parentElement?.textContent ?? '').trim())).toEqual(['The GC is not ready for us', 'Waiting on materials', 'Waiting on an inspection', 'The customer asked us to hold', 'Weather', 'Something else'])
+    expect(win.textContent).toContain('Written on the job with your name and today’s date.')
+    const mark = within(win).getByTestId('build-wait-mark') as HTMLButtonElement
+    expect(mark.textContent).toBe('Mark it waiting')
+    expect(mark.disabled).toBe(true)
+    expect(within(win).getByTestId('build-wait-hold').textContent).toBe('Pick the reason first.')
+    // Something else needs words.
+    fireEvent.click(within(win).getByRole('radio', { name: 'Something else' }))
+    expect(mark.disabled).toBe(true)
+    expect(within(win).getByTestId('build-wait-hold').textContent).toBe('Say why the job waits.')
+    fireEvent.change(within(win).getByTestId('build-wait-note'), { target: { value: 'The permit is with the city.' } })
+    expect(mark.disabled).toBe(false)
+    expect(within(win).queryByTestId('build-wait-hold')).toBeNull()
+  })
+
+  it('Cancel writes nothing and closes the window', () => {
+    const m = mount(deskWith([]))
+    fireEvent.click(within(openQuietDetail()).getByTestId('bridge-build-name-wait'))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })).toBeNull()
+    expect(m.marks).toEqual([])
+    expect(m.onWaitsChanged).not.toHaveBeenCalled()
+  })
+
+  it('Mark it waiting writes the one wait, says so, closes the window and has the page read the waits again', async () => {
+    const m = mount(deskWith([]))
+    fireEvent.click(within(openQuietDetail()).getByTestId('bridge-build-name-wait'))
+    const win = screen.getByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })
+    fireEvent.click(within(win).getByRole('radio', { name: 'The GC is not ready for us' }))
+    fireEvent.click(within(win).getByTestId('build-wait-mark'))
+    expect(await screen.findByText('2087 · Oak Hollow clubhouse waits: the GC is not ready for us.')).toBeTruthy()
+    expect(m.marks).toEqual([['2087', 'gc_not_ready', '']])
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })).toBeNull())
+    expect(m.onWaitsChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('a refusal keeps the window open with what was picked, and says why', async () => {
+    const m = mount(deskWith([]), { markError: new Error('Only the office marks a job waiting or lifts a wait.') })
+    fireEvent.click(within(openQuietDetail()).getByTestId('bridge-build-name-wait'))
+    const win = screen.getByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })
+    fireEvent.click(within(win).getByRole('radio', { name: 'Weather' }))
+    fireEvent.click(within(win).getByTestId('build-wait-mark'))
+    expect(await screen.findByText(/Only the office marks a job waiting or lifts a wait/)).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: '2087 · Oak Hollow clubhouse waits' })).toBeTruthy()
+    expect((within(win).getByRole('radio', { name: 'Weather' }) as HTMLInputElement).checked).toBe(true)
+    await waitFor(() => expect((within(win).getByTestId('build-wait-mark') as HTMLButtonElement).disabled).toBe(false))
+    expect(m.onWaitsChanged).not.toHaveBeenCalled()
+  })
+
+  it('a waiting job leaves the quiet list and waits behind its own press, with Lift the wait', async () => {
+    const m = mount(deskWith([waitOn2087]))
+    expect(screen.getByTestId('bridge-step-fold-waits').textContent).toBe('Waiting, with a reason (1) ›')
+    // The quiet list's first row is the other quiet job now.
+    expect(rowTitles(screen.getByTestId('bridge-step-group-crew'))[0]).toContain('2090 · Mill Road duplex')
+    fireEvent.click(screen.getByTestId('bridge-step-fold-waits'))
+    const fold = screen.getByTestId('bridge-build-waits')
+    expect(fold.textContent).toContain('1 job waits, $47.1k of sold work. Each stays out of the quiet list until someone lifts the wait.')
+    expect(fold.textContent).toContain('waits · the GC is not ready for us · since Oct 26')
+    fireEvent.click(within(fold).getByRole('button', { name: /2087 · Oak Hollow clubhouse/ }))
+    const detail = within(fold).getByTestId('bridge-build-row-detail')
+    expect(detail.textContent).toContain('Waits since Oct 26: the GC is not ready for us. Dana marked it. This window does not count the $47.1k against the crew while it waits. The Build card still counts it as sold work.')
+    expect(within(detail).queryByTestId('bridge-build-name-wait')).toBeNull()
+    expect(detail.textContent).not.toContain('Nobody scheduled, all week')
+    const lift = within(detail).getByTestId('bridge-build-lift-wait')
+    expect(lift.textContent).toBe('Lift the wait ›')
+    fireEvent.click(lift)
+    expect(await screen.findByText('The wait on 2087 · Oak Hollow clubhouse is lifted. It counts on the Build desk again.')).toBeTruthy()
+    expect(m.lifts).toEqual(['2087'])
+    expect(m.onWaitsChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('a lift the database refuses says why and changes nothing', async () => {
+    const m = mount(deskWith([waitOn2087]), { liftError: new Error('A training account changes nothing.') })
+    fireEvent.click(screen.getByTestId('bridge-step-fold-waits'))
+    const fold = screen.getByTestId('bridge-build-waits')
+    fireEvent.click(within(fold).getByRole('button', { name: /2087 · Oak Hollow clubhouse/ }))
+    fireEvent.click(within(fold).getByTestId('bridge-build-lift-wait'))
+    expect(await screen.findByText(/A training account changes nothing/)).toBeTruthy()
+    expect(m.onWaitsChanged).not.toHaveBeenCalled()
+  })
+
+  it('the whole ledger carries the fourth tile and the verdict’s line', () => {
+    mount(deskWith([waitOn2087]))
+    fireEvent.click(screen.getByRole('button', { name: /^Every open job/ }))
+    const every = screen.getByTestId('bridge-build-every')
+    expect(within(every).getAllByTestId('bridge-build-tile').map((t) => t.textContent)).toContain('Waits, with a reason$47.1k on 1 jobOut of the crew’s count. Still sold work.')
+    expect(screen.getByTestId('bridge-build-verdict').textContent).toContain('1 job waits with a reason.')
   })
 })

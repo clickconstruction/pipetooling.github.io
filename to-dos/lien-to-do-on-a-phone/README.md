@@ -11,11 +11,11 @@ summary: >
   left. A computer's rows already keep one press column. The mock-up gives a phone the same: words
   at the left, one press at the right, every press one size, the second way out as a quiet line, and
   No day set said once.
-next: A simulator walks the phone mend once it is live, at 402 by 874 points: count the stages a column on one screen with **The flow** pressed, press a stage and read its first rows under the pinned line, scroll and watch Payoffs leave with the list, open the desk from `?payoffs=1`, and look at 1280 px that nothing moved. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
-size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); the phone mend (S), built in two PRs; left: a walk of the mend in a simulator (XS) and a look on a phone (XS)
+next: Two reads the simulator's walk of the mend did not make, then this card is retired: the desk opened from `?payoffs=1` at 402 by 874 points in a simulator, and the desk at 1280 px, where nothing should have moved. Back from a job opened from a stage was not read after the mend either; it held on 2026-11-25. Answered 2026-11-27 by the person at the keyboard, *Picks stand* to each, relayed by the managing session: the flow at open is accepted as it is and not mended; the **Remind** press under the pinned line stays; To do opens as built; a computer keeps its Board; the tiles step aside in the flow's view. No call is open and nothing is left to build.
+size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); the phone mend (S), built in two PRs; left: two reads of the mend, the desk from `?payoffs=1` and the desk at 1280 px (XS)
 blocker: none. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8341, v2.8346, v2.8575
-opinion: close — built and live; what is left is seeing the flow under a thumb
+opinion: close — built and live, and every call is answered; two reads of the mend are left
 ---
 
 # The Lien desk's To do on a phone (#428)
@@ -255,3 +255,16 @@ Where the build went past the answers, each said in its fragment:
 **Seen, and it is as built.** Under a Monthly notices stage the list also held an affidavit's row with **Enter mail numbers**. A picked stage narrows the list to its jobs, and every row of a picked job is in (`lienBoard.ts`). The affidavit's job has a notice in that stage.
 
 **For the three calls of this card:** To do opened on the list by day the first time, and on **The flow** once the flow had been used.
+
+## Answered 2026-11-27
+
+Six answers from the person at the keyboard that day, each *Picks stand* to a row read with its pick, relayed by the managing session. No call on this card is open.
+
+1. **The flow at open.** The row: *five of eight stages show whole at open, because Payoffs scrolls away with the list, which was an earlier answer. Pick: Accept and close.* The flow stays as it is: five stages a column at open, all eight after one scroll of about 200 points. Nothing is mended. The card's own done line allows it: *both columns stand on one screen, or the PR says how many do and why.*
+2. **The Remind press under the pinned line.** The row: *it is the stage's own press, built before the earlier answer of "Nothing". Pick: Keep it.* The press stays. The answer *Nothing* of 2026-11-25 was about the find box and the *This run* line, and v2.8575 took those two away. The stage's own press came with the flow in v2.8346 (`LienBoardPhoneFlow.tsx`, `data-lien-board-bin-press`), so that no act the bins offered is lost. The read is the fixing thread's finding 320.
+3. **What To do opens on, on a phone.** *Keep the built default.* The list by day the first time, then the view last used.
+4. **Does a computer's To do change too.** *No, the computer keeps its Board.*
+5. **The day tiles while The flow is pressed.** *They step aside, as built.*
+6. The look on a real phone was taken off on Taunya's words of 2026-11-27, written on this card's blocker.
+
+**What keeps the card open.** The simulator's walk of the mend on 2026-11-27 did not read three things this card's done line and its walk name: the desk opened from `?payoffs=1`, the desk at 1280 px with nothing moved, and Back from a job opened from a stage. The last held in the walk of 2026-11-25, before the mend. The first two have not been read since v2.8575. They are reads only, and the card is retired when both are clean.

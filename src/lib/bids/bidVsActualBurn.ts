@@ -25,6 +25,8 @@ export function bidVsActualJobVerdict(args: {
   /** The bid's number, for the sections' "◆ B66" words. */
   bidNumber: string | null
   todayYmd: string
+  /** The company's burden factor (punch list #448): the burn's labor is priced at it, as on the Costs tab. */
+  laborBurden: number
 }): CostsVerdict {
   const { inputs } = args
   const finished = isFinishedJobStatus(args.status)
@@ -32,7 +34,7 @@ export function bidVsActualJobVerdict(args: {
   const resolved = resolveJobBudget({ row: args.budgetRow, priceUsd, targetMarginPct: readTargetMarginPct() })
   // A billed or paid job with no % anywhere is done — as on the Costs tab.
   const burnInputs = inputs.fallbackPercent == null && finished ? { ...inputs, fallbackPercent: 100 } : inputs
-  const burn = buildBurnForVerdict(burnInputs, null, resolved)
+  const burn = buildBurnForVerdict(burnInputs, null, resolved, args.laborBurden)
   const newest = newestPercentEvent(inputs.valueEvents)
   const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
   return buildCostsVerdict({
@@ -47,6 +49,7 @@ export function bidVsActualJobVerdict(args: {
     jobPct: inputs.fallbackPercent,
     jobFinished: finished,
     todayYmd: args.todayYmd,
+    laborBurden: args.laborBurden,
   })
 }
 

@@ -92,6 +92,8 @@ import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattribu
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
 import { useJobSummaryView } from '../hooks/useJobSummaryView'
+import { useLaborBurdenFactor } from '../hooks/useLaborBurdenFactor'
+import { laborAtBurden } from '../lib/jobs/burnAtBurden'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import ChargesWindow from '../components/charges/ChargesWindow'
 import { ledgerChargesFor, ledgerSummaryCell, loginLookup, rateCardChipWords, standingLookup } from '../lib/charges/ledgerCharges'
@@ -1629,6 +1631,8 @@ export default function Jobs() {
   // Budget footings (v2.3300): one job_budgets read for the rows Job Summary and the Pipeline burn card show.
   const jobSummaryJobIds = useMemo(() => jobSummaryData.map((r) => r.job.id), [jobSummaryData])
   const jobBudgetFootings = useJobBudgetFootings(jobSummaryJobIds, activeTab === 'job-summary' || (activeTab === 'stages' && pipelineBurnArmed && pipelineBurnWanted && !jobsListLoading))
+  // Punch list #448: Job Summary's Burn column and the Pipeline's burn card price labor at the burden, as a job's Costs tab does.
+  const laborBurden = useLaborBurdenFactor(activeTab === 'job-summary' || (activeTab === 'stages' && pipelineBurnArmed && pipelineBurnWanted))
   const jobSummaryView = useJobSummaryView({
     enabled: activeTab === 'job-summary',
     userId: authUser?.id,
@@ -1639,6 +1643,7 @@ export default function Jobs() {
     userNameById: jobSummaryUserNameById,
     initialView: searchParams.get('view'),
     budgetByJobId: jobBudgetFootings,
+    laborBurden,
   })
 
   // The Pipeline burn card (v2.3191): the Costs tab's arithmetic over the same
@@ -1660,7 +1665,7 @@ export default function Jobs() {
           label: `${num ? `J${num} ` : ''}${(r.job.job_name ?? '').trim()}`.trim() || 'Job',
           burn: projectJobSummaryBurn({
             contractUsd: r.totalBill,
-            spentUsd: r.teamLaborCost + r.subLaborCost + r.partsCost,
+            spentUsd: laborAtBurden(r.teamLaborCost, laborBurden) + r.subLaborCost + r.partsCost,
             pct,
             finished: pct === 100,
             fieldDays,
@@ -1671,7 +1676,7 @@ export default function Jobs() {
         }
       })
     return buildPipelineBurnAlert(rows)
-  }, [pipelineBurnArmed, pipelineBurnWanted, activeTab, teamLaborData.length, jobSummaryData, jobSummaryReportPctByJobId, jobSummaryView.prefs.targetTrueMarginPct, jobBudgetFootings])
+  }, [pipelineBurnArmed, pipelineBurnWanted, activeTab, teamLaborData.length, jobSummaryData, jobSummaryReportPctByJobId, jobSummaryView.prefs.targetTrueMarginPct, jobBudgetFootings, laborBurden])
 
   const subLaborOutstandingByPerson = useMemo(
     () =>

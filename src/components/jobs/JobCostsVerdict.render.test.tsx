@@ -5,7 +5,7 @@
  * kernel's suite holds the arithmetic; this pins the wiring.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { JobCostsVerdict } from './JobCostsVerdict'
 import { buildCostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import type { JobBurnModel } from '../../lib/jobs/jobBurn'
@@ -94,5 +94,32 @@ describe('JobCostsVerdict · the priced line (v2.5043)', () => {
   it('no stamp, no line', () => {
     renderVerdict(null)
     expect(screen.queryByTestId('verdict-priced')).toBeNull()
+  })
+})
+
+describe('JobCostsVerdict · the labor at the burden (punch list #448)', () => {
+  const at = { ...base, burn: { ...burn, spentUsd: 7_600, percentDone: 50 }, priceUsd: 20_000, spend: { teamUsd: 3_000, subUsd: 0, partsUsd: 4_000, totalUsd: 7_000 }, teamHours: 100 }
+  const draw = (laborBurden: number) =>
+    render(<JobCostsVerdict verdict={buildCostsVerdict({ ...at, laborBurden })} canWrite budget={budget} linkedBid={null} onOpenBidCounts={null} doorway={null} kept={kept} jobFinished={false} />)
+
+  it('the Spent so far tile says what its labor stands on, each value drawn apart', () => {
+    draw(1.2)
+    const line = screen.getByTestId('verdict-labor-at-burden')
+    expect(line.textContent).toBe('labor $3,000 wages × 1.20 = $3,600')
+    expect([...line.querySelectorAll('[data-value="worked-out"]')].map((n) => n.textContent)).toEqual(['$3,000', '1.20', '$3,600'])
+  })
+  it('the Labor row draws the wages and the factor, and its dollars at the burden', () => {
+    draw(1.2)
+    fireEvent.click(screen.getByTestId('verdict-margin'))
+    const row = screen.getByTestId('verdict-row-labor')
+    expect(row.textContent).toContain('100 h · $3,000 wages × 1.20')
+    expect(row.textContent).toContain('$3,600')
+    expect(row.textContent).toContain('$36.00/h')
+  })
+  it('at a factor of 1 there is no line and the row reads as it did', () => {
+    draw(1)
+    expect(screen.queryByTestId('verdict-labor-at-burden')).toBeNull()
+    fireEvent.click(screen.getByTestId('verdict-margin'))
+    expect(screen.getByTestId('verdict-row-labor').textContent).toContain('team hours × wages')
   })
 })

@@ -154,15 +154,23 @@ describe('SuperintendentCard', () => {
     expect(screen.getByTestId('pace-reading').dataset.state).toBe('old')
   })
 
-  it('money ahead with the hours on track stays calm: one line, and the office watches it', async () => {
+  it('money ahead with the hours on track warns in amber, with what the crew can do, and shows no dollar (Taunya, 2026-11-27)', async () => {
     // 78 h of 260 at 30%: the hours match the work. The money is 95% spent, which reads red on the office's board.
     answer = async () => ({ readsWages: false, jobs: [project({ labor: [{ ymd: '2026-10-19', who: 'Ana', hours: 39 }, { ymd: '2026-10-20', who: 'Ana', hours: 39 }] })] })
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     const card = await screen.findByTestId('superintendent-line')
     expect(card.dataset.tone).toBe('behind')
-    expect(screen.getByTestId('pace-reading').dataset.tone).toBe('calm')
-    expect(screen.getByTestId('pace-headline').textContent).toBe('On track.')
-    expect(screen.getByTestId('pace-money-line').textContent).toBe('Money spent is ahead of the work. The office watches that.')
+    expect(screen.getByTestId('pace-reading').dataset.tone).toBe('amber')
+    expect(screen.getByTestId('pace-reading').dataset.state).toBe('track')
+    expect(screen.getByTestId('pace-headline').textContent).toBe('Money spent is ahead of the work.')
+    const face = screen.getByTestId('pace-reading').textContent ?? ''
+    expect(face).toContain('Hours and work are moving together.')
+    expect(face).toContain('More has been spent on this job than the work done accounts for.')
+    expect(face).toContain('If parts were bought ahead, tell the office so they know why.')
+    // The money is the headline now, so the grey line that said the office watches it is gone, and the card's edge is amber.
+    expect(screen.queryByTestId('pace-money-line')).toBeNull()
+    expect(card.style.border).toContain('rgb(217, 119, 6)')
+    expect(face).not.toMatch(/\$/)
     expect(card.textContent).not.toMatch(/point/i)
   })
 

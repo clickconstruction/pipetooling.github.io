@@ -3,6 +3,8 @@ import { formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { baselineReadWords, timeLeftWords, type CostsVerdict } from '../jobs/jobCostsVerdict'
 import type { MoneyRow } from '../jobs/jobMoneyTable'
 import type { JobChargeEvent, JobPaymentEvent, JobValueEvent } from '../jobChargesTimeline'
+import { burnLaborLineWords } from '../jobs/burnAtBurden'
+import { plainSentence } from '../valuesInPlace'
 
 /**
  * The job window's Costs tab on paper (punch list #143, v2.5749): four Letter pages built from
@@ -321,7 +323,7 @@ export function buildJobCostsPacketHtml(input: JobCostsPacketInput): string {
     .map((s) => {
       const bid = s.budgetHours != null ? `${h0(s.budgetHours)}${s.budgetUsd != null ? ` · ${usd0(s.budgetUsd)}` : ''}` : s.budgetUsd != null ? usd0(s.budgetUsd) : s.budgetWords
       const read = [
-        s.key === 'labor' && v.baseline.avgWageUsd != null ? `$${v.baseline.avgWageUsd.toFixed(2)}/h${v.baseline.hoursPerThousand != null ? ` · ${v.baseline.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}` : '',
+        s.key === 'labor' && v.baseline.laborRateUsd != null ? `$${v.baseline.laborRateUsd.toFixed(2)}/h${v.baseline.hoursPerThousand != null ? ` · ${v.baseline.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}` : '',
         s.key === 'materials' && v.baseline.materialsPctOfPrice != null ? `${pct0(v.baseline.materialsPctOfPrice)} of the price` : '',
         s.pctOfBudget != null ? `${pct0(s.pctOfBudget)} of the bid figure${s.aheadPts != null ? (s.aheadPts > 5 ? ' · ahead of the work' : s.aheadPts < -5 ? ' · behind the work' : ' · with the work') : ''}` : '',
       ]
@@ -367,7 +369,7 @@ ${sectionRows}
 </div>
 
 <div class="tiles">
-  <div class="tile"><div class="lab">Spent so far</div><div class="big">${usd0(v.spent.usd)}</div><div class="sub">${v.spent.pctOfPrice != null ? `${pct0(v.spent.pctOfPrice)} of the price · ` : ''}${h0(v.spent.teamHours)} team · ${usd0(v.spent.materialsUsd)} materials</div></div>
+  <div class="tile"><div class="lab">Spent so far</div><div class="big">${usd0(v.spent.usd)}</div><div class="sub">${v.spent.pctOfPrice != null ? `${pct0(v.spent.pctOfPrice)} of the price · ` : ''}${h0(v.spent.teamHours)} team · ${usd0(v.spent.materialsUsd)} materials${v.spent.labor ? `<br>${esc(plainSentence(burnLaborLineWords(v.spent.labor)))}` : ''}</div></div>
   <div class="tile"><div class="lab">Earned so far</div><div class="big">${v.earned ? usd0(v.earned.usd) : '—'}</div><div class="sub">${v.earned && v.pctDone != null && v.priceUsd != null ? `${pct0(v.pctDone)} of ${usd0(v.priceUsd)} · ${v.earned.aheadUsd >= 0 ? `${usd0(v.earned.aheadUsd)} ahead on direct` : `${usd0(-v.earned.aheadUsd)} behind on direct`}` : v.priceUsd == null ? 'no price on the job' : 'needs a % complete'}</div></div>
   <div class="tile"><div class="lab">Time left</div><div class="big">${esc(tl.big)}</div><div class="sub">${esc(tl.sub)}</div></div>
 </div>

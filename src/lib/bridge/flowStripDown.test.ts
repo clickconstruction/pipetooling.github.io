@@ -63,9 +63,9 @@ describe('withMarketWorth', () => {
     expect(section(strip, 'market').thick).toBe(1)
     const sized = withMarketWorth(strip, 9_000)
     expect(section(sized, 'market').paceUsd).toBe(9_000)
-    // Sales is now the widest, and Market a quarter of it: half the width, over the floor.
+    // Sales is now the widest, and Market a quarter of it: a quarter of the width.
     expect(section(sized, 'sales').thick).toBe(1)
-    expect(section(sized, 'market').thick).toBeCloseTo(STRIP_MIN_THICK + (1 - STRIP_MIN_THICK) * 0.5, 6)
+    expect(section(sized, 'market').thick).toBeCloseTo(0.25, 6)
     for (const s of sized.sections) {
       expect(s.thick).toBeGreaterThanOrEqual(STRIP_MIN_THICK)
       expect(s.thick).toBeLessThanOrEqual(1)

@@ -77,12 +77,13 @@ describe('BidsBidCostsTab · Bid vs actual · Direct and the burn by section (v2
     expect(burnRead).toHaveBeenLastCalledWith(true, ['j879', 'j523'])
     expect(screen.getByRole('columnheader', { name: 'Direct' })).toBeTruthy()
     const adams = screen.getByText('J879 Palvern · Milo Hollin').closest('tr')!
-    // $16,500 spent at 50% done → $33,000 at completion → $8,550 · 21%, ten points under the 31% it was priced at
-    expect(within(adams).getByTestId('bva-direct').textContent).toBe('21%$8,550 at completion · 10 pts under the price')
+    // Punch list #448: the burn's labor is at the burden, 1.20 until the setting is read. $9,000 of wages count as $10,800, so
+    // $18,300 spent at 50% done → $36,600 at completion → $4,950 · 12%, nineteen points under the 31% it was priced at.
+    expect(within(adams).getByTestId('bva-direct').textContent).toBe('12%$4,950 at completion · 19 pts under the price')
     const mission = screen.getByText('J523 Mission Flats').closest('tr')!
     expect(within(mission).getByTestId('bva-direct').textContent).toBe('…')
     fireEvent.click(within(adams).getByRole('button', { name: "Open J879 Palvern · Milo Hollin's burn" }))
-    expect(screen.getByTestId('bva-direct-margin').textContent).toBe('$8,550 · 21%')
+    expect(screen.getByTestId('bva-direct-margin').textContent).toBe('$4,950 · 12%')
     // The budget resolves off the whole row, as on the Costs tab: the bid's materials figure stands.
     expect(within(screen.getByTestId('bva-section-materials')).getByText('$9,000')).toBeTruthy()
   })

@@ -21243,6 +21243,67 @@ export type Database = {
           },
         ]
       }
+      job_build_waits: {
+        Row: {
+          id: string
+          job_id: string
+          lifted_at: string | null
+          lifted_by: string | null
+          lifted_by_name: string | null
+          marked_by: string | null
+          marked_by_name: string
+          note: string
+          reason: string
+          since_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          lifted_by_name?: string | null
+          marked_by?: string | null
+          marked_by_name?: string
+          note?: string
+          reason: string
+          since_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          lifted_by_name?: string | null
+          marked_by?: string | null
+          marked_by_name?: string
+          note?: string
+          reason?: string
+          since_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_build_waits_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_build_waits_lifted_by_fkey"
+            columns: ["lifted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_build_waits_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_callbacks: {
         Row: {
           decided_at: string
@@ -54006,6 +54067,15 @@ export type Database = {
       }
       set_invoice_payer_accepted_on: {
         Args: { p_accepted_on: string; p_invoice_id: string }
+        Returns: Json
+      }
+      set_job_build_wait: {
+        Args: {
+          p_job_id: string
+          p_note?: string
+          p_reason?: string
+          p_waits: boolean
+        }
         Returns: Json
       }
       set_job_collections_flag: {

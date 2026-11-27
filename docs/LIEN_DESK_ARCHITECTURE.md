@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -709,6 +709,8 @@ last_updated: 2026-11-26
 > The read is [`checkClearedIo.ts`](../src/lib/jobs/checkClearedIo.ts): sixty days of `checkDeposit` rows, read by `lienPayoffIo.ts` into `LienPayoffFacts.bank` and by the hook `useBankChecks` on the Release of record tab.
 > `lienPayoffStep` gains the step `bank`, with no press, and `releaseMoneyGate` holds on it with `why: 'check'`, also while the bank is being asked and when its read failed.
 > A reason typed there is saved as `fields.releasedBeforeClearedReason`.
+> Since v2.8735 (punch list #437, call 4) `releaseMoneyGate` takes `mayReleaseAnyway` (`mayReleaseEarly` until v2.8740) and answers `anyway`: on `why: 'check'` a reason lifts the hold only for a leader, a controller or a dev (`canActBeforeCheckClears`, the one list `canConfirmFunds` reads too), and the tab draws *who can* in the press's place for anyone else.
+> Since v2.8740 the same flag holds `why: 'open'` too: a reason lifts the hold of money still open only for those three (`canReleaseAnyway`), and the tab draws `anywayOpenWho` for anyone else.
 > `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
 > No migration and no new write.
 > **v2.8632 (the payoff card, #435 piece 4):** `PayoffsWindow` hands each open place's `PlaceCard` a `PayoffCardBlock`, drawn over the liens' rows: five stops, the line for today, and a `ValueLines` of the asked day (`ChangeableValue`), the due day and the clearing day (`WorkedOutValue`).
@@ -888,6 +890,7 @@ last_updated: 2026-11-26
 > `LienInstrumentsModal` joins the modal stack (`useModalStackEntry`) while it is drawn and listens for keydown on window, topmost only, `defaultPrevented` skipped, and never while a dialog is drawn after it on the page.
 > It keeps no list of its forms: `hooks/useUnsavedWords.ts` watches the card, keeps what a typed field held when it was first touched, and holds the window while one still on the page reads otherwise.
 > A save that changes the job's filings or its demand letters drops what was kept.
+> Since v2.8699 a press on the backdrop asks the same fact (`lienWindowBackdropAction`), and an Escape or a backdrop press that is held draws one `role="status"` line under the window's title (`LIEN_WINDOW_HELD_WORDS`).
 > The backdrop, the × and Cancel close it as before, with no hold.
 > Known: a desk popover left open under the run takes the first Esc.
 

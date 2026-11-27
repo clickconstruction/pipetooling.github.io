@@ -649,6 +649,7 @@ export function JobsMapCard({
               anchor={canvasAnchor}
               fitPoints={fitPoints}
               cluster={clustered}
+              clusterNoun="jobs"
               clusterRingPriority={CLUSTER_RING_PRIORITY}
               pulseId={isMobile ? null : pulseId}
               // Two clocks on one card: As of moves the pins and Time moves the photograph, so the row names the pins' own day

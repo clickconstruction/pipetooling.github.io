@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { IN_LINE_LINK_DRAWN, IN_LINE_PRESS_DRAWN, ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, PHONE_SCREEN_MAX_WIDTH, activityPillStyle, activityPillsOnOneRow, phoneThumbPressesCss, thumbInLine } from './phonePress'
+import { FILE_PICKER_PAD, FOLD_LINE_PAD, IN_LINE_LINK_DRAWN, IN_LINE_PRESS_DRAWN, ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, PHONE_SCREEN_MAX_WIDTH, activityPillStyle, activityPillsOnOneRow, phoneThumbPressesCss, thumbInLine } from './phonePress'
 
 describe('phonePress', () => {
   it('holds the two heights the walk asked for', () => {
@@ -69,9 +69,25 @@ describe('phoneThumbPressesCss (finding 290)', () => {
     expect(IN_LINE_LINK_DRAWN + 15 + 15).toBe(PHONE_PRESS_MIN_HEIGHT)
   })
 
+  it('grows the four presses that are not buttons or links: a tick by its label, a pick, a fold’s line and a file picker', () => {
+    expect(css).toContain('[data-zz-shell] label:has(input[type="checkbox"]), [data-zz-shell] label:has(input[type="radio"]) { min-height: 44px !important; }')
+    expect(css).toContain('[data-zz-shell] select { min-height: 44px !important; }')
+    // A fold's line takes padding and no flex, which would lose its marker. 17 px of words in the middle of 44.
+    expect(css).toContain('[data-zz-shell] summary { box-sizing: border-box; min-height: 44px; padding-top: 13px; padding-bottom: 13px; }')
+    expect(css).not.toMatch(/summary \{[^}]*display/)
+    expect(FOLD_LINE_PAD).toBe(13)
+    expect(css).toContain('[data-zz-shell] input[type="file"] { box-sizing: border-box; min-height: 44px !important; padding-top: 11px; padding-bottom: 11px; }')
+    expect(FILE_PICKER_PAD).toBe(11)
+  })
+
+  it('leaves a field a person types in as it is: no rule names a text box', () => {
+    expect(css).not.toMatch(/input\[type="(text|number|date|email)"\]|textarea|input \{/)
+  })
+
   it('names the shell on every selector, so a press outside it is left as it is', () => {
     const selectors = css.replace(/^@media[^{]*\{/, '').split('}').map((r) => r.split('{')[0]!.trim()).filter(Boolean)
-    expect(selectors).toHaveLength(3)
-    for (const s of selectors) expect(s.startsWith('[data-zz-shell] ')).toBe(true)
+    expect(selectors).toHaveLength(7)
+    // A rule may name two selectors: each one names the shell.
+    for (const s of selectors.flatMap((r) => r.split(',').map((x) => x.trim()))) expect(s.startsWith('[data-zz-shell] ')).toBe(true)
   })
 })

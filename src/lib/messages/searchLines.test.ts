@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
 import type { ThreadMessage } from './thread'
-import { queryOf, searchLines, SEARCH_MAX_HITS, SEARCH_WORDS, withQuery } from './searchLines'
+import { queryOf, searchLines, searchListShows, SEARCH_MAX_HITS, SEARCH_WORDS, withQuery } from './searchLines'
 
 const NOW = '2026-10-21T05:10:00Z'
 const contact = (set: Partial<Contact>): Contact => ({ id: 'c1', kind: 'customer', name: 'Dana Whitfield', goesBy: null, company: '', channels: [], jobs: [], record: null, ...set }) as unknown as Contact
@@ -62,5 +62,24 @@ describe('searchLines (v2.5701, punch list #139)', () => {
     for (const words of [SEARCH_WORDS.label, SEARCH_WORDS.placeholder, SEARCH_WORDS.note, SEARCH_WORDS.none, SEARCH_WORDS.reading, SEARCH_WORDS.short, SEARCH_WORDS.more(12)]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
+  })
+})
+
+describe('searchListShows (finding 323)', () => {
+  const some = searchLines(LINES, CONTACTS, 'water', 'all', NOW)
+  const none = searchLines(LINES, CONTACTS, 'zzzz', 'all', NOW)
+  it('with no view held, a failed read is the list’s news, and no failure is still reading', () => {
+    expect(searchListShows(null, 'The messages did not load.')).toBe('problem')
+    expect(searchListShows(null, null)).toBe('reading')
+  })
+  it('with a view held, a failed re-read never covers the lines that match', () => {
+    expect(some.hits.length).toBeGreaterThan(0)
+    expect(searchListShows(some, 'The messages did not load.')).toBe('hits')
+    expect(searchListShows(some, null)).toBe('hits')
+  })
+  it('with a view held and no match, it says so, with or without a failed re-read', () => {
+    expect(none.hits.length).toBe(0)
+    expect(searchListShows(none, null)).toBe('none')
+    expect(searchListShows(none, 'The messages did not load.')).toBe('none')
   })
 })

@@ -128,3 +128,5 @@ Each write below is a write on prod and waits on its own yes. Not pressed yet.
 6. People → Users: the person is back, with their wage and their start date. Read the pay log for the name through the dev seat: one new line, by `screen`.
 7. Delete the person again, and leave them deleted or put them back as the walk needs. Tell `fixing` what was made and what stands.
 8. On a real person's desk with no login, press **Delete…** and read the confirm: it still says *for good*. Press **Cancel**.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10009.

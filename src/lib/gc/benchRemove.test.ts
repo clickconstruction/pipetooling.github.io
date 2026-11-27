@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BENCH_REMOVE_CONFIRM, BENCH_REMOVE_PRESS, benchRemoveConfirmWords, benchRemoveHold, canRemoveFromBench } from './benchRemove'
+import { BENCH_REMOVE_CONFIRM, BENCH_REMOVE_PRESS, BENCH_REMOVE_UNLESS, BenchRemoveRefused, benchRemoveConfirmWords, benchRemoveHold, canRemoveFromBench } from './benchRemove'
 import type { Partner } from './types'
 
 /** A company just added from Prospects: the row, its contact, nothing else. */
@@ -61,7 +61,11 @@ describe('benchRemoveHold · v2.6749 (punch list #153)', () => {
     expect(BENCH_REMOVE_CONFIRM).toBe('Remove from the bench')
     const own = benchRemoveConfirmWords('Alamo Sprinkler Co', false)
     expect(own.title).toBe('Remove Alamo Sprinkler Co from the bench?')
-    expect(own.message).toBe('Alamo Sprinkler Co has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners.')
+    // Finding 338: the confirm says what this screen checked, names the three things only the server sees, and no
+    // longer promises that the row leaves.
+    expect(own.message).toBe('Alamo Sprinkler Co has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners unless we emailed them, they sent a file or they have a Messages thread. If one of those holds them, the row stays and says why.')
+    expect(own.message).toContain(BENCH_REMOVE_UNLESS)
+    expect(own.message).not.toMatch(/Their row leaves Trade partners\./)
     expect(own.confirmLabel).toBe('Remove from the bench')
     const sub = benchRemoveConfirmWords('Alamo Sprinkler Co', true)
     expect(sub.message.endsWith(' Their card goes back on Prospects → Subs to call again.')).toBe(true)
@@ -70,6 +74,15 @@ describe('benchRemoveHold · v2.6749 (punch list #153)', () => {
       expect(s.split(/\s+/).length).toBeLessThanOrEqual(20)
       expect(s).not.toMatch(/[;—]/)
     }
+  })
+})
+
+describe('a refused remove (finding 338)', () => {
+  it('carries the function’s own sentence and nothing in front of it', () => {
+    const refusal = new BenchRemoveRefused('ZZ Test Walk Co stays on the bench, since we emailed them.')
+    expect(refusal).toBeInstanceOf(Error)
+    expect(refusal.name).toBe('BenchRemoveRefused')
+    expect(refusal.message).toBe('ZZ Test Walk Co stays on the bench, since we emailed them.')
   })
 })
 

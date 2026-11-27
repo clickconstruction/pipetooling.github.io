@@ -86,7 +86,7 @@ import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 import { MoneyText } from '../Money'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
-import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyBackWords, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
+import { RELEASE_OF_RECORD_WORDS, canReleaseAnyway, pickReleaseTarget, releaseMoneyBackWords, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
 import { payoffNote } from '../../lib/jobs/lienPayoffFields'
 import { releaseFacts } from '../../lib/jobs/lienReleaseFacts'
 
@@ -296,7 +296,9 @@ export default function LienFilingTabs({
   const bankChecks = useBankChecks(releaseAsksBank, todayYmd(), (job.payments ?? []).map((p) => p.mercury_transaction_id))
   // The bank confirmed the funds, on a leader's, a controller's or a dev's word kept on the lien (#435, piece 4): the release may go before the bank's day.
   const releaseFunds = useMemo(() => payoffNote(releaseTarget?.affidavit.fields).funds, [releaseTarget])
-  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '', bank: bankChecks, funds: releaseFunds }), [claim.openBalance, job.payments, releaseAnyway, bankChecks, releaseFunds])
+  // Only a leader, a controller or a dev lets a held release go: before a check clears (punch list #437, call 4, v2.8735), and with money still open (v2.8740).
+  const mayReleaseAnyway = canReleaseAnyway(authRole)
+  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '', mayReleaseAnyway, bank: bankChecks, funds: releaseFunds }), [claim.openBalance, job.payments, releaseAnyway, mayReleaseAnyway, bankChecks, releaseFunds])
   // Under the claim on both tabs: where the figure came from, so nobody prints it blind.
   const claimNoteLines = claimNotes.map((n) => (
     <span key={n.key} data-lien-window-claim-note={n.key} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: n.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)' }}>
@@ -1771,12 +1773,18 @@ export default function LienFilingTabs({
                   <span style={{ color: releaseTone }}>
                     <ValueSentence text={releaseGate.say} />
                   </span>
-                  {releaseAnyway == null && releaseGate.hold ? (
+                  {releaseAnyway == null && releaseGate.hold && releaseGate.anyway === 'offered' ? (
                     <button type="button" data-lien-release-anyway onClick={() => setReleaseAnyway('')} style={{ justifySelf: 'start', border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', minHeight: isMobile ? 44 : undefined }}>
                       {RELEASE_OF_RECORD_WORDS.anyway}
                     </button>
                   ) : null}
-                  {releaseAnyway != null ? (
+                  {/* Money or a check holds it and this person is not one of the three: who can, in place of the press. */}
+                  {releaseGate.hold && releaseGate.anyway === 'not_yours' ? (
+                    <span data-lien-release-anyway-who style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {releaseGate.why === 'check' ? RELEASE_OF_RECORD_WORDS.anywayCheckWho : RELEASE_OF_RECORD_WORDS.anywayOpenWho}
+                    </span>
+                  ) : null}
+                  {releaseAnyway != null && releaseGate.anyway !== 'not_yours' ? (
                     <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
                       <span style={{ fontWeight: 600 }}>{releaseGate.why === 'check' ? RELEASE_OF_RECORD_WORDS.anywayCheckLabel : RELEASE_OF_RECORD_WORDS.anywayLabel}</span>
                       <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>

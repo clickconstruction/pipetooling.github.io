@@ -22,9 +22,15 @@ vi.mock('../../hooks/useBankChecks', () => ({
 
 const writes = vi.hoisted(() => ({ inserts: [] as Array<Record<string, unknown>>, updates: [] as Array<{ patch: Record<string, unknown>; id: string }> }))
 
+/** Who is on the tab. The office's assistant unless a test says otherwise. */
+const auth = vi.hoisted(() => ({ role: 'assistant' }))
+
 vi.mock('../../hooks/useAuth', async () => {
-  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock({ role: 'assistant' })
+  const { useAuthModuleMock: authModule } = await import('../../test/renderSmokeMocks')
+  // One module a role, made once, so a test can change who is signed in and a render still reads a steady object.
+  const byRole = new Map(['assistant', 'master_technician', 'controller', 'dev'].map((role) => [role, authModule({ role })]))
+  const read = () => byRole.get(auth.role)!.useAuth()
+  return { ...byRole.get('assistant')!, useAuth: read, useOptionalAuth: read }
 })
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -56,6 +62,7 @@ vi.mock('../../lib/supabase', async () => {
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  auth.role = 'assistant'
   writes.inserts.length = 0
   writes.updates.length = 0
   bank.checks = []
@@ -112,8 +119,21 @@ describe('Release of record: money holds the release', () => {
     expect(writes.inserts).toEqual([])
   })
 
-  it('lets it go once a reason is typed, and saves the reason and the affidavit it names', async () => {
+  it('offers an assistant no release with money still open, and says who can (v2.8740)', () => {
+    draw({})
+    expect(money().dataset.lienReleaseMoney).toBe('red')
+    expect(document.querySelector('[data-lien-release-anyway]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-reason]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-who]')?.textContent).toBe('A leader, a controller or a dev can release it with money still open.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+    fireEvent.click(actions()[2]!)
+    expect(writes.inserts).toEqual([])
+  })
+
+  it.each(['master_technician', 'controller', 'dev'])('lets a %s release it once a reason is typed, and saves the reason and the affidavit it names', async (role) => {
+    auth.role = role
     const { onChanged } = draw({})
+    expect(document.querySelector('[data-lien-release-anyway-who]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Release it anyway…' }))
     expect(actions().every((b) => b.disabled)).toBe(true)
     fireEvent.change(document.querySelector<HTMLInputElement>('[data-lien-release-anyway-reason]')!, { target: { value: 'settled for less, per the owner' } })
@@ -177,10 +197,23 @@ describe('Release of record: a check holds the release until the bank clears it'
     expect(actions().every((b) => b.disabled)).toBe(true)
   })
 
-  it('lets it go before the check clears once a reason is typed, and saves that reason under its own name', async () => {
+  it('offers an assistant no early release before the check clears, and says who can (punch list #437, call 4)', () => {
     on('2026-11-24T18:00:00Z')
     bank.checks = [AT_BANK]
     draw({ job: byCheck() })
+    expect(money().textContent).toContain('The release waits until then.')
+    expect(document.querySelector('[data-lien-release-anyway]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-reason]')).toBeNull()
+    expect(document.querySelector('[data-lien-release-anyway-who]')?.textContent).toBe('A leader, a controller or a dev can release it before the check clears.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+  })
+
+  it.each(['master_technician', 'controller', 'dev'])('lets a %s release before the check clears once a reason is typed, and saves that reason under its own name', async (role) => {
+    auth.role = role
+    on('2026-11-24T18:00:00Z')
+    bank.checks = [AT_BANK]
+    draw({ job: byCheck() })
+    expect(document.querySelector('[data-lien-release-anyway-who]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Release it anyway…' }))
     expect(screen.getByText('Why it is released before the check clears')).toBeTruthy()
     fireEvent.change(document.querySelector<HTMLInputElement>('[data-lien-release-anyway-reason]')!, { target: { value: 'a cashier’s check, per the owner' } })

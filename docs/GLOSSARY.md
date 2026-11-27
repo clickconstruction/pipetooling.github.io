@@ -394,6 +394,7 @@ An answer on the call list, **Pursue** or **Not for us**, is kept in `builder_ca
 Since v2.8112 the name is offered again after that day only once it has a job open now that it applied for after the answer (`backWithNewJob`).
 Since v2.8121 **Ask for** on a call-list row shows what a one-time lookup found about the name (`builder_lookups`): the kind of company, an office phone, and a person and title, each with its page and day.
 A looked-up fact reads **looked up, not checked** and is drawn grey until a person presses **Checked**, and a press of **Wrong** takes it off the row (`builder_lookup_checks`, the newest press per fact).
+Since v2.8732 the builder's sheet draws the same **Ask for** block for its one name, read as the sheet opens (`loadBuilderLookupOf`) and folded and pressed as the call list's is.
 A looked-up kind tags a name and, once checked, moves it in the list's order (`lookupOrder`), and it never takes a name off the list or sets the builder's kind.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
@@ -1581,11 +1582,12 @@ Since v2.6706 a visit whose job embed came back empty — a superintendent reads
 My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Customer line says *Shows once you clock in here.* for no row and the failure's reason for a failed read, never *Loading…* for good.
 
 **The superintendent's line** (punch list #242, PR 4, **v2.6335**): for a superintendent whose current or next job is a project, the card draws **[`SuperintendentCard`](../src/components/jobMode/SuperintendentCard.tsx)** above the job's details — the headline (ahead or behind at this pace), the pace strip with the job's real days and stages, the office's target when one is set, the money when it leads, the proof and the one move with **Set the %** and **Open the checklist** — from the same read (`list_project_board`) and the same `projectPace` the office's Projects board stands on, so the two never disagree.
-Since **v2.8048** (punch list #406) the card's face has a name, **Job pace**, and reads hours and never money (`lib/jobMode/paceReading.ts`, `PaceReadingFace.tsx`).
+Since **v2.8048** (punch list #406) the card's face has a name, **Job pace**, and shows hours and never a dollar (`lib/jobMode/paceReading.ts`, `PaceReadingFace.tsx`).
 Since **v2.8122** the card also draws for his next stop when the Job Mode card has no job of its own, clocked in with no job linked or onto a bid, with one line, *Next stop: PLUM 1044 · Maple Court* (`lib/jobMode/paceNextStop.ts`).
 It draws **Hours used** and **Work done** as two bars on one scale, with the gap hatched on the hours bar.
 Its headlines are *Hours are ahead of the work.*, *On track.*, *The work is ahead of the hours.* and, when hours went in after the percent was last said, *Is 40% still right?* in amber with **Still 40%**.
-Money that leads is one grey line on the phone, and the word *points* is on no screen that reads the line.
+Since **v2.8720** (call 1, flipped) money that leads while the hours do not is the card's own warning: amber, with the headline *Money spent is ahead of the work.*, the hours' line kept under the bars, and the hours' warning winning when both lead.
+Money that leads is one grey line on the phone only on a card that cannot compare hours and work (no percent, no hours budget, or under 8 hours), and the word *points* is on no screen that reads the line.
 Since **v2.8120** a gap under a crew day still reads ahead or behind when it is a tenth of the hours budget or more (`hoursVerdict`), said in hours, *6 hours behind.*, so a small job cannot read on pace at 140% of its hours.
 
 Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
@@ -2081,6 +2083,9 @@ The gate is the Scoreboard's: a dev, the owner, anyone with payroll access (`can
   The target is not versioned: last month's score read today uses today's target.
 - **Field** (`fieldScore.ts`): gross profit ÷ paid field hours.
   Gross profit is what the window's hours earned of their jobs' contracts, less those hours' wages at the burden factor (`labor_burden_factor_v1`), the materials and the subs dated in the window.
+  The burden factor stands for depreciation on the tools and the truck a person uses (Taunya, 2026-11-27, who kept it at 1.20).
+  A dev reads what it is, where it reaches and where it does not on Settings → Data & recovery → **Labor burden factor (dev)**, which is read only (`laborBurdenWords.ts`).
+  Since v2.8731 a job's burn prices its team labor at the factor too (`burnAtBurden.ts`, punch list #448), on the Costs tab's verdict and chart, Job Summary's Burn column, the Pipeline's burn card and Bid vs actual, while Where the money went, the Labor column, Crew P&L and pay stubs keep the wages paid.
   Every paid field hour on a job counts.
   The drill-down is one row per job, a job with hours and no bill flagged with a door to bill it, and above the jobs the score cut by who runs them (the Scoreboard's own mapping).
 - **Estimating & sales** (`estimatorScore.ts`), one number the estimator and the account manager share: a bid counts its priced gross profit (the *Priced margin*'s revenue less its cost, frozen at send) at award, when that profit over the award's labor hours clears the hurdle;
@@ -2229,6 +2234,9 @@ v2.5856 feeds the Collect card the desk's past-due pile with the not-yet-due sha
 A desk behind every stage card (punch list #192, v2.5929 Build · v2.5930 Bill · v2.5931 Market · v2.5932 Sales;
 kernels in `src/lib/bridge/<stage>/`, `Bridge<Stage>Desk.tsx`): each card ends in **Break it down ›**, opening the stage's pile broken into its rows, each with its door (Sales' with a move too), read-only — Build's is the hours-in, work-out ledger (`buildDesk.ts`: every open job's clock hours over the last 14 days against its percent change × contract, grouped moved / ate hours / stalled with the crew chips from the Schedule's blocks, **Set the %** through the crews' percent window the one write;
 since v2.5938 a row whose % sits below an older report reads both, `pctAbove`).
+Since v2.8723 (punch list #192, write A) a quiet job can be marked as waiting, with a reason: **Name why it waits ›** on a stalled row opens a small window with six reasons, and the job moves to a fifth group and a tile of its own, *Waits, with a reason*, out of Stalled and its money (`build/buildWaits.ts`, `BuildWaitWindow.tsx`, the table `job_build_waits` through `set_job_build_wait`).
+**Lift the wait ›** puts the job back, each change writes a line on the job's Activity, and the job wears a *Waits · … · since …* chip on its Stages card (`BuildWaitChip`, `useOpenBuildWaits`).
+Since v2.8726 the job window's Edit tab draws a **Waits** fact row under the status rail on a waiting job, *Since Oct 26 · the GC is not ready for us · Dana*, with **Lift the wait** for the office, so a wait ends without the Bridge (`JobBuildWaitFactRow`, `useJobBuildWait`).
 Bill's (`bill/billDesk.ts`, v2.5930) is *Where billing leaks*: the three leaks the reads prove — finished and never billed, a remainder behind a part-bill, hours on a job with no price — biggest first, each with how long it has sat and its door;
 since v2.5938 the bills marked billed by hand with no send on file sit apart under the leaks and off the headline (`billHandMarked`;
 a GC's pay application is recorded that way);
@@ -3121,6 +3129,7 @@ The charges the text cannot finish are a **Needs you** line, *N card charges wai
 The same state shows as a chip beside a recent card charge on Banking's ledger and User Sort and in the **Receipt** column of Job Summary's card-charge drill-down (`lib/tickets/receiptState.ts`, `components/tickets/ReceiptStateChip.tsx`, v2.7152).
 A row for a charge texted and reminded with no receipt also has **Text again** (v2.8697, `receiptAgainPress`): the press reads *Text Jordan again*, a window asks first, and the office's own text goes on a new link.
 The office may text again twice for one charge, twelve hours apart (`RECEIPT_AGAIN_MAX`, `RECEIPT_AGAIN_REST_HOURS`), and the row rests off the list for twelve hours after each press.
+Since v2.8728 the Team queue's line on that charge says so, *The office texted again Wed 9:02 AM.*, and the Banking chip's title with it (`lib/tickets/receiptAgainLine.ts`, beside the shared kernel so the function is not redeployed).
 **Function**: `receipt-request`, called by the cron of the same name.
 The office's Text again calls the same function, signed in.
 **Guides**: *turn on receipt texts for card charges* (the owner), *answer the text about a charge on your card* (the holder), *sort the team's card purchases from the office* (the office).
@@ -3546,6 +3555,7 @@ Ignore/Un-ignore buttons move task types between sections.
 The bar under the Dashboard's Financials cards (punch list #191) that answers "what is coming in this week, and what has not come in from last week".
 **Landed** is money in the bank or in Stripe this week: a Stripe payment on its paid day, a payment matched at Accounts Receivable on the day its deposit posted, a posted deposit not applied yet, a non-check payment typed in by hand.
 **At the bank** is a deposit Mercury still holds as pending, placed two bank days out.
+Since v2.8737 (punch list #437, piece 2) a pending check's chip also carries the bank's own day and the number the bank read off the check (`bankCheckFacts` in `jobs/checkCleared.ts`, over `raw.estimatedDeliveryDate` and `raw.checkNumber`): the bank's day takes the guess's place when it is no later than the guess, and when it is later the chip stays on the guessed posting day and its line adds *the bank says it clears Dec 2* (`pendingDepositDay`, `pendingDepositWords`).
 **In the drawer** is a check typed in but not yet seen at the bank, for `AR_UNBANKED_CHECK_DAYS` (10);
 after that it is Accounts Receivable's *never deposited* case.
 **Last week still out** is what last week expected (a promise, a claim's mail day, a payer's pace) with the bill still open, plus last week's returned checks.
@@ -6891,6 +6901,8 @@ Since **v2.8510** (piece 3) a place has **One check for this place ›**, the **
 A **held line** there pays part of a Stripe bill and goes through the bill's own window, and **money open with no lien** is a job at the place with open bills and no filed lien, shown under the place and never part of what pays the liens off (`lienPayoffCheck.ts`).
 Since **v2.8525** (punch list #437, piece 1) a release waits for the bank: a check has **cleared** once the bank has posted it and the day the bank names for it has come (`checkCleared.ts`, over the bank's own row).
 A lien whose bills read paid by a check that has not cleared stands on a fourth step, **bank**, with *Waits for the bank* in the press's place, and the Release of record tab holds its print and save the same way until a reason is typed under *Release it anyway…*.
+Since v2.8735 (punch list #437, call 4) only a leader, a controller or a dev is offered that press on a check that has not cleared (`canActBeforeCheckClears` in `checkCleared.ts`), and anyone else reads who can.
+Since v2.8740 the same three alone are offered it with money still open too (`canReleaseAnyway`), so *Release it anyway…* is theirs wherever it stands.
 The check pane does not record a check the bank holds and has not cleared, and a place says when **a check for exactly what pays its liens off** is at the bank and when it is ready to record.
 A check the bank shows no deposit of waits seven days from the day typed, as before.
 Since **v2.8632** (punch list #435, piece 4) each open place carries the **payoff card**: five **stops**, *Money recorded*, *Check clears*, *Releases*, *Recorded at the county* and *Copies sent*, each done, now, later or in red, over one line that says what to do today (`lienPayoffCard.ts`).
@@ -7171,6 +7183,8 @@ Since v2.8691 a paper's line says *printed on the paper* after its site when tha
 Since v2.8665 a site's papers show on each job at it, as **Papers for this site** on the job's Documents tab ([`JobDocumentsSitePapers.tsx`](../src/components/jobs/JobDocumentsSitePapers.tsx), [`sitePapers.ts`](../src/lib/addresses/sitePapers.ts)), and a company's own list of papers says a paper's site on its line.
 Since v2.8668 the Agreements tab's **Find by site…** asks the list for one site's papers, by the site's keys on the view's `site_address_key` (`AgreementsQuery.site`, `agreementsLedgerIo.ts`), and a line says its paper's site.
 Since v2.8669 a development's page has **Papers for this site** too: the papers that name the development or the address of a job or a bid in it ([`DevelopmentSitePapers.tsx`](../src/components/developments/DevelopmentSitePapers.tsx), `developmentSiteScope` in `sitePapers.ts`), drawn by the list the job's tab shares ([`SitePapersList.tsx`](../src/components/jobs/SitePapersList.tsx)).
+Since v2.8710 **The proof** sits under those lines ([`SiteProof.tsx`](../src/components/developments/SiteProof.tsx), [`siteProof.ts`](../src/lib/addresses/siteProof.ts)): it counts the companies that signed and the ones asked, and **Make the packet** opens the packet as it prints, each company with who signed and the day, our own people as a count, with **Print**, which keeps a copy under Sent copies as `site_proof_packet`.
+Since v2.8715 the packet's window has **Download**, which makes one PDF in the browser, the list and then each signed copy as its record's **Open the PDF** gives it ([`siteProofPdf.ts`](../src/lib/addresses/siteProofPdf.ts), `siteProofCopiesIo.ts`): a copy that cannot be had is left out and named with its reason, the press names how many copies it goes for, and the PDF is kept under Sent copies as `site_proof_packet`.
 Since v2.8693 a development's page has the block **Secrecy on this site** ([`SiteSecrecy.tsx`](../src/components/jobs/SiteSecrecy.tsx), [`siteSecrecy.ts`](../src/lib/addresses/siteSecrecy.ts)): off, it offers **Turn on secrecy for this site**, whose panel picks the paper our own people sign and counts the jobs that shut and the people asked before its last press, and on, it says since when, the paper, the jobs that carry it and who has signed, with **Turn it off…**.
 A job's roster reads a site's paper with no **Take off**, and a sub who is not asked it as *not asked* (`siteSecrecyId`, `asked` in [`jobPapers.ts`](../src/lib/jobs/jobPapers.ts)).
 Since v2.8694 a job in no development has **Secrecy on this site** on its Documents tab, its site being its address with every spelling answered **Same place**, and a job in a development reads its development's secrecy there with no press (`jobSecrecyDoor`, `secrecyLead` in [`siteSecrecy.ts`](../src/lib/addresses/siteSecrecy.ts)).

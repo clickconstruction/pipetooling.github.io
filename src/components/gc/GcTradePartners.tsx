@@ -2,7 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { BIDS_WANTED } from '../../lib/gc/bids'
 import type { NewCompanyDraft } from '../../lib/gc/gcIo'
 import { assistantRules, itemsByTrade, partnerAsks, toldAheadWords, tradeBenches, tradeTodoCounts, type AssistantRule, type TradeBench, type TradeNeed } from '../../lib/gc/bench'
-import { BENCH_REMOVE_FAILED, BENCH_REMOVE_PRESS, BENCH_REMOVE_PRESS_TITLE, benchRemoveConfirmWords, canRemoveFromBench } from '../../lib/gc/benchRemove'
+import { BENCH_REMOVE_FAILED, BENCH_REMOVE_PRESS, BENCH_REMOVE_PRESS_TITLE, BenchRemoveRefused, benchRemoveConfirmWords, canRemoveFromBench } from '../../lib/gc/benchRemove'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, promiseWords } from '../../lib/gc/followUp'
 import { townFromAddress, travelFor, travelWords } from '../../lib/gc/map'
@@ -795,6 +795,8 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
   const [maxMiles, setMaxMiles] = useState(partner.maxMiles === null ? '' : String(partner.maxMiles))
   const [problem, setProblem] = useState<string | null>(null)
   const [removing, setRemoving] = useState(false)
+  // The server refused the remove (finding 338): the row keeps the reason and offers no press again in this sitting.
+  const [refused, setRefused] = useState(false)
   const confirmDialog = useConfirmDialog()
   const record = RECORD_WORDS[answerRecord(partner)]
   const asks = partnerAsks(state, partner.id, bench.trade)
@@ -807,6 +809,7 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
     try {
       await writes.removeCompany(partner.id)
     } catch (e: unknown) {
+      if (e instanceof BenchRemoveRefused) setRefused(true)
       setProblem(formatErrorMessage(e, BENCH_REMOVE_FAILED))
     } finally {
       setRemoving(false)
@@ -859,7 +862,7 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
               </button>
             </div>
           )}
-          {canRemoveFromBench(partner) && (
+          {canRemoveFromBench(partner) && !refused && (
             <div style={{ marginTop: '0.2rem' }}>
               <button
                 type="button"
@@ -884,7 +887,7 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
               </button>
             </div>
           )}
-          {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{problem}</div>}
+          {problem && <div role="alert" data-gc-row-problem={refused ? 'refused' : 'failed'} style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{problem}</div>}
         </td>
         <td style={{ ...td, whiteSpace: 'nowrap' }}>
           <Chip tone={record.tone}>{record.word}</Chip>{' '}

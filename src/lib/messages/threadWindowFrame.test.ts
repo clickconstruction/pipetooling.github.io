@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { visibleBand } from '../visibleBand'
-import { isPagePinched, THREAD_LINES_FLOOR, THREAD_TIGHT_BAND_PX, threadRoom, threadWindowPlace } from './threadWindowFrame'
+import { isPagePinched, THREAD_LINES_FLOOR, THREAD_TIGHT_BAND_PX, threadRoom, threadWindowPlace, replyFootScroll, roomFell } from './threadWindowFrame'
 
 describe('threadWindowPlace', () => {
   it('pins a desk’s window to the page, whatever shows', () => {
@@ -73,5 +73,31 @@ describe('isPagePinched', () => {
     expect(isPagePinched(undefined, 402)).toBe(false)
     expect(isPagePinched(402, 0)).toBe(false)
     expect(isPagePinched(null, null)).toBe(false)
+  })
+})
+
+describe('the reply box’s foot and the keys (finding 319)', () => {
+  it('scrolls by the px of the box that stand under the column’s foot, a whole px at least', () => {
+    expect(replyFootScroll(300, 380)).toBe(80)
+    expect(replyFootScroll(300, 341.2)).toBe(42)
+  })
+
+  it('moves nothing when the foot already shows, and never scrolls up', () => {
+    expect(replyFootScroll(300, 300)).toBe(0)
+    expect(replyFootScroll(300, 300.4)).toBe(0)
+    expect(replyFootScroll(300, 220)).toBe(0)
+  })
+
+  it('the room fell when the keyboard came up or took more', () => {
+    expect(roomFell(553, 259)).toBe(true)
+    expect(roomFell(259, 215)).toBe(true)
+  })
+
+  it('a first read, a room that grew, a room that held and a browser that cannot say are not a fall', () => {
+    expect(roomFell(null, 553)).toBe(false)
+    expect(roomFell(259, 553)).toBe(false)
+    expect(roomFell(259, 259)).toBe(false)
+    expect(roomFell(553, null)).toBe(false)
+    expect(roomFell(undefined, undefined)).toBe(false)
   })
 })

@@ -16,7 +16,7 @@ The Costs tab opens with what the job is doing, measured against the **price**, 
 {{chip:gray|Earned so far · $95,172}} {{chip:gray|Time left · ≈ 22 working days}}
 
 - **True margin at completion**: the price, minus the direct cost at completion, minus the job's overhead share. The direct cost at completion is spent ÷ % done, the cost the job will reach at today's pace. Overhead is the office's running cost. The line under it shows the direct margin alone. Green when positive, red when not. It reads *too early* until the job has three field days and 10 %. When the job's bid was priced on the Workbench, a second line reads the margin it was priced at. It says how many points this job runs under or over that price. *it reads high* means the bid was priced with no labor rate or with rows that had no cost.
-- **Spent so far**: direct cost to date and its share of the price. The team hours and materials behind it are shown too.
+- **Spent so far**: direct cost to date and its share of the price. The team hours and materials behind it are shown too. Labor in it counts at each wage times the burden factor, the way the bid priced it. A line under the tile shows the wages, the factor and the result. **Where the money went**, lower on the tab, still shows the wages paid.
 - **Earned so far**: % done × the price, and how far ahead or behind the spend that is. This is the honest yardstick. It needs no budget.
 - **Time left**: working days at the pace so far, with what a field day costs. The pace is the % of the work done per field day.
 
