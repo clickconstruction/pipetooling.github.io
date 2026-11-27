@@ -60,8 +60,8 @@ END $$;
 -- The next item number a file would hand out, read past RLS.
 CREATE FUNCTION pfn.next_item(p_person uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT COALESCE((SELECT c.next_item_no::text FROM public.person_file_counters c WHERE c.person_id = p_person), 'no counter') $$;
-GRANT USAGE ON SCHEMA pfn TO authenticated, hr_agent;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pfn TO authenticated, hr_agent;
+GRANT USAGE ON SCHEMA pfn TO authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pfn TO authenticated;
 
 -- Who: a dev and an estimator.
 INSERT INTO auth.users (id, email) VALUES
@@ -231,12 +231,15 @@ SELECT pfn.same('the guard, the counter and the door are the only functions that
   (SELECT string_agg(p.proname, ', ' ORDER BY p.proname) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ILIKE '%person_case_items%'),
   'dev_case_write, person_case_items_guard, person_file_take_number');
 
--- The HR agent's own door is untouched: it signs in as its role with no user behind it, and appends an entry.
+-- The HR agent's own door is untouched. It is a definer's function, so it writes as its owner whoever calls it, and
+-- the role's part is the right to call it: read here as a privilege, and the function called by the bed's owner with
+-- no user behind it, as the agent's key has none. (The bed's owner may not wear the role: SET ROLE hr_agent is
+-- refused on the Supabase image, and granting itself the SET there ends the server.)
+SELECT pfn.same('the HR agent''s key may still call its door, and a signed-in user may not',
+  has_function_privilege('hr_agent', 'public.hr_agent_write(jsonb)', 'EXECUTE')::text || ' ' || has_function_privilege('authenticated', 'public.hr_agent_write(jsonb)', 'EXECUTE')::text, 'true false');
 SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
-SET LOCAL ROLE hr_agent;
-SELECT pfn.same('hr_agent_write still appends an entry as the HR agent',
+SELECT pfn.same('hr_agent_write still appends an entry with no user behind it',
   public.hr_agent_write('{"person_id":"00000000-0000-0000-0000-0000000971b1","author_label":"Bed agent","entries":[{"entry_date":"2026-03-10","source":"conversation","content":"A made-up line from the bed."}]}'::jsonb) ->> 'entries_inserted', '1');
-RESET ROLE;
 SELECT pfn.as_user('00000000-0000-0000-0000-0000000971d1');
 SET LOCAL ROLE authenticated;
 SELECT pfn.refused('a log line is never rewritten', $q$DO $d$ DECLARE n int := 0; BEGIN BEGIN UPDATE public.person_case_log SET line = 'rewritten' WHERE person_id = '00000000-0000-0000-0000-0000000971b1'; GET DIAGNOSTICS n = ROW_COUNT; EXCEPTION WHEN insufficient_privilege THEN n := 0; END; IF n = 0 THEN RAISE EXCEPTION 'nothing rewritten'; END IF; END $d$$q$, 'nothing rewritten');

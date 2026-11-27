@@ -9,7 +9,8 @@
 # which must change nothing. The scenario plays dev_hr_entry_write through RLS as a dev and as an estimator, inside
 # one transaction that rolls back: a dry run that names each link and writes nothing, twice alike; the write; a link
 # between two things already on the file; every refusal of the table's guard in words; a link withdrawn with a reason
-# and never changed again; who reads and adds; the dev seat refused a link that touches a counsel-only record. It
+# and never changed again; who reads and adds; the dev seat refused a link that touches a counsel-only record; and,
+# since 20261127075633, anon holding nothing on the table and refused in the same words whatever it names. It
 # raises on its first failed assertion and ends with "person_file_amendments PASSED". PGTEST_KEEP=1 leaves the
 # container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a
 # migration. Never touches prod.
@@ -19,9 +20,11 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55614}"
 NAME="pgtest-person-file-amendments"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# The links' migration, applied a second time below.
+# The links' migration, applied a second time below, and after it the file that took anon's privileges and the
+# signed-in role's unused ones off the table (20261127075633), in the ledger's order.
 PRESSES=(
   supabase/migrations/*_person_file_amendments.sql
+  supabase/migrations/*_case_items_direct_grants_revoked.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
