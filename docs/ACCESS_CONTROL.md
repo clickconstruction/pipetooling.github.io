@@ -1610,7 +1610,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **The text** (PR 2, v2.7142, `docs/migrations/20261113140000_receipt_texts.md`): the switch `app_settings` `receipt_texts_v1` is read by every signed-in user and changed by the owner or a dev alone (`master_or_dev_update_receipt_texts`, `is_master_or_dev()`);
   Settings → Phone and texts draws its card for those two roles (`canSwitchTexts`).
   The trigger `receipt_texts_stamp` writes the day it went on from the database's clock and turns a value that does not read into off, for any writer.
-  `receipt_texts_due()` and the `receipt-request` function run for the service role alone (the function by `X-Cron-Secret`);
+  `receipt_texts_due()` and the `receipt-request` function's sweep run for the service role alone (the sweep by `X-Cron-Secret`);
+  since v2.8697 the function has one other caller, the office's **Text again**, below;
   the sweep writes the request's text columns, and the Team queue reads them under the request's own policy, so the office sees every charge's line and a holder only their own.
   **The office's items** (v2.7148, `docs/migrations/20261113150000_receipt_requests_office.md`): `receipt_requests_to_chase()` hands the office (`is_office_staff()`, never an archived caller) each open request the text cannot finish, with the charge's store, amount and day, which an assistant does not read on `mercury_transactions`;
   everyone else gets no rows.
@@ -4173,7 +4174,7 @@ Row 97's signal is held by the database too since v2.8532: on the private Realti
 | 80 | Settings rail → **View as…** · `/settings#view-as` | dev (not while imitating) | imitation is a real session as another person, with their writes |
 | 81 | Settings → Your account → **Dev MCP keys** · `/settings#settings-dev-mcp-keys` | dev | a key lets a coding agent read the app as the dev |
 | 82 | Settings → Your account → **Export all backup** (the title's trailing icon) | dev | a full JSON pull of the company's data |
-| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Today's goals check**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
+| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Today's goals check**, **Labor burden factor** (read only), **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
 | 84 | Settings → **Email templates & testing** (Open Templates, dispatch phone, Tally minimum date, workflow email test, notification and email templates, report review, Easter eggs) | dev | test sends, template HTML and the catalog: plumbing |
 | 85 | Settings → **Digital twins & samples** (fleet admin, sample accounts, the walk tester) | dev | mints robot keys and sample accounts |
 | 86 | Settings → People & teams → **Pay approved leaders** (and Show in Hours) | dev | grants wage visibility; the trigger enforces it, so a client change alone would not open it |

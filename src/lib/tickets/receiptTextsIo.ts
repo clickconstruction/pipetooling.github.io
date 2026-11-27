@@ -8,7 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabase } from '../supabase'
 import { TEXTS_SWITCH_KEY, textsAreOn } from '../quo/textsSwitch'
-import { RECEIPT_TEXTS_KEY, RECEIPT_TEXTS_WORDS, parseReceiptTextsSetting, receiptTextsValue, type ReceiptRequestState, type ReceiptTextsSetting } from './receiptText'
+import type { ReceiptRequestAgainState } from './receiptAgainLine'
+import { RECEIPT_TEXTS_KEY, RECEIPT_TEXTS_WORDS, parseReceiptTextsSetting, receiptTextsValue, type ReceiptTextsSetting } from './receiptText'
 
 // `receipt_requests` is not in the generated types until the types PR, so the client is cast once here.
 const db = supabase as unknown as SupabaseClient
@@ -46,23 +47,31 @@ export function supabaseReceiptTextsIo(client: SupabaseClient = db, now: () => D
   }
 }
 
-/** A charge's request as the Team queue's line reads it. */
-export type ReceiptRequestRow = ReceiptRequestState & { mercury_transaction_id: string }
+/** A charge's request as the Team queue's line reads it, with the office's Text again presses (v2.8728). */
+export type ReceiptRequestRow = ReceiptRequestAgainState & { mercury_transaction_id: string }
+
+const REQUEST_COLUMNS = 'mercury_transaction_id, holder_name, no_text_why, texted_at, reminded_at, answered_at, closed_at, text_tries'
+/** The two columns of v2.8697's migration: when the office last pressed Text again, and how many times. */
+const AGAIN_COLUMNS = 'again_at, again_count'
 
 /**
  * The requests on these charges, by charge. Never throws: the line is a layer on the queue, and a database ahead of
- * the push, or a read that fails, leaves the queue as it was.
+ * the push, or a read that fails, leaves the queue as it was. A read refused with the Text again columns is asked
+ * once more without them, so a database that cannot hand them back still draws every line it drew before.
  */
 export async function listReceiptRequestsByCharge(chargeIds: readonly string[], client: SupabaseClient = db): Promise<Map<string, ReceiptRequestRow>> {
   const out = new Map<string, ReceiptRequestRow>()
   const ids = [...new Set(chargeIds)].filter(Boolean)
+  let columns = `${REQUEST_COLUMNS}, ${AGAIN_COLUMNS}`
   for (let i = 0; i < ids.length; i += 150) {
-    const { data, error } = await client
-      .from('receipt_requests')
-      .select('mercury_transaction_id, holder_name, no_text_why, texted_at, reminded_at, answered_at, closed_at, text_tries')
-      .in('mercury_transaction_id', ids.slice(i, i + 150))
+    const slice = ids.slice(i, i + 150)
+    let { data, error } = await client.from('receipt_requests').select(columns).in('mercury_transaction_id', slice)
+    if (error && columns !== REQUEST_COLUMNS) {
+      columns = REQUEST_COLUMNS
+      ;({ data, error } = await client.from('receipt_requests').select(columns).in('mercury_transaction_id', slice))
+    }
     if (error) return out
-    for (const r of (data ?? []) as ReceiptRequestRow[]) out.set(r.mercury_transaction_id, r)
+    for (const r of (data ?? []) as unknown as ReceiptRequestRow[]) out.set(r.mercury_transaction_id, r)
   }
   return out
 }

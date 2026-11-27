@@ -40,6 +40,7 @@ const FROM_PROPS = [
   'onPropertyLinked',
   'onOpenJobContract',
   'legalMatterByJobId',
+  'buildWaitByJobId',
   'onOpenCustomerDoor',
   'boardDotByJobId',
   'customerLinesByJobId',
@@ -55,9 +56,9 @@ const hooks = marked('hooks', [...FROM_HOOKS, ...FROM_PROPS]) as unknown as Stag
 describe('stagesRowContext', () => {
   const ctx = stagesRowContext(props, hooks) as unknown as Record<string, { from: string }>
 
-  it('holds the forty-one keys the rows read, and no other', () => {
+  it('holds the forty-two keys the rows read, and no other', () => {
     expect(Object.keys(ctx).sort()).toEqual([...FROM_HOOKS, ...FROM_PROPS].sort())
-    expect(Object.keys(ctx)).toHaveLength(41)
+    expect(Object.keys(ctx)).toHaveLength(42)
   })
 
   it('takes the windows and the router from the list’s own hooks, never from the bundle', () => {
@@ -81,7 +82,7 @@ describe('stagesRowContext', () => {
 
   it('keeps a key the list did not get, as undefined', () => {
     const bare = stagesRowContext({} as StagesRowContextProps, {} as StagesRowContextHooks) as unknown as Record<string, unknown>
-    expect(Object.keys(bare)).toHaveLength(41)
+    expect(Object.keys(bare)).toHaveLength(42)
     expect(bare.openNewReportForJob).toBeUndefined()
     expect(bare.openCustomerProfile).toBeUndefined()
   })

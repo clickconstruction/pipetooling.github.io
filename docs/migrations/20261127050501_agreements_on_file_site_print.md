@@ -38,3 +38,5 @@ The types PR (`npm run gen-types:linked`: the view's row gains one field, and th
 ## Its bed
 
 `supabase/tests/paper_site/20_scenario.sql` (`npm run test:pg:paper-site`), which drops the view and applies this file a second time after `*_agreements_on_file_site.sql`. Its cases for this file: the view's last four columns are the four of a site, in order and of their types; no paper prints its address until the box is ticked; a paper whose box was ticked says so on its line and no other paper does; a line that is no paper of `person_contract_documents` answers null. The `agreements-on-file` and `paper-party` beds run their own scenarios over the wider view.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10022.

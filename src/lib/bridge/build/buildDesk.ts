@@ -7,13 +7,16 @@
  * divergence first: the jobs that ate hours and moved nothing, then the
  * jobs that sat with nobody on them, then the jobs that moved, then the
  * finished ones. It explains the Build card's by-hours against by-percents
- * gap row by row. Every sentence here is held to the plain-words rule by
- * `buildDesk.test.ts`. Pure: no React, no Supabase.
+ * gap row by row. Since v2.8723 a quiet job a person marked as waiting, with a
+ * reason, sits in a fifth group at the end: out of Stalled and its money, in a
+ * tile of its own (`buildWaits.ts`). Every sentence here is held to the
+ * plain-words rule by `buildDesk.test.ts`. Pure: no React, no Supabase.
  */
 import type { BuildJob, PctPoint } from '../buildPace'
 import type { VectorSession } from '../vectors'
 import { expectedHoursForJob } from '../earnedRevenue'
 import { stageUsd } from '../stageFlow'
+import { buildWaitChipWords, buildWaitWhy, type BuildWait } from './buildWaits'
 
 /** Owner call (punch list #192): the ledger's window, and the days a job can go quiet before it reads stalled. Default 14. */
 export const BUILD_DESK_DAYS = 14
@@ -31,6 +34,8 @@ export type BuildDeskReads = {
   names: ReadonlyMap<string, string>
   /** Job id → lifetime approved field hours, the earned rule's denominator. */
   lifetimeHours: ReadonlyMap<string, number>
+  /** The waits that are not lifted. Absent when they could not be read: the desk then offers no press to name one. */
+  waits?: ReadonlyArray<BuildWait>
 }
 
 export type BuildDeskInput = {
@@ -53,7 +58,7 @@ export type BuildDeskInput = {
   crewDays?: number
 }
 
-export type BuildDeskGroup = 'ate' | 'stalled' | 'moved' | 'finished'
+export type BuildDeskGroup = 'ate' | 'stalled' | 'moved' | 'finished' | 'waits'
 export type BuildDeskTone = 'red' | 'amber' | 'green' | 'grey'
 
 export type BuildDeskDoor = { label: string; href: string }
@@ -99,6 +104,10 @@ export type BuildDeskRow = {
   doors: BuildDeskDoor[]
   /** The row offers Set the %: the job has a contract. */
   canSetPct: boolean
+  /** The job's wait, when a person marked it waiting and nobody has lifted it. A waiting job that would read stalled is in the `waits` group; one with hours keeps its group and still offers Lift the wait. */
+  wait: BuildWait | null
+  /** The row offers Name why it waits: it reads stalled, and the waits could be read. */
+  canNameWait: boolean
   /** The job as the crews' percent window takes it. */
   modalJob: { id: string; hcpNumber: string; jobName: string; label: string }
 }
@@ -109,12 +118,13 @@ export type BuildDesk = {
   windowStart: string
   todayYmd: string
   days: number
-  totals: { hours: number; movedUsd: number; movedJobs: number; ateHours: number; ateJobs: number; stalledUsd: number; stalledJobs: number; finishedJobs: number; noPctJobs: number }
+  totals: { hours: number; movedUsd: number; movedJobs: number; ateHours: number; ateJobs: number; stalledUsd: number; stalledJobs: number; finishedJobs: number; noPctJobs: number; waitsUsd: number; waitsJobs: number }
   headline: string
   verdict: string
   /** The muted line under the verdict: the card's paces, and its weeks when it has them. */
   subLine: string
-  tiles: [BuildDeskTile, BuildDeskTile, BuildDeskTile]
+  /** Moved, Ate hours and Stalled always; *Waits, with a reason* fourth when a job waits. */
+  tiles: BuildDeskTile[]
   rows: BuildDeskRow[]
   /** The moved rows past the first BUILD_DESK_MOVED_SHOWN, folded: null when none fold. */
   movedFold: { count: number; usd: number; words: string } | null
@@ -175,8 +185,9 @@ function scheduleSentence(crew: { crewDays: number; names: string[]; range: stri
   return `The Schedule puts ${who} on it ${crew.range}.`
 }
 
-function whyFor(r: Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob'>, crew: { crewDays: number; names: string[]; range: string } | null, days: number, spanWeeks: number, todayYmd?: string): string {
+function whyFor(r: Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob' | 'canNameWait'>, crew: { crewDays: number; names: string[]; range: string } | null, days: number, spanWeeks: number, todayYmd?: string): string {
   const hours = hoursText(r.hours)
+  if (r.group === 'waits' && r.wait) return buildWaitWhy(r.wait, r.leftUsd)
   if (r.pctAbove && (r.group === 'ate' || r.group === 'stalled') && r.pctNow != null) {
     const ago = todayYmd ? ` ${ageWords(daysBetween(r.pctAbove.atYmd, todayYmd)).replace(' old', ' ago')}` : ''
     const lead = `The job says ${Math.round(r.pctNow)}%. ${r.pctAbove.source === 'report' ? 'A report read' : 'The % was set to'} ${Math.round(r.pctAbove.pct)}%${ago}. One look at the job says which is true.`
@@ -237,7 +248,10 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
   }
   for (const list of pointsByJob.values()) list.sort((a, b) => (a.atYmd < b.atYmd ? 1 : a.atYmd > b.atYmd ? -1 : 0))
 
-  type Draft = Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob'> & { crewInfo: { crewDays: number; names: string[]; range: string } | null; crewChip: BuildDeskRow['crew'] }
+  const waitByJob = new Map<string, BuildWait>()
+  for (const w of reads?.waits ?? []) waitByJob.set(w.jobId, w)
+
+  type Draft = Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob' | 'canNameWait'> & { crewInfo: { crewDays: number; names: string[]; range: string } | null; crewChip: BuildDeskRow['crew'] }
   const drafts: Draft[] = []
   let noPctJobs = 0
   for (const j of input.openJobs) {
@@ -266,7 +280,10 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     const quietAll = hours <= 0 && !newestSession
     const quietDays = hours > 0 ? null : newestSession ? daysBetween(newestSession, today) : null
     const pctAgeDays = newest ? daysBetween(newest.atYmd, today) : null
-    const group: BuildDeskGroup = pctNow != null && pctNow >= 100 ? 'finished' : movedUsd > 0 ? 'moved' : hours > 0 ? 'ate' : 'stalled'
+    const byHours: BuildDeskGroup = pctNow != null && pctNow >= 100 ? 'finished' : movedUsd > 0 ? 'moved' : hours > 0 ? 'ate' : 'stalled'
+    const wait = waitByJob.get(j.id) ?? null
+    // A wait takes a quiet job out of Stalled. A job with hours, or one that moved, reads by what its hours did.
+    const group: BuildDeskGroup = byHours === 'stalled' && wait ? 'waits' : byHours
     if (contract != null && pctNow == null) noPctJobs += 1
     let expectedMoreHours: number | null = null
     if (reads && contract != null && pctNow != null) {
@@ -287,17 +304,21 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
             ? noPrice
               ? { tone: 'red', words: `${hoursText(hours)} earning zero` }
               : { tone: 'amber', words: 'hours in, nothing moved' }
-            : { tone: 'red', words: 'stalled' }
-    const crew = reads ? crewFor(j.id, reads, leftUsd, group, noPrice) : null
-    drafts.push({ id: j.id, label: j.label, contractUsd: contract, pctNow, pctFrom, pctAgeDays, pctFirstInWindow, pctAbove, hours, quietDays, quietAll, movedUsd, leftUsd, expectedMoreHours, group, noPrice, biggestIdle: false, sub, hoursWords, pctWords, movedWords, chip, crewInfo: crew ? { crewDays: crew.crewDays, names: crew.names, range: crew.range } : null, crewChip: crew ? crew.chip : null })
+            : group === 'waits' && wait
+              ? { tone: 'grey', words: buildWaitChipWords(wait).replace(/^W/, 'w') }
+              : { tone: 'red', words: 'stalled' }
+    const crewRead = reads ? crewFor(j.id, reads, leftUsd, group, noPrice) : null
+    // A waiting job with nobody scheduled is as it should be: the red chip is for a job nobody named.
+    const crew = crewRead && group === 'waits' && crewRead.crewDays === 0 ? { ...crewRead, chip: null } : crewRead
+    drafts.push({ id: j.id, label: j.label, contractUsd: contract, pctNow, pctFrom, pctAgeDays, pctFirstInWindow, pctAbove, hours, quietDays, quietAll, movedUsd, leftUsd, expectedMoreHours, group, noPrice, biggestIdle: false, wait, sub, hoursWords, pctWords, movedWords, chip, crewInfo: crew ? { crewDays: crew.crewDays, names: crew.names, range: crew.range } : null, crewChip: crew ? crew.chip : null })
   }
 
-  // The order: ate by hours, stalled by money idle, moved by money moved, finished last.
-  const rank: Record<BuildDeskGroup, number> = { ate: 0, stalled: 1, moved: 2, finished: 3 }
+  // The order: ate by hours, stalled by money idle, moved by money moved, finished, and the jobs that wait at the end.
+  const rank: Record<BuildDeskGroup, number> = { ate: 0, stalled: 1, moved: 2, finished: 3, waits: 4 }
   drafts.sort((a, b) => {
     if (rank[a.group] !== rank[b.group]) return rank[a.group] - rank[b.group]
     if (a.group === 'ate') return b.hours - a.hours || a.label.localeCompare(b.label)
-    if (a.group === 'stalled') return (b.leftUsd ?? 0) - (a.leftUsd ?? 0) || a.label.localeCompare(b.label)
+    if (a.group === 'stalled' || a.group === 'waits') return (b.leftUsd ?? 0) - (a.leftUsd ?? 0) || a.label.localeCompare(b.label)
     return b.movedUsd - a.movedUsd || a.label.localeCompare(b.label)
   })
   const biggest = drafts.find((d) => d.group === 'stalled' && d.leftUsd != null && d.leftUsd > 0)
@@ -313,9 +334,12 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     if (d.noPrice) doors.unshift({ label: 'Price the job', href: `/jobs?tab=stages&edit=${d.id}` })
     if (d.group === 'finished') doors.unshift({ label: 'Bill it', href: `/jobs?tab=stages&edit=${d.id}` })
     const job = input.openJobs.find((j) => j.id === d.id)!
+    const why = whyFor(rest, crewInfo, days, spanWeeks, today)
     return {
       ...rest,
-      why: whyFor(rest, crewInfo, days, spanWeeks, today),
+      // A job with hours that is still marked waiting says so: the wait is likely over.
+      why: d.wait && d.group !== 'waits' ? `${why} It is still marked waiting: ${buildWaitChipWords(d.wait).replace(/^Waits · /, '').replace(' · since ', ', since ')}. Lift the wait if it is over.` : why,
+      canNameWait: d.group === 'stalled' && reads?.waits !== undefined,
       crew: crewChip,
       doors,
       canSetPct: d.contractUsd != null,
@@ -325,7 +349,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
   })
 
   // The totals: a finished job that moved counts in Moved; one that did not is Bill's and counts nowhere.
-  const totals = { hours: 0, movedUsd: 0, movedJobs: 0, ateHours: 0, ateJobs: 0, stalledUsd: 0, stalledJobs: 0, finishedJobs: 0, noPctJobs }
+  const totals = { hours: 0, movedUsd: 0, movedJobs: 0, ateHours: 0, ateJobs: 0, stalledUsd: 0, stalledJobs: 0, finishedJobs: 0, noPctJobs, waitsUsd: 0, waitsJobs: 0 }
   for (const r of rows) {
     totals.hours += r.hours
     if (r.group === 'moved' || (r.group === 'finished' && r.movedUsd > 0)) {
@@ -341,6 +365,10 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
       totals.stalledUsd += r.leftUsd ?? 0
       totals.stalledJobs += 1
     }
+    if (r.group === 'waits') {
+      totals.waitsUsd += r.leftUsd ?? 0
+      totals.waitsJobs += 1
+    }
   }
 
   const headline = `${hoursText(totals.hours)} went in. ${stageUsd(totals.movedUsd)} of work came out.`
@@ -348,6 +376,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
   if (totals.ateJobs > 0) verdictParts.push(`${jobs(totals.ateJobs)} ate ${Math.round(totals.ateHours)} hours and moved nothing.`)
   if (totals.stalledJobs > 0) verdictParts.push(`${jobs(totals.stalledJobs)} ${plural(totals.stalledJobs, 'holds', 'hold')} ${stageUsd(totals.stalledUsd)} and saw nobody.`)
   if (verdictParts.length === 0) verdictParts.push('Every job with hours moved.')
+  if (totals.waitsJobs > 0) verdictParts.push(`${jobs(totals.waitsJobs)} ${plural(totals.waitsJobs, 'waits', 'wait')} with a reason.`)
   const verdict = `${verdictParts.join(' ')} That is the week.`
 
   const paceWords =
@@ -359,11 +388,13 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
   const weeksWords = input.weeks != null ? ` ${input.weeks >= 100 ? Math.round(input.weeks) : input.weeks.toFixed(1)} weeks to build what is already sold at that pace.` : ''
   const subLine = `${paceWords}${weeksWords}`
 
-  const tiles: [BuildDeskTile, BuildDeskTile, BuildDeskTile] = [
+  const tiles: BuildDeskTile[] = [
     { head: 'Moved', value: `${stageUsd(totals.movedUsd)} on ${jobs(totals.movedJobs)}`, words: 'The hours and the % agree. The pace lives here.', tone: 'green' },
     { head: 'Ate hours, moved nothing', value: `${hoursText(totals.ateHours)} on ${jobs(totals.ateJobs)}`, words: 'A stale % or work going nowhere. One look each says which.', tone: 'amber' },
     { head: 'Stalled', value: `${stageUsd(totals.stalledUsd)}, nobody on it`, words: `${jobs(totals.stalledJobs)} with no field hours in ${days} days.`, tone: 'red' },
   ]
+  // The waiting jobs' money gets a tile of its own, so leaving Stalled never hides it.
+  if (totals.waitsJobs > 0) tiles.push({ head: 'Waits, with a reason', value: `${stageUsd(totals.waitsUsd)} on ${jobs(totals.waitsJobs)}`, words: 'Out of the crew’s count. Still sold work.', tone: 'grey' })
 
   const movedRows = rows.filter((r) => r.group === 'moved')
   const folded = movedRows.slice(BUILD_DESK_MOVED_SHOWN)
@@ -383,6 +414,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     'The desk cannot tell which. One look at the job can.',
     'A job with no price shows hours but never movement.',
     'Set the % files a status report on the job, the way a crew’s does.',
+    'A quiet job marked as waiting stays out of Stalled until someone lifts the wait.',
   ].join(' ')
 
   return { windowStart, todayYmd: today, days, totals, headline, verdict, subLine, tiles, rows, movedFold, noPctLine, footnote }

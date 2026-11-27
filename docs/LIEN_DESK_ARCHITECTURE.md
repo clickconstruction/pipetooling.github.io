@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -888,6 +888,7 @@ last_updated: 2026-11-26
 > `LienInstrumentsModal` joins the modal stack (`useModalStackEntry`) while it is drawn and listens for keydown on window, topmost only, `defaultPrevented` skipped, and never while a dialog is drawn after it on the page.
 > It keeps no list of its forms: `hooks/useUnsavedWords.ts` watches the card, keeps what a typed field held when it was first touched, and holds the window while one still on the page reads otherwise.
 > A save that changes the job's filings or its demand letters drops what was kept.
+> Since v2.8699 a press on the backdrop asks the same fact (`lienWindowBackdropAction`), and an Escape or a backdrop press that is held draws one `role="status"` line under the window's title (`LIEN_WINDOW_HELD_WORDS`).
 > The backdrop, the × and Cancel close it as before, with no hold.
 > Known: a desk popover left open under the run takes the first Esc.
 

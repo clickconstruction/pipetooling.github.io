@@ -2,6 +2,7 @@ import { useStagesCrewModalOpener } from '../../contexts/StagesCrewModalContext'
 import { stagesCrewSummary } from '../../lib/jobs/stagesCrew'
 import { useState } from 'react'
 import { JobContractChip } from './JobContractChip'
+import { BuildWaitChip } from './BuildWaitChip'
 import { legalRowChip } from '../../lib/legal/legalMatters'
 import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
@@ -623,6 +624,7 @@ function cardFooterRow(
           </span>
         ) : null
       })()}
+      <BuildWaitChip wait={ctx.buildWaitByJobId?.get(job.id)} compact />
       {cardMetaChips(ctx, job, openLabel)}
       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
         {cardCallIcon(job)}
