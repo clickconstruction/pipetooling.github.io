@@ -577,10 +577,11 @@ describe('SiteMaterialsView on a phone: its small presses take a thumb (finding 
     await walked()
     expect(screen.getByTestId('site-materials-view').getAttribute('data-site-materials-phone')).toBe('')
     const byPart = screen.getByRole('button', { name: 'By part' })
-    expect(byPart.style.getPropertyValue('--press-pad-y')).toBe('6px')
+    // 32 px wants 6 px over and under, and the pad adds the press's own 1 px border, since it is drawn from inside it (finding 340).
+    expect(byPart.style.getPropertyValue('--press-pad-y')).toBe('7px')
     expect(screen.getByRole('button', { name: 'By place' }).hasAttribute('data-press-pad')).toBe(true)
     const back = screen.getByRole('button', { name: 'Back to Materials desk' })
-    expect(back.style.getPropertyValue('--press-pad-y')).toBe('4px')
+    expect(back.style.getPropertyValue('--press-pad-y')).toBe('5px')
     expect(screen.getByRole('link', { name: 'Print the material location report' }).hasAttribute('data-press-pad')).toBe(true)
   })
 
@@ -592,14 +593,16 @@ describe('SiteMaterialsView on a phone: its small presses take a thumb (finding 
     expect(document.querySelector('[data-press-pad]')).toBeNull()
   })
 
-  it('the stylesheet draws the pad under the screen’s mark, 1 px past each side for the press’s border', async () => {
+  it('the stylesheet draws the pad under the screen’s mark, with the offsets the job windows and the Lien desk use', async () => {
     const { readFileSync } = await import('node:fs')
     const css = readFileSync('src/index.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
     expect(css).toMatch(/\[data-site-materials-phone\] \[data-press-pad\] \{ position: relative; \}/)
     const rule = /\[data-site-materials-phone\] \[data-press-pad\]::after \{([^}]*)\}/.exec(css)?.[1] ?? ''
     expect(rule).toContain("content: ''")
     expect(rule).toContain('position: absolute')
-    for (const side of ['top', 'bottom']) expect(rule).toContain(`${side}: calc(-1px - var(--press-pad-y, 0px))`)
-    for (const side of ['left', 'right']) expect(rule).toContain(`${side}: calc(-1px - var(--press-pad-x, 0px))`)
+    for (const side of ['top', 'bottom']) expect(rule).toContain(`${side}: calc(-1 * var(--press-pad-y, 0px))`)
+    for (const side of ['left', 'right']) expect(rule).toContain(`${side}: calc(-1 * var(--press-pad-x, 0px))`)
+    // The pad's own px for a border is `padSmallPresses`'s to add now (finding 340), so no rule reaches further by hand.
+    expect(rule).not.toContain('-1px')
   })
 })
