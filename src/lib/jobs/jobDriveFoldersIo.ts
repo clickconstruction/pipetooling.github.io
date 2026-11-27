@@ -5,9 +5,9 @@
  */
 import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { jobDriveFoldersFromAnswer, type JobDriveFolders } from './jobDriveFolders'
-import { jobFolderTrashAnswer, jobFolderTrashOffered, jobFolderTrashProblem, jobFolderTrashToast, type JobFolderTrashAnswer, type JobFolderTrashJob } from './deletedJobFolderOffer'
+import { deletedJobFolderFacts, jobFolderTrashAnswer, jobFolderTrashOffered, jobFolderTrashProblem, jobFolderTrashToast, type DeletedJobFolderRow, type JobFolderTrashAnswer, type JobFolderTrashJob } from './deletedJobFolderOffer'
 
 /** Make a Pipeline job's Drive folders under Jobs, or fill the missing ones inside the folder it has. */
 export async function makeJobDriveFolders(jobId: string): Promise<JobDriveFolders> {
@@ -46,4 +46,26 @@ export async function afterDeleteJobFolder(jobId: string, job: JobFolderTrashJob
   } catch (e) {
     return jobFolderTrashToast({ problem: formatErrorMessage(e, NOT_MOVED) })
   }
+}
+
+/**
+ * The kept copies of deleted jobs, for Recently deleted's press (punch list #443, row 18): each job's name, its
+ * customer's name and its Drive link, read from Deleted records by the bundles' ids. Three columns of the kept row
+ * and no more. The archive lets a dev alone read, so anyone else gets nothing. Newest copy first.
+ */
+export async function readDeletedJobFolderFacts(jobIds: ReadonlyArray<string>): Promise<Map<string, JobFolderTrashJob>> {
+  const ids = [...new Set(jobIds.filter(Boolean))]
+  if (ids.length === 0) return new Map()
+  const rows = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('deleted_records_archive')
+        .select('record_id, job_name:row_data->>job_name, customer_name:row_data->>customer_name, google_drive_link:row_data->>google_drive_link')
+        .eq('table_name', 'jobs_ledger')
+        .in('record_id', ids)
+        .is('restored_at', null)
+        .order('deleted_at', { ascending: false }),
+    'read the deleted jobs’ Drive folders',
+  )
+  return deletedJobFolderFacts((rows ?? []) as unknown as DeletedJobFolderRow[])
 }

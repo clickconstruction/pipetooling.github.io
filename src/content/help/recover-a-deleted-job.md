@@ -2,7 +2,7 @@
 title: recover a deleted job or bid
 category: Office
 roles: dev
-keywords: deleted, delete, recover, restore, undo, trash, archive, recently deleted, mistake, removed, gone, data loss, test person, put a person back, ZZ
+keywords: deleted, delete, recover, restore, undo, trash, archive, recently deleted, mistake, removed, gone, data loss, test person, put a person back, ZZ, drive folder, folder left behind
 order: 71
 ---
 When a job or bid is deleted, everything that went with it goes too. That used to be permanent, but now you can put the whole thing back.
@@ -53,6 +53,22 @@ The preview says why when it cannot be done. The person may be on the roster aga
 The pay row also has an entry of its own, under the person's name. Leave that one alone and use the person's entry. It takes the pay row with it.
 
 A test person deleted before this was built has no copy of their account. Their preview is refused, and they stay deleted.
+
+## Send a deleted test job's Drive folder to the trash
+
+A job keeps a folder in Google Drive. Deleting the job leaves that folder behind.
+
+A deleted test job's entry says so. A test job is one whose name or customer starts with **ZZ**. Its entry reads *This test job kept a Drive folder.* Press **Open it in Drive ↗** to look at the folder first.
+
+Press **Send its Drive folder to the trash…**. A window asks first. Press **Send to Drive’s trash**. The job's own folder goes to Drive's trash. A manager of the Shared Drive can restore it for 30 days.
+
+The entry then says what happened. The folder stays when a bid, another job or a customer still keeps it. It also stays when a person added a file to it by hand. The entry gives the reason. The customer's folder always stays.
+
+When a developer deletes a ZZ test job, the app sends the folder by itself. The press is for a job deleted earlier, or deleted by the office.
+
+If you restore the job later, restore its folder in Drive too. The job still points at that folder.
+
+A real job's entry has no such press.
 
 ## Sweep ZZ test jobs
 
