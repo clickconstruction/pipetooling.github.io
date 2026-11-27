@@ -169,7 +169,7 @@ Order with the other work of 2026-11-12:
 
 - **#323 Pay calendar** edits `SendRecordInvoiceModal.tsx` (one line), `billedDatesLedger.ts` and the Stages row. PRs 1 to 3 here touch new files and one route, so they can go beside it. PR 4 touches `StagesJobCellActivityFooter.tsx` and `JobsStagesTab.tsx`'s Billed header: start it after #323's stack has merged.
 - **#325** redraws the lien lines of the same billed row. PR 4 starts after its PR 1.
-- **#318 Bridge spike** is reworking the weekly money card. PR 5's email block waits for it, and the Bridge's Bill desk can then read the same kernel.
+- **#318 Bridge spike** (closed 2026-11-27 with all of it built; its card lives in git history at the deleting commit) is reworking the weekly money card. PR 5's email block waits for it, and the Bridge's Bill desk can then read the same kernel.
 - **#324 Messages**: nothing shared. Went out stays as it is.
 
 ## How to verify
