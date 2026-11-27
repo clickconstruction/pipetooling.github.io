@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 /** What the view answers, and every call each read made on its query, in order. */
 const db = vi.hoisted(() => ({
   answer: { data: [] as unknown, error: null as unknown, count: null as number | null },
+  /** Answers to hand out first, one a read, before `answer`: a view that refuses once and then reads. */
+  first: [] as Array<{ data: unknown; error: unknown; count: number | null }>,
   throws: false,
   reads: [] as Array<{ table: string; calls: Array<[string, unknown[]]> }>,
 }))
@@ -17,7 +19,7 @@ vi.mock('../supabase', () => {
         get: (_t, op: string) => {
           if (op === 'then') {
             return (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
-              (db.throws ? Promise.reject(new Error('network down')) : Promise.resolve(db.answer)).then(resolve, reject)
+              (db.throws ? Promise.reject(new Error('network down')) : Promise.resolve(db.first.shift() ?? db.answer)).then(resolve, reject)
           }
           return (...args: unknown[]) => {
             read.calls.push([op, args])
@@ -31,8 +33,8 @@ vi.mock('../supabase', () => {
   return { supabase: { from: (table: string) => builder(table) } }
 })
 
-import { AGREEMENTS_SELECT } from './agreementsLedger'
-import { AGREEMENTS_VIEW, countAgreementsNotSent, countAgreementsWaiting, readAgreements } from './agreementsLedgerIo'
+import { AGREEMENTS_SELECT, AGREEMENTS_SELECT_BEFORE_PRINT } from './agreementsLedger'
+import { AGREEMENTS_VIEW, countAgreementsNotSent, countAgreementsWaiting, forgetAgreementsViewPrint, readAgreements } from './agreementsLedgerIo'
 
 const calls = () => db.reads[db.reads.length - 1]?.calls ?? []
 const ops = () => calls().map(([op]) => op)
@@ -40,7 +42,9 @@ const ops = () => calls().map(([op]) => op)
 beforeEach(() => {
   db.answer = { data: [], error: null, count: null }
   db.throws = false
+  db.first = []
   db.reads.length = 0
+  forgetAgreementsViewPrint()
 })
 
 describe('readAgreements', () => {
@@ -125,6 +129,35 @@ describe('readAgreements', () => {
   it('reads no row as an empty list', async () => {
     db.answer = { data: null, error: null, count: null }
     expect(await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })).toEqual({ rows: [], more: false })
+  })
+
+  it('a view that does not answer the print yet is read again without it, with the same filters, and remembered', async () => {
+    const refusal = { data: null, error: { code: '42703', message: 'column agreements_on_file.site_prints_address does not exist' }, count: null }
+    db.first = [refusal]
+    db.answer = { data: [{ id: 'a' }], error: null, count: null }
+    expect(await readAgreements({ kind: 'jobs', state: 'ended', typed: 'cedar', limit: 100 })).toEqual({ rows: [{ id: 'a' }], more: false })
+    expect(db.reads).toHaveLength(2)
+    expect(db.reads[0]?.calls[0]).toEqual(['select', [AGREEMENTS_SELECT]])
+    expect(db.reads[1]?.calls[0]).toEqual(['select', [AGREEMENTS_SELECT_BEFORE_PRINT]])
+    // Everything after the columns is asked the same way both times.
+    expect(db.reads[1]?.calls.slice(1)).toEqual(db.reads[0]?.calls.slice(1))
+    // The next page asks once, for the older columns.
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })
+    expect(db.reads).toHaveLength(3)
+    expect(db.reads[2]?.calls[0]).toEqual(['select', [AGREEMENTS_SELECT_BEFORE_PRINT]])
+  })
+
+  it('any other refusal is thrown as it is, and is not read again', async () => {
+    db.answer = { data: null, error: { code: '42501', message: 'permission denied for view agreements_on_file' }, count: null }
+    await expect(readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })).rejects.toThrow(/have access/)
+    expect(db.reads).toHaveLength(1)
+  })
+
+  it('a view that refuses again without the column throws that second reason', async () => {
+    db.first = [{ data: null, error: { code: '42703', message: 'column agreements_on_file.site_prints_address does not exist' }, count: null }]
+    db.answer = { data: null, error: { code: '42501', message: 'permission denied for view agreements_on_file' }, count: null }
+    await expect(readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })).rejects.toThrow(/have access/)
+    expect(db.reads).toHaveLength(2)
   })
 })
 

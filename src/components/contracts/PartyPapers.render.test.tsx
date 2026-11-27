@@ -103,6 +103,16 @@ describe('a supply house’s papers', () => {
     expect(lines.find((l) => l.textContent?.includes('Vendor terms'))?.querySelector('[data-testid="party-paper-site"]')).toBeNull()
   })
 
+  it('says a paper prints its address under the site, only for the paper whose box was ticked (punch list #439, part 3e)', async () => {
+    io.rows = [
+      paper('p-print', { site_address_key: '118 old quarry trail sampleton tx', site_address: '118 Old Quarry Trl, Sampleton, TX', site_prints_address: true }),
+      paper('p-quiet', { document_name: 'Vendor terms', site_address_key: '40 stone road sampleton tx', site_address: '40 Stone Rd, Sampleton, TX', site_prints_address: false }),
+    ]
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    await screen.findAllByTestId('party-paper-row')
+    expect(screen.getAllByTestId('party-paper-site').map((s) => s.textContent).sort()).toEqual(['for the site at 118 Old Quarry Trl, Sampleton, TX, printed on the paper', 'for the site at 40 Stone Rd, Sampleton, TX'])
+  })
+
   it('draws a line’s day and the count as values, apart from the words', async () => {
     io.rows = [paper('p-sent')]
     renderWithProviders(<PartyPapersSection party={HOUSE} />)

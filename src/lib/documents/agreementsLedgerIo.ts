@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, AGREEMENTS_SITE_KEYS_MAX, agreementFindWords, agreementsSiteAsked, kindsOfPick, statesOfPick, type AgreementRow, type AgreementState, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
+import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, AGREEMENTS_SELECT_BEFORE_PRINT, AGREEMENTS_SITE_KEYS_MAX, agreementFindWords, agreementsViewLacksPrint, agreementsSiteAsked, kindsOfPick, statesOfPick, type AgreementRow, type AgreementState, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -17,6 +17,12 @@ export const AGREEMENTS_VIEW = 'agreements_on_file'
 export type AgreementsRead = { rows: AgreementRow[]; more: boolean }
 
 type Narrowable<T> = { in: (column: string, values: ReadonlyArray<string>) => T; ilike: (column: string, pattern: string) => T }
+
+/** The list's read as far as this file drives it: narrowed, ordered, cut to a page, then awaited. */
+interface PageQuery extends Narrowable<PageQuery> {
+  order: (column: string, options: { ascending: boolean }) => PageQuery
+  limit: (count: number) => PromiseLike<{ data: unknown; error: unknown }>
+}
 
 /** The chips and the find box as filters: the kinds, the states, and every typed word found in the row's `find_text`. */
 function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'reader' | 'site'>): T {
@@ -31,11 +37,36 @@ function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery
   return out
 }
 
-/** The list, newest first, `limit` rows; `more` says another page may follow. Throws with the reason. */
+/**
+ * Whether the view answers `site_prints_address`. It is asked for until the database says it has no such column: a
+ * database behind the view's newest migration. From then on this page asks for the older columns alone, so the wait
+ * for a push costs one refused read and not one on every page.
+ */
+let viewAnswersPrint = true
+
+/** For tests: ask the view for the print column again. */
+export function forgetAgreementsViewPrint(): void {
+  viewAnswersPrint = true
+}
+
+/**
+ * The list, newest first, `limit` rows; `more` says another page may follow. Throws with the reason. A view that does
+ * not answer whether a paper prints its address yet is read again without that column, and its lines say nothing of it.
+ */
 export async function readAgreements(query: AgreementsQuery): Promise<AgreementsRead> {
   const limit = Math.max(1, query.limit || AGREEMENTS_PAGE)
-  const base = db.from(AGREEMENTS_VIEW).select(AGREEMENTS_SELECT)
-  const { data, error } = await applyFilters(base, query).order('at', { ascending: false }).order('id', { ascending: false }).limit(limit)
+  const read = async (columns: string): Promise<{ data: unknown; error: unknown }> => {
+    // The column list is one of two strings, so the client's types cannot work the row out from it. The query is
+    // read as the few steps this function takes, and the rows are cast to the view's row below, as they always were.
+    const base = db.from(AGREEMENTS_VIEW).select(columns) as unknown as PageQuery
+    const answer = await applyFilters(base, query).order('at', { ascending: false }).order('id', { ascending: false }).limit(limit)
+    return { data: answer.data, error: answer.error }
+  }
+  let { data, error } = await read(viewAnswersPrint ? AGREEMENTS_SELECT : AGREEMENTS_SELECT_BEFORE_PRINT)
+  if (error && viewAnswersPrint && agreementsViewLacksPrint(error)) {
+    viewAnswersPrint = false
+    ;({ data, error } = await read(AGREEMENTS_SELECT_BEFORE_PRINT))
+  }
   if (error) throw new Error(formatErrorMessage(error, 'The agreements did not read.'))
   const rows = (data ?? []) as unknown as AgreementRow[]
   return { rows, more: rows.length >= limit }
