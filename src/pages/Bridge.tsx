@@ -615,7 +615,7 @@ export default function Bridge() {
       cancelled = true
     }
   }, [buildOpen, buildInputs, data, buildReads, buildReadKey])
-  // A wait was marked or lifted on the desk (v2.8713): the waits alone are read again and patched into the reads, so the Schedule's chips stay drawn.
+  // A wait was marked or lifted on the desk (v2.8723): the waits alone are read again and patched into the reads, so the Schedule's chips stay drawn.
   const reloadBuildWaits = useCallback(() => {
     void (async () => {
       const waits = await buildWaitsIo.loadOpen()

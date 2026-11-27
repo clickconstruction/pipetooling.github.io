@@ -1,5 +1,5 @@
 /**
- * The small window behind **Name why it waits** (punch list #192, write A, v2.8713): six reasons, a line to type, and
+ * The small window behind **Name why it waits** (punch list #192, write A, v2.8723): six reasons, a line to type, and
  * **Mark it waiting**. It opens over the Build desk from a stalled row, and over a job's own window. The press is dead
  * until a reason is picked, and *Something else* needs words; the line under the press says which. Nothing is written
  * until the press: the write is the caller's (`onMark`), which closes the window when it lands and leaves it open

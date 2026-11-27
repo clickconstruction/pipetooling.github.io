@@ -7,7 +7,7 @@
  * divergence first: the jobs that ate hours and moved nothing, then the
  * jobs that sat with nobody on them, then the jobs that moved, then the
  * finished ones. It explains the Build card's by-hours against by-percents
- * gap row by row. Since v2.8713 a quiet job a person marked as waiting, with a
+ * gap row by row. Since v2.8723 a quiet job a person marked as waiting, with a
  * reason, sits in a fifth group at the end: out of Stalled and its money, in a
  * tile of its own (`buildWaits.ts`). Every sentence here is held to the
  * plain-words rule by `buildDesk.test.ts`. Pure: no React, no Supabase.

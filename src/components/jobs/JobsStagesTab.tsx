@@ -142,6 +142,7 @@ import type { PaySpeedsPayer } from '../../lib/jobs/paySpeedsPayerFocus'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import JobBookModal from './JobBookModal'
 import { useLegalMatters } from '../../hooks/useLegalMatters'
+import { useOpenBuildWaits } from '../../hooks/useOpenBuildWaits'
 import { buildFirmActivity } from '../../lib/legal/legalMatters'
 import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
 import { payerForJob } from '../../lib/legal/legalPacket'
@@ -789,6 +790,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
   // The stored side of the desk (PR 2): matters, the firm, the row chip's source. Office roles only.
   const legalMatters = useLegalMatters(stagesGates.isStagesOfficeRole(authRole))
+  // The jobs marked as waiting, with a reason (v2.8723, punch list #192 write A): one small read for the card's chip.
+  const buildWaits = useOpenBuildWaits(true)
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
@@ -2574,6 +2577,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openContractChip,
     legalMatterByJobId: legalMatters.byJobId,
+    buildWaitByJobId: buildWaits,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,

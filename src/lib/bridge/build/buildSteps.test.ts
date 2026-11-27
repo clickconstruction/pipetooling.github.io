@@ -123,7 +123,7 @@ describe('buildBuildSteps (punch list #334, PR 1)', () => {
     for (const text of sentences(steps)) expect(plainWordsFailures(text), text).toEqual([])
   })
 
-  describe('the jobs that wait, with a reason (v2.8713, punch list #192 write A)', () => {
+  describe('the jobs that wait, with a reason (v2.8723, punch list #192 write A)', () => {
     const emptyReads = { blocks: [], names: new Map<string, string>(), lifetimeHours: new Map<string, number>() }
     const withWait = buildBuildSteps(buildBuildDesk({ ...input, reads: { ...emptyReads, waits: [{ jobId: '2087', reason: 'gc_not_ready', note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' }] } }))
 

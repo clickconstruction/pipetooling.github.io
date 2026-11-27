@@ -1,5 +1,5 @@
 /**
- * A Build job's wait, read and written (punch list #192, write A, v2.8713). The read is the table's own, under the
+ * A Build job's wait, read and written (punch list #192, write A, v2.8723). The read is the table's own, under the
  * reader's rights: whoever reads a job reads its wait. A read the database refuses answers null, never a throw, so a
  * screen draws as it did before and offers no press to name a wait. The two writes go through `set_job_build_wait`,
  * which answers in words when it refuses, and those words are what the person reads.

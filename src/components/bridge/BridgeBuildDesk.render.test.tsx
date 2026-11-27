@@ -7,7 +7,7 @@
  * detail, the price door's path, the folds at the foot (what moved, every
  * open job with the verdict, the tiles and the ledger's rows, how this is
  * counted), the reading and the failed-read lines, and Esc closing. Since
- * v2.8713 (punch list #192, write A): Name why it waits on a quiet job's
+ * v2.8723 (punch list #192, write A): Name why it waits on a quiet job's
  * detail, the small window and its dead press, the mark and the lift through
  * a stood-in io, a refusal that keeps the window open, and the waiting jobs
  * behind their own press at the foot.
@@ -226,7 +226,7 @@ describe('BridgeBuildDesk on the step frame (punch list #334, PR 1)', () => {
   })
 })
 
-describe('a Build job waits, with a reason (v2.8713, punch list #192 write A)', () => {
+describe('a Build job waits, with a reason (v2.8723, punch list #192 write A)', () => {
   const baseReads = input.reads!
   const waitOn2087 = { jobId: '2087', reason: 'gc_not_ready' as const, note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' }
   const deskWith = (waits: (typeof waitOn2087)[] | undefined) => buildBuildDesk({ ...input, reads: { ...baseReads, ...(waits ? { waits } : {}) } })

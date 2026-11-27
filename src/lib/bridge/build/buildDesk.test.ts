@@ -257,7 +257,7 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(c.movedUsd).toBe(10_000)
   })
 
-  describe('a job that waits, with a reason (v2.8713, punch list #192 write A)', () => {
+  describe('a job that waits, with a reason (v2.8723, punch list #192 write A)', () => {
     const waiting = buildBuildDesk({ ...input, reads: { ...reads, waits: [gcWait] } })
 
     it('offers Name why it waits on a stalled row, once the waits could be read', () => {

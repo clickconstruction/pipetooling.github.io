@@ -6,7 +6,7 @@
  * rest behind Show all. A row's press opens the job's detail under it: the
  * why-line, the crew chip and the doors. The percent window
  * (`FieldPctUpdateModal`) opens from that detail, the one write here, and the
- * page patches the Build reads so the desk recomputes. Since v2.8713 a quiet
+ * page patches the Build reads so the desk recomputes. Since v2.8723 a quiet
  * job's detail also offers **Name why it waits**, which opens the small window
  * (`BuildWaitWindow`), and a waiting job offers **Lift the wait**; both go
  * through `buildWaitsIo` and tell the page to read the waits again. What

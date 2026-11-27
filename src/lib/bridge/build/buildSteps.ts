@@ -38,7 +38,7 @@ export type BuildSteps = {
   nothingWaiting: string
   /** The jobs whose percent rose in the window: the dollars the headline names. */
   moved: { label: string; words: string; rows: BuildDeskRow[] }
-  /** The quiet jobs a person marked as waiting, with a reason (v2.8713): null when none waits. */
+  /** The quiet jobs a person marked as waiting, with a reason (v2.8723): null when none waits. */
   waits: { label: string; words: string; rows: BuildDeskRow[] } | null
   /** The press that opens the whole ledger, every open job. */
   everyLabel: string

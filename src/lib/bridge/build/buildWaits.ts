@@ -1,5 +1,5 @@
 /**
- * A Build job waits, with a reason (punch list #192, write A, v2.8713). The Build desk tells its reader to crew a
+ * A Build job waits, with a reason (punch list #192, write A, v2.8723). The Build desk tells its reader to crew a
  * stalled job or name why it waits. This kernel is the naming: the six reasons, when the window's press is live, and
  * every word the wait is said in, on the desk, on the job's Stages card and in the job window. The job's status does
  * not change: it stays Working, and the wait is a row of its own (`job_build_waits`, written by `set_job_build_wait`).

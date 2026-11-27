@@ -6,7 +6,7 @@ import type { Database } from '../../../types/database'
  * ids. The Schedule's blocks for the next BUILD_DESK_CREW_DAYS days with the
  * assignees' names, for the crew chips; and each job's lifetime approved
  * hours through `loadEarnedJobs`, the earned rule's denominator, so a moving
- * row can say how many hours it expects. Since v2.8713 the waits that are not
+ * row can say how many hours it expects. Since v2.8723 the waits that are not
  * lifted too (`buildWaitsIo.ts`): a read the database refuses leaves them
  * out, and the desk then offers no press to name one. The hours, the percent
  * points and the open jobs are on the page already. Read-only.

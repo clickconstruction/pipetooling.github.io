@@ -143,7 +143,7 @@ describe('the hazmat fee and its notice (v2.5635)', () => {
     expect(eventRenderMeta('hazmat_fee_deleted')).toMatchObject({ tag: 'Hazmat', bucket: 'billing' })
   })
 
-  it('knows the two types a Build job’s wait writes, word for word, and reads them with the status changes (v2.8713)', () => {
+  it('knows the two types a Build job’s wait writes, word for word, and reads them with the status changes (v2.8723)', () => {
     const root = resolve(__dirname, '../..')
     const sql = readFileSync(resolve(root, 'supabase/migrations/20261127074500_job_build_waits.sql'), 'utf8')
     const written = [...sql.matchAll(/'(build_wait_[a-z]+)'/g)].map((m) => m[1]!)
