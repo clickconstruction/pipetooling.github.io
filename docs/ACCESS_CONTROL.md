@@ -4137,7 +4137,7 @@ Row 97's signal is held by the database too since v2.8532: on the private Realti
 | 80 | Settings rail → **View as…** · `/settings#view-as` | dev (not while imitating) | imitation is a real session as another person, with their writes |
 | 81 | Settings → Your account → **Dev MCP keys** · `/settings#settings-dev-mcp-keys` | dev | a key lets a coding agent read the app as the dev |
 | 82 | Settings → Your account → **Export all backup** (the title's trailing icon) | dev | a full JSON pull of the company's data |
-| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
+| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Today's goals check**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
 | 84 | Settings → **Email templates & testing** (Open Templates, dispatch phone, Tally minimum date, workflow email test, notification and email templates, report review, Easter eggs) | dev | test sends, template HTML and the catalog: plumbing |
 | 85 | Settings → **Digital twins & samples** (fleet admin, sample accounts, the walk tester) | dev | mints robot keys and sample accounts |
 | 86 | Settings → People & teams → **Pay approved leaders** (and Show in Hours) | dev | grants wage visibility; the trigger enforces it, so a client change alone would not open it |

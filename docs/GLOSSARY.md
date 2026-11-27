@@ -2291,6 +2291,8 @@ it does not modify Gross Revenue, Net Revenue, or Profit (after overhead) in the
 Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or assistant in Settings.
 After the **first successful clock-in of a calendar day**, if the user has at least one goal, a full-screen overlay titled **“My Roles Goals”** appears;
 **Continue** writes **`user_daily_goals_ack`** for that local date so the gate stays off until the next calendar day.
+Since v2.8675 (punch list #443, row 19) a dev takes their own record for today back from **Today's goals check** on Settings → Data & recovery, after a confirm (`goalsCheckTakeBack.ts`, `GoalsCheckTakeBackBlock.tsx`).
+The gate then asks again by its own rule: at the next load of the app when a clock session stands that day, and after the first clock in when none does.
 
 ---
 
