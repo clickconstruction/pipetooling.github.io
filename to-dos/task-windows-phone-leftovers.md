@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, held in the simulator the same day at 125%, 115% and 100% text · left: the look at 375 points, a small phone in a hand, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, held in the simulator the same day at 125%, 115% and 100% text · the look at 375 by 667 made in the simulator 2026-11-27 on v2.8691: with the keyboard up the send press was under it on the first tap (finding 319) · mended in v2.8736 (PR #10084) on the answer *Picks stand* to the pick *Mend it*, merged the same day · seen clean in the simulator the same day at 375 by 667: in Email and in Text at 100% text, and in Text at 125% (finding 341) · left: Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,11 +11,11 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The mend of the send press under the keyboard on a small phone, which is finding 319 with the `small-fixes` thread: at 375 by 667 points with the keyboard up, **Send email…** is cut to a sliver and **Send text…** is off the screen until one scroll inside the thread. Answered 2026-11-27 by the person at the keyboard, *Picks stand* to the pick *Mend it*, relayed by the managing session. Then a look at the mend in the small simulator. Grace's two notes wait on her word. Read 2026-11-27 in the iOS Simulator at 375 by 667 points and 100% text on v2.8691 (the simulator thread's sitting 2), on a ZZ Test thread with nothing typed or sent. Not read: 125% text, and the Dispatch job picker.
-size: M as five small PRs (S · S · XS · S · S), built; left: a look at the two mends in Messages (XS) and a walk on a small phone
-blocker: a person at a phone for the walk, and Grace's word for her two notes. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
-ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585
-opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
+next: Grace's two notes wait on her word, and they are what keeps this card open: the old task's sentence in Edit task, and the faces that do not hold everyone, counted again after two weeks of use before anything changes. The mend of the send press under the keyboard, v2.8736, is seen clean in the simulator (2026-11-27, 375 by 667 points): on the first tap into the reply box **Send email…** and **Send text…** are whole above the keyboard at 100% text, and **Send text…** at 125% with the whole box. That answers the pick *Mend it*. Not read after the mend: 402 wide, Email at 125% text, and the Dispatch job picker at 375. To weigh, with the fixing thread: the three small presses v2.8736 left as they are, **Send email…** at 110 by 30, **Attach** at 75 by 34 and the kind chips 31 tall.
+size: M as five small PRs (S · S · XS · S · S), built; the send press's mend built after them (v2.8736, S) and seen in the small simulator; left: Grace's word on her two notes
+blocker: Grace's word for her two notes. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
+ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585 · v2.8736
+opinion: close it on Grace's word for her two notes — every row that could be built is built, and the last mend is seen in the small simulator
 mockup: not required — each row is a fix to a screen that exists, found on a walk
 ---
 
@@ -199,8 +199,22 @@ Measured in Chromium and in WebKit at phone width, on the page's own markup with
 - **The mend, v2.8585, merged 2026-11-25.** The caption is held to one line, with dots where it is cut. The box was not made taller: with the caption on one line the grey words clear it, and a taller box would push the send row further under the keyboard bar. Not yet seen in the simulator.
 - **The mend held, the same day.** In the simulator the caption is one line at 125%, 115% and 100% text, and clears the grey words. Still so, and not the mend's: at 125% with the box open, **Send text…** sits under Safari's bar with the keyboard up, and half under it with the keyboard down. To weigh on a real phone.
 
-**Left from this walk.** The look at 375 points: a small simulator is made and waits on leave to use it.
+**Left from this walk.** The look at 375 points: a small simulator is made and waits on leave to use it. Made on 2026-11-27: see *Mended, and seen in the simulator* below.
 
 ### Answered 2026-11-27: mend the send press under the keyboard
 
 The simulator's finding was put to the person at the keyboard that day as: *the reply box: the send press is cut off with the keyboard up at 375 by 667, on the simulator. Pick: Mend it.* The answer, relayed by the managing session: *Picks stand*. The mend is finding 319 and belongs to the `small-fixes` thread, so this card stays open for it and for Grace's two notes. Done looks like: on a 375-point phone with the keyboard up, the send press of **Email** and of **Text** is whole on the screen with no scroll.
+
+### Mended, and seen in the simulator (2026-11-27)
+
+**The mend, v2.8736 (PR #10084, merged 2026-11-27), client only.** On a phone the thread's column follows the reply box's foot when the box wakes and when the room falls, and only while the box holds the focus. The fragment is `docs/recent-features/v2.8736.md`.
+
+**The looks,** by the simulator thread, on the small simulator at 375 by 667 points, iOS 26.4, Safari. Settings → Release notes on the device read v2.8746, with v2.8736's note in the list, before any look. On a ZZ Test thread found by search, with nothing typed in a reply box and nothing sent. A simulator's verdict, never a real phone's.
+
+- **At 100% text, in Email and in Text: clean (finding 319).** With the keyboard up and no scroll, on the first tap into the reply box: the header's first row is up with the thread's name whole, the box is open and not folded, with its caption, *Tie to* and **Attach** show, and the send press is whole above the keyboard. **Send email…** stands 266 to 295 points down and **Send text…** the same, with the keyboard's bar from 349, so 54 points clear.
+- **What it costs, as the fragment said.** In Email the row of **Text**, **Email**, **Note** and **Call** stays on screen under the header. In Text that row and two rows of *Send them* chips slide under the header, and the last chip still shows.
+- **At 125% text, in Text: clean (finding 341).** With the keyboard up and no scroll the whole reply box shows, 95 to 203 points down, with its caret and its caption, then *Tie to* and **Attach**, and **Send text…** whole at 255 to 291, with the keyboard's bar from 349. The header's name is cut to an ellipsis, as at 125% before. On the build before the mend the same look showed the top 20 points of the box, with the press under the keys. Safari's text size was put back to 100% and read back.
+- **Seen beside it, and Safari's own.** At 100% with the keyboard down, in Text, the foot of **Send text…** is under Safari's text-size bar for the few seconds that bar is up after a size change.
+- **Not read after the mend:** 402 wide, Email at 125% text, and the Dispatch job picker at 375. The three small presses were not measured again.
+
+So the question answered above, *Mend it*, is done and seen. This card stays open for Grace's two notes alone.
