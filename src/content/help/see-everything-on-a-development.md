@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, the proof, make the packet, who signed, show the client, print the packet, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
+keywords: development, site, subdivision, the proof, make the packet, who signed, show the client, print the packet, download the packet, signed copies, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, sheet count, sheets in hand, how many sheets, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -295,7 +295,21 @@ The packet reads *18 of 21 have signed*. Workers are counted, not named.
 
 **Our own people** shows only while secrecy is on for the site. See [ask for one paper across a whole site](/help/require-papers-before-a-job-opens#ask-for-one-paper-across-a-whole-site).
 
-The packet is the list. The signed copies are not attached yet. Open a signed copy from Documents → Agreements.
+### Download the packet with the signed copies
+
+The packet on the screen is the list. **Download** makes one PDF: the list first, then each signed copy.
+
+1. Press **Make the packet**.
+2. Press the download button. The button names its count, such as {{button:outline|Download with 3 signed copies}}.
+3. Wait for the line under the buttons. The line reads *Downloaded, with 3 signed copies attached.*
+
+The PDF is saved by your browser. The file is named for the site.
+
+:::example A copy that is not attached
+A signed form keeps its own PDF, so a form's copy is left out. The line under the buttons names the company and the reason. The list in the PDF says the same beside that company.
+:::
+
+With no company signed yet, the button reads **Download the list**.
 
 The office and an estimator can make the packet. Making the packet sends nothing and saves nothing.
 
