@@ -17,7 +17,7 @@ import { sentenceWithMap, taskMapAfterPlace, type TaskMapDraft } from '../lib/ta
 import { newTaskAssigneeRows, newTaskSend } from '../lib/tasks/newTaskSend'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
-import { newTaskSentence, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
+import { newTaskSentence, newTaskWindowRole, taskPersonName, taskSendLabel, type TaskAddKey } from '../lib/tasks/newTaskWindow'
 import { DONE_WHEN_HINT } from '../lib/tasks/taskRowsOnAPhone'
 import { useRecentTaskAssignees } from '../hooks/useRecentTaskAssignees'
 import { useModalStackEntry } from '../hooks/useModalStackEntry'
@@ -67,14 +67,24 @@ export default function ChecklistAddModal({
   overlayBackground = 'rgba(0,0,0,0.5)',
   goToChecklistKeepsModalOpen = true,
 }: { overlayBackground?: string; goToChecklistKeepsModalOpen?: boolean } = {}) {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const navigate = useNavigate()
   const phone = useIsMobile()
   const modalContext = useChecklistAddModal()
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   /** The faces (v2.7085): the people given to last, newest task first, in place of three names in the order the rows came back. */
   const recentAssigneeIds = useRecentTaskAssignees(authUser?.id ?? null, Boolean(modalContext?.isOpen))
-  const [role, setRole] = useState<UserRole | null>(null)
+  /**
+   * The person's role. The window draws nothing for a role that may not give a task, and it used to know the role
+   * from its own read alone, made again on every open (finding 347, a phone walk of 2026-11-27). So the first open
+   * waited on that read, and a read that failed blanked the role: an open window vanished while the app still held
+   * it as open, and no later press of ＋ New task could draw it until a reload. A lost sign-in lock is such a failure.
+   *
+   * The role the app already holds for the signed-in person stands in until the read answers, and a read that fails
+   * keeps the role it had.
+   */
+  const [readRole, setReadRole] = useState<UserRole | null>(null)
+  const role = newTaskWindowRole(readRole, authRole) as UserRole | null
   /** user ids among the assignees that have ≥1 push device (null = unknown/not fetched). */
   const [pushEnabledIds, setPushEnabledIds] = useState<Set<string> | null>(null)
   /** The rows under the words (v2.7085) keep what is open themselves. A new open of the window gives them a new key, so they start closed. */
@@ -171,7 +181,9 @@ export default function ChecklistAddModal({
       })
     if (authUser?.id) {
       supabase.from('users').select('role').eq('id', authUser.id).single().then(({ data }) => {
-        setRole((data as { role: UserRole } | null)?.role ?? null)
+        // A read that fails answers no row. It keeps the role it had: blanking it took an open window away (finding 347).
+        const read = (data as { role: UserRole } | null)?.role ?? null
+        if (read) setReadRole(read)
       })
     }
   }, [modalContext?.isOpen, authUser?.id])

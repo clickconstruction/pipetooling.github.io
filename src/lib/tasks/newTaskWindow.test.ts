@@ -20,6 +20,7 @@ import {
   whenBarPick,
   type NewTaskSentenceInput,
   type TaskAddRowInput,
+  newTaskWindowRole,
 } from './newTaskWindow'
 
 // Made-up people. Rosa gives the tasks.
@@ -329,3 +330,18 @@ describe('editTaskWhenNote', () => {
     expect(plainWordsFailures(EDIT_TASK_REPEATS_NOTE)).toEqual([])
   })
 })
+
+describe('newTaskWindowRole (finding 347)', () => {
+  it('the role the app holds stands in until the window’s own read answers', () => {
+    expect(newTaskWindowRole(null, 'dev')).toBe('dev')
+    expect(newTaskWindowRole(null, 'helpers')).toBe('helpers')
+  })
+  it('the window’s own read wins once it has answered', () => {
+    expect(newTaskWindowRole('assistant', 'dev')).toBe('assistant')
+  })
+  it('is unknown only when neither is known', () => {
+    expect(newTaskWindowRole(null, null)).toBeNull()
+    expect(newTaskWindowRole(null, undefined)).toBeNull()
+  })
+})
+
