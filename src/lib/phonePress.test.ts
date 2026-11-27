@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, activityPillStyle, activityPillsOnOneRow, thumbInLine } from './phonePress'
+import { IN_LINE_LINK_DRAWN, IN_LINE_PRESS_DRAWN, ONE_ROW_PILLS, PHONE_PILL_MIN_HEIGHT, PHONE_PRESS_MIN_HEIGHT, PHONE_SCREEN_MAX_WIDTH, activityPillStyle, activityPillsOnOneRow, phoneThumbPressesCss, thumbInLine } from './phonePress'
 
 describe('phonePress', () => {
   it('holds the two heights the walk asked for', () => {
@@ -41,5 +41,37 @@ describe('phonePress', () => {
   it('takes no margin from a press that is a fingertip tall already', () => {
     expect(thumbInLine(44)).toEqual({ minHeight: 44, marginTop: 0, marginBottom: 0 })
     expect(thumbInLine(60)).toEqual({ minHeight: 44, marginTop: 0, marginBottom: 0 })
+  })
+})
+
+describe('phoneThumbPressesCss (finding 290)', () => {
+  const css = phoneThumbPressesCss('[data-zz-shell]')
+
+  it('is one rule for a phone and none for a desk', () => {
+    expect(PHONE_SCREEN_MAX_WIDTH).toBe(640)
+    expect(css.startsWith('@media (max-width: 640px) { ')).toBe(true)
+    expect(css.endsWith(' }')).toBe(true)
+    expect(css.match(/@media/g)).toHaveLength(1)
+  })
+
+  it('stands every button in the shell a fingertip tall, over a height the button set itself', () => {
+    expect(css).toContain('[data-zz-shell] button { min-height: 44px !important; }')
+  })
+
+  it('gives a button in a line of words its growth back, so the line stays as drawn', () => {
+    expect(IN_LINE_PRESS_DRAWN).toBe(18)
+    expect(css).toContain('[data-zz-shell] button[data-press-in-line] { margin-top: -13px; margin-bottom: -13px; }')
+  })
+
+  it('grows what a finger can hit on a link by its padding, and gives the padding back in its margin', () => {
+    expect(css).toContain('[data-zz-shell] a[href] { padding-top: 15px; padding-bottom: 15px; margin-top: -15px; margin-bottom: -15px; }')
+    // The shortest link drawn, 14 px, is 44 px to a finger. A taller one is more.
+    expect(IN_LINE_LINK_DRAWN + 15 + 15).toBe(PHONE_PRESS_MIN_HEIGHT)
+  })
+
+  it('names the shell on every selector, so a press outside it is left as it is', () => {
+    const selectors = css.replace(/^@media[^{]*\{/, '').split('}').map((r) => r.split('{')[0]!.trim()).filter(Boolean)
+    expect(selectors).toHaveLength(3)
+    for (const s of selectors) expect(s.startsWith('[data-zz-shell] ')).toBe(true)
   })
 })

@@ -1840,6 +1840,9 @@ export default function DevelopmentPage() {
         {/* Secrecy on this site (punch list #439, piece 4): one paper our own people sign before any job here opens. The office presses, the estimator reads. */}
         <SiteSecrecy site={{ developmentId: dev.id }} role={role} testId="development-site-secrecy" />
 
+        {/* Secrecy on this site (punch list #439, piece 4): one paper our own people sign before any job here opens. The office presses, the estimator reads. */}
+        <SiteSecrecy site={{ developmentId: dev.id }} role={role} testId="development-site-secrecy" />
+
         {/* The seventh look (punch list #379): trips to a site away from home. Mounted for the office door; the card draws only when the look shows. */}
         {moneyShown ? (
           <DevelopmentTripsCard

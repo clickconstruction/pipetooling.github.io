@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { recordNavClick } from '../lib/navClickTelemetry'
-import { offlineRecoveryState, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import { AUTO_TRY_WAIT_MS, offlineRecoveryState, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { ErrorDoorButton, ErrorDoorCard } from './help/ErrorDoor'
 import { errorFamilyOf } from '../lib/help/errorGuides'
 
@@ -58,6 +58,10 @@ export default function OfflineRetryPanel({
   /** Count of `online` events since the failure — each one is one chance to auto-retry. */
   const [onlineEvents, setOnlineEvents] = useState(0)
   const autoFiredForEventRef = useRef<number>(0)
+  // Which return of the signal the last automatic try was made for, and which one's wait is over (finding 308):
+  // the line says *trying again…* for `AUTO_TRY_WAIT_MS` after a try, then hands the press back.
+  const [autoFiredFor, setAutoFiredFor] = useState(0)
+  const [autoSpentFor, setAutoSpentFor] = useState(0)
   // The door on the line (punch list #187 PR 6): What this means opens the family's card under it.
   const [doorOpen, setDoorOpen] = useState(false)
 
@@ -67,8 +71,18 @@ export default function OfflineRetryPanel({
       setAttempts(0)
       setOnlineEvents(0)
       autoFiredForEventRef.current = 0
+      setAutoFiredFor(0)
+      setAutoSpentFor(0)
     }
   }, [failure])
+
+  // The automatic try's wait: when it ends with the failure still standing, that try is spent.
+  const failed = failure != null
+  useEffect(() => {
+    if (!failed || autoFiredFor === 0) return
+    const t = window.setTimeout(() => setAutoSpentFor(autoFiredFor), AUTO_TRY_WAIT_MS)
+    return () => window.clearTimeout(t)
+  }, [failed, autoFiredFor])
 
   // The signal coming back is an event, not a flag: the browser's online flag
   // can say "online" through a failed fetch (dead wifi, unreachable server).
@@ -86,6 +100,7 @@ export default function OfflineRetryPanel({
     idempotent,
     reconnected: onlineEvents > 0,
     offlineMessage,
+    autoTrySpent: autoSpentFor > 0 && autoSpentFor === onlineEvents && !busy,
   })
 
   const retry = (auto: boolean) => {
@@ -99,6 +114,7 @@ export default function OfflineRetryPanel({
     if (!state.autoRetry || busy) return
     if (autoFiredForEventRef.current === onlineEvents) return
     autoFiredForEventRef.current = onlineEvents
+    setAutoFiredFor(onlineEvents)
     retry(true)
     // `retry` closes over props that change per render; the ref above is the dedupe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
