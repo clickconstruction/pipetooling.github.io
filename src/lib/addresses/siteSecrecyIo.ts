@@ -8,7 +8,9 @@
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { normalizeAddressKey } from '../developments/notInIt'
+import { readAnswers } from '../../hooks/useAddressLookAlikes'
+import type { PlaceAnswer } from './lookAlikes'
+import { siteKeysToRead } from './sitePapers'
 import type { BookPaperRow } from '../jobs/jobPapers'
 import { supabaseJobPapersIo } from '../jobs/jobPapersIo'
 import { type SecrecyCounts, type SecrecyPreview, type SecrecySite, type SiteSecrecyRow, SITE_SECRECY_SELECT, liveSecrecy, parseSecrecyPreview, secrecyNotThereYet } from './siteSecrecy'
@@ -35,9 +37,11 @@ const siteArgs = (site: SecrecySite) => ('developmentId' in site ? { p_developme
 export const supabaseSiteSecrecyIo: SiteSecrecyIo = {
   async readLive(site) {
     const base = supabase.from('site_secrecy' as never).select(SITE_SECRECY_SELECT).is('turned_off_at', null)
-    const key = 'developmentId' in site ? '' : normalizeAddressKey(site.address)
-    if (!('developmentId' in site) && !key) return null
-    const answer = (await ('developmentId' in site ? base.eq('development_id', site.developmentId) : base.eq('address_key', key)).limit(5)) as unknown as Answer<SiteSecrecyRow[]>
+    // An address is one site with every spelling kept as the same place, as the database's own rule has it. The
+    // answers are a help: without them the address's own spelling still reads.
+    const keys = 'developmentId' in site ? [] : siteKeysToRead({ job_address: site.address, development_id: null }, await readAnswers().catch(() => [] as PlaceAnswer[]))
+    if (!('developmentId' in site) && keys.length === 0) return null
+    const answer = (await ('developmentId' in site ? base.eq('development_id', site.developmentId) : base.in('address_key', keys)).limit(5)) as unknown as Answer<SiteSecrecyRow[]>
     if (answer.error) {
       if (secrecyNotThereYet(answer.error)) return 'not-there'
       throw answer.error

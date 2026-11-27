@@ -84,6 +84,7 @@ export function JobDocumentsRequiredPapers({
   proposalsIo = supabaseJobPaperProposalsIo,
   removedIo,
   onOverlayOpenChange,
+  reloadKey = 0,
 }: {
   /** The job's names say whether it is a ZZ test job. A caller that knows only the id hands only the id. */
   job: { id: string; job_name?: string | null; customer_name?: string | null }
@@ -96,6 +97,8 @@ export function JobDocumentsRequiredPapers({
   settingsIo?: JobPaperSettingsIo
   proposalsIo?: JobPaperProposalsIo
   onOverlayOpenChange?: (open: boolean) => void
+  /** A number the tab raises when a neighbour changed the job's papers: the site's secrecy turned on or off. */
+  reloadKey?: number
 }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -154,7 +157,7 @@ export function JobDocumentsRequiredPapers({
 
   useEffect(() => {
     void reload()
-  }, [reload])
+  }, [reload, reloadKey])
 
   const openSettings = (target: JobPaperSettingsTarget) => {
     setError(null)

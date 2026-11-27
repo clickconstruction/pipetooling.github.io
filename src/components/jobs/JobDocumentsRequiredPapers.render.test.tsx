@@ -240,6 +240,16 @@ describe('JobDocumentsRequiredPapers', () => {
     expect(screen.getByTestId('job-papers-summary').textContent).toBe('1 of 2 have signed. 1 still owes a paper.')
   })
 
+  it('the roster reads again when the tab raises its key, as it does when the site’s secrecy changes', async () => {
+    const readRoster = vi.fn(async () => saved)
+    const io = fakeIo({ readRoster })
+    const { rerender } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} reloadKey={0} />)
+    await screen.findByText('Luis Ortega')
+    expect(readRoster).toHaveBeenCalledTimes(1)
+    rerender(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} reloadKey={1} />)
+    await waitFor(() => expect(readRoster).toHaveBeenCalledTimes(2))
+  })
+
   it('a read that fails draws the retry panel', async () => {
     const io = fakeIo({ readRoster: vi.fn(async () => Promise.reject(new Error('Only the office reads who has signed a job’s papers.'))) })
     renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)

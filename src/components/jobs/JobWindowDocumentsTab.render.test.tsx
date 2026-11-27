@@ -12,6 +12,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import type { SiteSecrecyRow } from '../../lib/addresses/siteSecrecy'
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
@@ -39,6 +40,13 @@ const restoreSpy = vi.fn((app: SavedPayApplication) => {
   return Promise.resolve()
 })
 // The papers of the job's site are their own file's to test: here the section reads nothing and draws nothing.
+// Secrecy on this site (punch list #439, piece 4c): the block's first read. `'not-there'` is a database before its
+// migration, where the block draws nothing, which is how every other case here leaves it.
+let secrecyLive: SiteSecrecyRow | null | 'not-there' = 'not-there'
+const secrecyReadSpy = vi.fn((_site: unknown) => Promise.resolve(secrecyLive))
+vi.mock('../../lib/addresses/siteSecrecyIo', () => ({
+  supabaseSiteSecrecyIo: { readLive: (site: unknown) => secrecyReadSpy(site), readCounts: () => Promise.resolve({ jobs: 2, signed: 1 }) },
+}))
 vi.mock('../../hooks/useSitePapers', () => ({ useSitePapers: () => ({ rows: [], answers: [], failure: null, reading: false, retry: () => {} }) }))
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: class extends Error {},
@@ -265,6 +273,8 @@ beforeEach(() => {
   sent = []
   deletedOnJob = []
   authRole = 'dev'
+  secrecyLive = 'not-there'
+  secrecyReadSpy.mockClear()
   openCopySpy.mockClear()
   openFileSpy.mockClear()
   previewSpy.mockClear()
@@ -785,5 +795,49 @@ describe('the five sections with a read of their own draw what the fake answers'
     await expect(fetch('https://example.supabase.co/rest/v1/not_faked')).rejects.toThrow('A read that is not faked went out: https://example.supabase.co/rest/v1/not_faked')
     expect(wentOut()).toEqual(['https://example.supabase.co/rest/v1/not_faked'])
     fetchSpy.mockClear()
+  })
+})
+
+describe('Secrecy on this site on the Documents tab (punch list #439, piece 4c)', () => {
+  const ON: SiteSecrecyRow = { id: 'site-1', development_id: 'dev-1', address_key: null, address: null, book_document_id: 'book-sec', paper_name: 'ZZ Test site secrecy paper', turned_on_at: '2026-11-27T18:00:00Z', turned_off_at: null }
+
+  it('a lone job’s tab is the door: the block reads the job’s address and offers the press', async () => {
+    secrecyLive = null
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', development_id: null, job_address: '12 Sample St' })} />)
+    const block = await screen.findByTestId('job-site-secrecy')
+    expect(secrecyReadSpy).toHaveBeenCalledWith({ address: '12 Sample St' })
+    expect(within(block).getByText(/every job at this address/)).toBeTruthy()
+    expect(within(block).getByRole('button', { name: 'Turn on secrecy for this site' })).toBeTruthy()
+  })
+
+  it('a job in a development reads the development’s secrecy and has no press', async () => {
+    secrecyLive = ON
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', development_id: 'dev-1', job_address: '12 Sample St' })} />)
+    const block = await screen.findByTestId('job-site-secrecy')
+    expect(secrecyReadSpy).toHaveBeenCalledWith({ developmentId: 'dev-1' })
+    expect(within(block).getByText('ZZ Test site secrecy paper')).toBeTruthy()
+    expect(within(block).getByText('This job’s development has secrecy on. Turn it off on the development’s page.')).toBeTruthy()
+    expect(within(block).queryByRole('button')).toBeNull()
+  })
+
+  it('a job in a development whose secrecy is off says nothing here', async () => {
+    secrecyLive = null
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', development_id: 'dev-1', job_address: '12 Sample St' })} />)
+    await waitFor(() => expect(secrecyReadSpy).toHaveBeenCalled())
+    expect(screen.queryByTestId('job-site-secrecy')).toBeNull()
+  })
+
+  it('nothing is read or drawn for a role that is not the office or the estimator, or for a job with no site', async () => {
+    authRole = 'superintendent'
+    secrecyLive = null
+    const { unmount } = renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', development_id: null, job_address: '12 Sample St' })} />)
+    await screen.findByText(/^No contract has been sent or signed on this job\./)
+    expect(screen.queryByTestId('job-site-secrecy')).toBeNull()
+    unmount()
+    authRole = 'dev'
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', development_id: null, job_address: '  ' })} />)
+    await screen.findByText(/^No contract has been sent or signed on this job\./)
+    expect(screen.queryByTestId('job-site-secrecy')).toBeNull()
+    expect(secrecyReadSpy).not.toHaveBeenCalled()
   })
 })
