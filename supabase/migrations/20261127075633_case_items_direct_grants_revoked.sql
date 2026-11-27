@@ -33,7 +33,7 @@ SET lock_timeout = '3s';
 -- nothing. Its door is the same dev_case_write.
 --
 -- The correction links (person_file_amendments, 20261112050000) have a guard of the same kind, and this file closes
--- the half of it that hangs on nobody's choice.
+-- that too.
 --
 -- That table's migration granted SELECT, INSERT and UPDATE to the signed-in role and never took away what a new table
 -- in this schema is given by default, so anon and the signed-in role each held every privilege on it. Its guard
@@ -43,21 +43,28 @@ SET lock_timeout = '3s';
 -- where each stood, and with anon's privileges it could be sent with no sign-in at all. Nothing landed, and the ids
 -- are random ones a caller would have to hold already, which makes it a smaller leak than "Item 7".
 --
--- Taken away here, each used by nothing (read in src, supabase/functions and every function body on 2026-11-27):
+-- The answer of 2026-11-27, asked whether the links go through the door or the guard asks first: "A, the door". So
+-- the tab stopped writing this table in v2.8730: a link added and a link taken off go through dev_hr_entry_write,
+-- the dev-gated definer's function the dev seat already writes through, which hands them to hr_agent_write. With that
+-- client live, the signed-in role needs SELECT and nothing else, as on the case items.
+--
+-- Taken away here (read in src, supabase/functions and every function body on 2026-11-27):
 --
 --   * Everything of anon. No screen reads or writes this table signed out, and no policy on it names anon.
+--   * INSERT and UPDATE of the signed-in role. Since v2.8730 no screen uses them; hr_agent_write is the one function
+--     that writes the table, as its owner, and both doors reach it.
 --   * DELETE, TRUNCATE, REFERENCES and TRIGGER of the signed-in role. No DELETE policy exists, a link is withdrawn
 --     and never deleted, and TRUNCATE passes no row policy at all.
 --
--- LEFT, and still open: INSERT and UPDATE of the signed-in role. The HR tab adds a link and takes one off by writing
--- the table as the signed-in dev (src/lib/people/personAmendmentsIo.ts), so revoking them today would break the tab.
--- A signed-in user who is not a dev can therefore still put the guard's question. Closing it is its own change, by
--- one of two ways that wait on the person's pick: move the tab's two writes behind dev_hr_entry_write, the dev-gated
--- door that already carries a link and a withdrawal, and then revoke; or make the guard ask who is calling first.
--- hr_agent keeps its SELECT and INSERT: it is the HR agent's own key, and it reads every link but one that touches a
--- counsel-only record.
+-- PUSH ONLY ONCE v2.8730's client is the one being served. A tab still open on an older client writes the table
+-- itself, and after this file its link would be refused ("permission denied") until the tab reloads. The entry it
+-- wrote first would stand, unlinked, and the tab says so.
 --
--- What the push leaves on prod: fewer privileges on two tables for two roles, and one table's comment. No table,
+-- hr_agent keeps its SELECT and INSERT: it is the HR agent's own key, and it reads every link but one that touches a
+-- counsel-only record. The three policies for the signed-in role stay, so a grant given back by mistake still passes
+-- a dev alone.
+--
+-- What the push leaves on prod: fewer privileges on two tables for two roles, and the two tables' comments. No table,
 -- column, row, policy, trigger or function is made, changed or dropped. A REVOKE rewrites the table's privilege list
 -- in the catalog and holds no lock a reader or writer of the table waits on. Safe to run twice.
 
@@ -69,6 +76,9 @@ REVOKE ALL ON public.person_case_items FROM anon;
 COMMENT ON TABLE public.person_case_items IS
   'HR files (punch list #315): an open item of a person''s case, numbered by the database a person so no two sessions take one number: what, who has it, open · done · dropped, why it closed. Never deleted. Dev-only. Written through dev_case_write alone: since 20261127075633 the signed-in role holds SELECT and nothing else, so a statement sent straight at the table is refused before its guard can answer whether a number stands.';
 
--- The correction links: everything of anon, and what the signed-in role never used.
+-- The correction links: everything of anon, and everything of the signed-in role but the read.
 REVOKE ALL ON public.person_file_amendments FROM anon;
-REVOKE DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.person_file_amendments FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.person_file_amendments FROM authenticated;
+
+COMMENT ON TABLE public.person_file_amendments IS
+  'HR files (punch list #315): one row says a thing on a person''s file (from: an HR entry or a piece of evidence) corrects or completes an older one (to). The record itself stays append-only and untouched; a wrong link is withdrawn with a reason, never deleted. Dev-only. Written through dev_hr_entry_write and the HR agent''s hr_agent_write alone: since 20261127075633 the signed-in role holds SELECT and nothing else and anon nothing, so a statement sent straight at the table is refused before its guard can answer where an id stands.';

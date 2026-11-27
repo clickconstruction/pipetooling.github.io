@@ -1,6 +1,6 @@
 # 20261127075633_case_items_direct_grants_revoked.sql (2026-11-27, v2.8727)
 
-The direct grants on a case's items are revoked, and so are the ones nothing uses on the correction links. Punch list #315, the audit's leak, on the answer of 2026-11-25 recorded in the card's audit section: *Fix all of them; the leak closed by revoking the direct grants.* The yes covers the build. The push waits on its own.
+The direct grants on a case's items and on the correction links are revoked. Punch list #315, the audit's leak, on the answer of 2026-11-25 recorded in the card's audit section: *Fix all of them; the leak closed by revoking the direct grants.* For the links, the pick of 2026-11-27 between two ways: *A, the door*. Each answer covers the build. The push waits on its own, **and on v2.8730's client being live** (see *Order*).
 
 ## Why
 
@@ -10,40 +10,40 @@ The direct grants on a case's items are revoked, and so are the ones nothing use
 
 ## What it does
 
-Three `REVOKE`s on two tables, one more that says again what already holds, and one table's comment.
+Three `REVOKE`s on two tables, one more that says again what already holds, and the two tables' comments.
 
 | Table | Role | Taken away | Left |
 |---|---|---|---|
 | `person_case_items` | `authenticated` | INSERT, UPDATE | SELECT, under its dev-only policy |
 | `person_case_items` | `anon` | everything (it held nothing: said again) | nothing |
 | `person_file_amendments` | `anon` | everything | nothing |
-| `person_file_amendments` | `authenticated` | DELETE, TRUNCATE, REFERENCES, TRIGGER | SELECT, INSERT, UPDATE |
+| `person_file_amendments` | `authenticated` | INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER | SELECT, under its dev-only policy |
 
 With no privilege the database refuses the statement before any trigger runs, in the same words whatever it names: `42501 permission denied for table …`.
 
-## What is still open
+## The pick for the links
 
-**INSERT and UPDATE on `person_file_amendments` for the signed-in role.** The HR tab adds a link and takes one off by writing the table as the signed-in dev (`src/lib/people/personAmendmentsIo.ts`), so those two cannot be revoked until the tab writes another way. A signed-in user who is not a dev can still put the guard's question to this table. Two ways close it, and the pick is the person's, asked on 2026-11-27:
-
-- **The door.** Move the tab's two writes behind `dev_hr_entry_write`, the dev-gated function the dev seat already uses, which carries a link (`amendments[]`) and a withdrawal (`withdraw_amendments[]`). Then revoke INSERT and UPDATE in a later migration, pushed once that client is live.
-- **The guard asks first.** Make `person_file_amendments_guard` tell a dev, the two doors and the HR agent's key from everyone else before it answers anything. One migration, no client change, and the grants stay.
+The HR tab used to add a link and take one off by writing the table as the signed-in dev, so INSERT and UPDATE could not be revoked while it did. Two ways were put to the person on 2026-11-27: move the tab's two writes behind `dev_hr_entry_write` and then revoke, or leave the grants and make the guard ask who is calling first. The pick was **A, the door**. v2.8730 moved the tab's writes ([`docs/recent-features/v2.8730.md`](../recent-features/v2.8730.md)), and this file revokes.
 
 ## What nothing loses
 
 - The HR tab, the dev seat (`plan_case` and `apply_case`) and every other writer of the case items go through `dev_case_write`. It is a definer's function owned by the table's owner, checks for a dev itself, and needs no privilege of the caller on the table.
 - No screen, edge function or other database function writes `person_case_items` directly. The guard, the counter and the door alone name it, and the bed asserts that on the whole schema.
+- Since v2.8730 the HR tab writes a link and a withdrawal through `dev_hr_entry_write`, a dev-gated definer's function that hands them to `hr_agent_write`. `hr_agent_write` is the one function that writes the links, as its owner, and the bed asserts that on the whole schema.
 - `hr_agent` and `cost_agent` never held a privilege on the case items. On the links `hr_agent` keeps its SELECT and INSERT.
 - No screen reads or writes the links signed out, and no policy on them names `anon`. No DELETE policy exists on the links: a link is withdrawn, never deleted.
-- The two INSERT and UPDATE policies on the case items stay. With the privilege gone nothing reaches them. They are kept so that a grant given back by mistake still passes a dev alone.
+- The INSERT and UPDATE policies on both tables stay. With the privilege gone nothing reaches them. They are kept so that a grant given back by mistake still passes a dev alone.
 - `person_case_log` keeps its INSERT. It has no guard that answers before its policy, so a refused insert there tells nothing.
 
 ## What the push leaves on prod
 
-Fewer privileges on two tables for two roles, and one table's comment. No table, column, row, policy, trigger or function is made, changed or dropped. A `REVOKE` rewrites the table's privilege list in the catalog and holds no lock a reader or writer of the table waits on. `SET lock_timeout = '3s'` opens the file. No table is created, so the four closing calls do not apply. Safe to run twice.
+Fewer privileges on two tables for two roles, and the two tables' comments. No table, column, row, policy, trigger or function is made, changed or dropped. A `REVOKE` rewrites the table's privilege list in the catalog and holds no lock a reader or writer of the table waits on. `SET lock_timeout = '3s'` opens the file. No table is created, so the four closing calls do not apply. Safe to run twice.
 
 ## Order
 
-The client calls nothing this migration creates and writes neither table in a way it takes away. Any order of the merge and the push is safe, and an old client loses nothing. No deploy and no types PR is owed: a privilege changes no generated type.
+**The client first, then this push.** v2.8730 must be the client being served before the file is pushed. A tab still open on an older client writes the links table itself. After the push its link would be refused with *permission denied* until the tab reloads; the entry it wrote first would stand, unlinked, and the tab says so in its toast. The HR tab is a dev's alone, so the people this can reach are the devs.
+
+The case items' half has no such order: no client ever wrote that table directly. No deploy and no types PR is owed: a privilege changes no generated type.
 
 ## Read before the push
 
@@ -61,11 +61,11 @@ Expected before: `authenticated` holds INSERT, SELECT, UPDATE on the case items 
 
 ## Verify after the push
 
-The same statement. Expected after: `authenticated` holds SELECT on the case items and INSERT, SELECT, UPDATE on the links; `anon` has no row; `hr_agent` as before. `check_migration_ledger` reads this version as applied. Then, through the dev seat on the test person only, a `plan_case` dry run still answers, which shows the door needs no privilege of its caller.
+The same statement. Expected after: `authenticated` holds SELECT alone on both tables; `anon` has no row; `hr_agent` as before. `check_migration_ledger` reads this version as applied. Then, through the dev seat on the test person only, a `plan_case` dry run and a `plan_hr_entry` dry run that names a link still answer, which shows each door needs no privilege of its caller.
 
 ## Roll back
 
-A new migration that grants back what was taken: `GRANT INSERT, UPDATE ON public.person_case_items TO authenticated;` and, for the links, `GRANT ALL … TO anon` and the four privileges to `authenticated`. Nothing else was changed, so nothing else is put back. The leak comes back with it.
+A new migration that grants back what was taken: `GRANT INSERT, UPDATE ON public.person_case_items TO authenticated;` and, for the links, `GRANT ALL … TO anon` and the six privileges to `authenticated`. Nothing else was changed, so nothing else is put back. The leak comes back with it.
 
 ## Test
 
@@ -78,14 +78,16 @@ Two beds, both on the whole schema, both in one transaction that rolls back, wit
 - A dev's own insert at the table is refused the same way. A dev still reads the file's items, and the door still adds an item the database numbers.
 - For the table's owner the guard still refuses a number that stands. The two agent roles hold nothing. The guard, the counter and the door are the only functions that name the table. The HR agent's key may still call `hr_agent_write` and a signed-in user may not, and the function still appends an entry with no user behind it.
 
-`npm run test:pg:person-file-amendments` applies the links' migration a second time and then this file. Its new cases:
+`npm run test:pg:person-file-amendments` applies the links' migration a second time and then this file, since the first grants what this one takes. Where the scenario wrote the table as a dev it now writes through the door, as the tab does since v2.8730. Its new cases:
 
-- `anon` holds nothing on the links. The signed-in role holds SELECT, INSERT and UPDATE and none of DELETE, TRUNCATE, REFERENCES, TRIGGER. The HR agent's key reads and adds as before.
-- With no sign-in, four inserts are refused with `42501 permission denied for table person_file_amendments`: one that names a standing link, one the guard would pass, one that names a thing on no file and one that names a thing on another person's file. A read, an update and a delete are refused the same way, and no link changed.
-- Every older case of the bed passes unchanged, the tab's direct insert as a dev among them.
+- `anon` holds nothing on the links. The signed-in role holds SELECT and none of the other six. The HR agent's key reads and adds as before. `hr_agent_write` is the only function that inserts into or updates the table.
+- An estimator's insert is refused with `42501 permission denied for table person_file_amendments` for a pair the guard would pass, a standing link, a thing on no file and a thing on another person's file. An update is refused the same way, and the door refuses an estimator with *devs only*.
+- A dev's own insert and update at the table are refused the same way. For the table's owner the guard still refuses a reworded link and a changed stamp.
+- With no sign-in the same four inserts, a read, an update and a delete are refused in those words, and no link changed.
+- Every case of the door passes as before: a link planned and written, each refusal of the guard, a withdrawal, the pair linked again the other way, the seat and a counsel-only record.
 
-Both scripts ran whole on 2026-11-27 on a local Docker, on the Supabase image with every migration applied, and both passed: 57 assertions and 43.
+Both scripts ran whole on 2026-11-27 on a local Docker, on the Supabase image with every migration applied, and both passed: 57 assertions and 50.
 
 - **The first whole run of the numbers bed failed, on a case of the bed and not of the migration.** Its scenario switched to the `hr_agent` role to call the agent's door, and the real image refuses that switch to the bed's owner (`permission denied to set role "hr_agent"`), which the stand-in schema it was written on had allowed. Granting the owner the right to wear the role ended the server on that image. The case now reads the role's right to call the door as a privilege and calls the door with no user behind it.
-- **Before and after, played on the same bed.** The four inserts were sent with no sign-in as the file leaves things, and each answered `42501 permission denied for table person_file_amendments`. With `anon`'s privileges given back inside a transaction that rolled back, the same four answered four ways: `23505 … that link already stands`, `23503 … is not on any file`, `23514 … both ends of a link belong to the one person's file`, and the row policy's `42501`. That is the leak the file closes.
-- **What stays open, shown the same way.** A signed-in estimator's four inserts still answer those four ways after the file. That is the half under *What is still open*.
+- **Before and after, played on the same bed.** With the privileges given back inside a transaction that rolled back, four inserts answered four ways, for a caller with no sign-in and for a signed-in estimator alike: `23505 … that link already stands`, `23503 … is not on any file`, `23514 … both ends of a link belong to the one person's file`, and the row policy's `42501`. As the file leaves things all four answer `42501 permission denied for table person_file_amendments` for both. That is the leak the file closes.
+- **The new client's two calls, played on the same bed with the grants gone.** As a dev, the payload v2.8730 sends for a link landed one row, made by the dev. The payload it sends for a withdrawal stamped that row with its reason. Sent again it answered `hr_agent_write: no live link …`, the one refusal the tab reads as done.

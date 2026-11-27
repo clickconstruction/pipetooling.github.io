@@ -4,8 +4,9 @@
 -- refusal of the guard in words (another person's file, the wrong direction, the other way round, twice, itself); a
 -- link withdrawn with a reason and never changed again; who may read and add (a dev; an estimator nothing); the dev
 -- seat refused a link that touches a counsel-only record; a payload with no link answering as it always did; and,
--- since 20261127075633, that anon holds nothing on the table and is refused for want of the privilege in the same
--- words whatever it names, while the signed-in role keeps SELECT, INSERT and UPDATE and nothing else.
+-- since 20261127075633, that anon holds nothing on the table and the signed-in role SELECT alone, so a statement sent
+-- straight at the table is refused for want of the privilege in the same words whatever it names, for a dev too,
+-- while the door, the guard and the HR agent's key work as they did.
 -- Made-up people and words. Fixtures made as postgres; the doors run as signed-in users through RLS, inside one
 -- transaction that rolls back. Raises on the first failed assertion; ends with "person_file_amendments PASSED".
 -- See scripts/pgtest-person-file-amendments.sh. Never against prod.
@@ -159,8 +160,12 @@ SELECT pfa.refused('a correction that names nothing by id',
   $q$SELECT public.dev_hr_entry_write('{"person_id":"00000000-0000-0000-0000-0000000969b1","entries":[{"entry_date":"2026-03-22","content":"x","corrects":[42]}]}'::jsonb, true)$q$, 'takes an entry id');
 
 -- ── a link is what it was when made; a wrong one is withdrawn ────────────────────────────────────
-SELECT pfa.refused('a link cannot be reworded',
+SELECT pfa.refused('a dev cannot reword a link at the table',
+  $q$UPDATE public.person_file_amendments SET how = 'completes' WHERE from_id = '00000000-0000-0000-0000-0000000969e2' AND to_id = '00000000-0000-0000-0000-0000000969e1'$q$, 'permission denied for table person_file_amendments');
+RESET ROLE;
+SELECT pfa.refused('and the guard refuses a reworded link to the owner who can still reach it',
   $q$UPDATE public.person_file_amendments SET how = 'completes' WHERE from_id = '00000000-0000-0000-0000-0000000969e2' AND to_id = '00000000-0000-0000-0000-0000000969e1'$q$, 'a link is what it was when made');
+SET LOCAL ROLE authenticated;
 SELECT pfa.refused('a withdrawal needs its reason',
   $q$SELECT public.dev_hr_entry_write(jsonb_build_object('person_id', '00000000-0000-0000-0000-0000000969b1', 'withdraw_amendments', jsonb_build_array(jsonb_build_object('id', (SELECT id FROM public.person_file_amendments WHERE from_id = '00000000-0000-0000-0000-0000000969e4')))), true)$q$, 'needs id and why');
 SELECT pfa.same('a withdrawal is planned with the link it takes off',
@@ -172,12 +177,14 @@ SELECT public.dev_hr_entry_write(jsonb_build_object('person_id', '00000000-0000-
   jsonb_build_array(jsonb_build_object('id', (SELECT id FROM public.person_file_amendments WHERE from_id = '00000000-0000-0000-0000-0000000969e4'), 'why', 'two separate talks'))), false);
 SELECT pfa.refused('a withdrawn link is not withdrawn twice',
   $q$SELECT public.dev_hr_entry_write(jsonb_build_object('person_id', '00000000-0000-0000-0000-0000000969b1', 'withdraw_amendments', jsonb_build_array(jsonb_build_object('id', (SELECT id FROM public.person_file_amendments WHERE from_id = '00000000-0000-0000-0000-0000000969e4'), 'why', 'again'))), true)$q$, 'no live link');
-SELECT pfa.refused('and its stamps do not change',
+RESET ROLE;
+SELECT pfa.refused('and its stamps do not change, for the owner either',
   $q$UPDATE public.person_file_amendments SET withdrawn_why = 'another reason' WHERE from_id = '00000000-0000-0000-0000-0000000969e4'$q$, 'a withdrawn link stays withdrawn');
+SET LOCAL ROLE authenticated;
 SELECT pfa.refused('a link is never deleted', $q$DO $d$ DECLARE n int := 0; BEGIN BEGIN DELETE FROM public.person_file_amendments WHERE from_id = '00000000-0000-0000-0000-0000000969e4'; GET DIAGNOSTICS n = ROW_COUNT; EXCEPTION WHEN insufficient_privilege THEN n := 0; END; IF n = 0 THEN RAISE EXCEPTION 'nothing deleted'; END IF; END $d$$q$, 'nothing deleted');
--- The pair may be linked again, the other way round now that nothing live stands between them.
-INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how, created_by)
-  VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e3', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'completes', '00000000-0000-0000-0000-0000000969d1');
+-- The pair may be linked again, the other way round now that nothing live stands between them. Through the door, as
+-- the tab writes a link since v2.8730.
+SELECT public.dev_hr_entry_write('{"person_id":"00000000-0000-0000-0000-0000000969b1","amendments":[{"from_id":"00000000-0000-0000-0000-0000000969e3","to_id":"00000000-0000-0000-0000-0000000969e4","how":"completes"}]}'::jsonb, false);
 RESET ROLE;
 SELECT pfa.same('the withdrawn link stays on the record beside the new one',
   (SELECT string_agg(a.how || ' ' || right(a.from_id::text, 2) || '>' || right(a.to_id::text, 2) || CASE WHEN a.withdrawn_at IS NULL THEN '' ELSE ' (withdrawn by ' || (SELECT u.name FROM public.users u WHERE u.id = a.withdrawn_by) || ': ' || a.withdrawn_why || ')' END, ', ' ORDER BY a.withdrawn_at NULLS LAST)
@@ -188,14 +195,35 @@ SET LOCAL ROLE authenticated;
 
 -- ── an estimator adds nothing ────────────────────────────────────────────────────────────────────
 SELECT pfa.as_user('00000000-0000-0000-0000-0000000969d2');
-SELECT pfa.refused('an estimator cannot add a link',
-  $q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$, 'row-level security');
+-- Before 20261127075633 these four answered four ways (the row policy's words, already stands, not on any file, the
+-- one person's file), so anyone signed in could ask the guard where an id stood. Now the privilege refuses first.
+SELECT pfa.same('an estimator who names a pair the guard would pass is refused for want of the privilege',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and in the same words for a standing link',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and for a thing that is on no file',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969aa', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('and for a thing on another person''s file',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_entry', '00000000-0000-0000-0000-0000000969e5', 'corrects')$q$),
+  '42501 permission denied for table person_file_amendments');
+SELECT pfa.same('an estimator may not take a link off at the table',
+  pfa.refusal($q$UPDATE public.person_file_amendments SET withdrawn_at = now(), withdrawn_why = 'x' WHERE person_id = '00000000-0000-0000-0000-0000000969b1'$q$), '42501 permission denied for table person_file_amendments');
+SELECT pfa.refused('the door still refuses an estimator a link',
+  $q$SELECT public.dev_hr_entry_write('{"person_id":"00000000-0000-0000-0000-0000000969b1","amendments":[{"from_id":"00000000-0000-0000-0000-0000000969e4","to_id":"00000000-0000-0000-0000-0000000969e1","how":"corrects"}]}'::jsonb, true)$q$, 'devs only');
 SELECT pfa.same('and still reads none', pfa.visible(), '0');
+
+-- A dev is refused at the table too: the door is the one way in.
+SELECT pfa.as_user('00000000-0000-0000-0000-0000000969d1');
+SELECT pfa.same('a dev''s own insert at the table is refused the same way',
+  pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how, created_by) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects', '00000000-0000-0000-0000-0000000969d1')$q$),
+  '42501 permission denied for table person_file_amendments');
 
 -- ── the seat and a counsel-only record ───────────────────────────────────────────────────────────
 SELECT pfa.as_user('00000000-0000-0000-0000-0000000969d1');
-INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how, created_by)
-  VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e2', 'hr_evidence', '00000000-0000-0000-0000-0000000969f2', 'completes', '00000000-0000-0000-0000-0000000969d1');
+SELECT public.dev_hr_entry_write('{"person_id":"00000000-0000-0000-0000-0000000969b1","amendments":[{"from_id":"00000000-0000-0000-0000-0000000969e2","to_id":"00000000-0000-0000-0000-0000000969f2","to_kind":"hr_evidence","how":"completes"}]}'::jsonb, false);
 SELECT pfa.same('a dev signed in reads every link, the counsel-only one too', pfa.visible(), '6');
 SELECT pfa.seat(true);
 SELECT pfa.same('the seat is refused the link that touches a counsel-only record', pfa.visible(), '5');
@@ -207,14 +235,16 @@ RESET ROLE;
 
 -- ── the table's privileges (20261127075633) ──────────────────────────────────────────────────────
 -- The table's own migration never took away what a new table is given by default, so anon and the signed-in role
--- each held every privilege, and the guard answers before the row policy. Since 20261127075633 anon holds nothing,
--- and the signed-in role what the tab uses and no more.
+-- each held every privilege, and the guard answers before the row policy. Since 20261127075633 anon holds nothing
+-- and the signed-in role SELECT alone: the tab writes through the door since v2.8730.
 SELECT pfa.same('anon holds nothing on the links',
   has_table_privilege('anon', 'public.person_file_amendments', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'false');
-SELECT pfa.same('the signed-in role reads, adds and withdraws',
-  (has_table_privilege('authenticated', 'public.person_file_amendments', 'SELECT') AND has_table_privilege('authenticated', 'public.person_file_amendments', 'INSERT')
-   AND has_table_privilege('authenticated', 'public.person_file_amendments', 'UPDATE'))::text, 'true');
-SELECT pfa.same('and holds nothing else', has_table_privilege('authenticated', 'public.person_file_amendments', 'DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'false');
+SELECT pfa.same('the signed-in role may read the links and may write none',
+  has_table_privilege('authenticated', 'public.person_file_amendments', 'SELECT')::text || ' ' ||
+  has_table_privilege('authenticated', 'public.person_file_amendments', 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'true false');
+SELECT pfa.same('the guard and the two doors'' own function are the only writers that name the table',
+  (SELECT string_agg(p.proname, ', ' ORDER BY p.proname) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prosrc ~* '(insert into|update) +public\.person_file_amendments'),
+  'hr_agent_write');
 SELECT pfa.same('the HR agent''s key reads and adds, as before',
   (has_table_privilege('hr_agent', 'public.person_file_amendments', 'SELECT') AND has_table_privilege('hr_agent', 'public.person_file_amendments', 'INSERT'))::text
   || ' ' || has_table_privilege('hr_agent', 'public.person_file_amendments', 'UPDATE, DELETE, TRUNCATE')::text, 'true false');
