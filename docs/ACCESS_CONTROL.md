@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -575,6 +575,9 @@ It sends nothing while `app_settings` `bridge_weekly_sheet_on_v1` is off, as it 
 the owner or a dev turns it on from the Bridge through its own key-scoped policies, `dev_update_bridge_weekly_sheet_on` and `master_or_dev_update_bridge_weekly_sheet_on`, and the Monday cron `bridge-weekly-sheet` posts only while it is on.
 Five RPCs the mail reads let the service role through their gate (the pay speeds, the promises, the chase touches, the tally parts, the unattributed count), bodies verbatim;
 a signed-in caller's answer is unchanged.
+A Build job's wait (v2.8709, `20261127074500_job_build_waits.sql`, punch list #192 write A): `job_build_waits` is read by whoever reads its job, since its one policy asks `jobs_ledger` under the reader's own policies.
+Its rows are written only by `set_job_build_wait`, for the office (`is_office_staff()`: dev, owner, assistant, controller), which stamps who and when on the server and writes one line on the job's Activity.
+An archived caller and a training account change nothing, and no policy lets a signed-in person write the table by hand.
 The reply push's switch on Settings (v2.5484): **Reply push** on Settings → Phone and texts is the owner's and a dev's (`canSwitchReplyPush`, the client's copy of `master_or_dev_update_messages_reply_push_on`'s `is_master_or_dev()`), and the rest of the office sees no card;
 since v2.5540 the same card saves the office's wait, `messages_office_wait_minutes`, under its own owner-or-dev policy (`master_or_dev_update_messages_office_wait`, R5's SQL).
 Since v2.5709 (punch list #140 PR 1) the **Office hours** card after it (`OfficeHoursSettingsCard.tsx`) shows the hours to everyone who sees Phone and texts and lets the owner and a dev alone save them (`isOwnerOrDev`, the client's copy of `is_master_or_dev()`;

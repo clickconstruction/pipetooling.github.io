@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -777,6 +777,11 @@ WHERE proname IN (
 - **Purpose**: A photo of a supply house ticket or a receipt, taken at the counter (punch list #295 PR 1, v2.6812, `docs/migrations/20261109190000_counter_tickets.md`). A ticket is who took it and when, the job it is for (more jobs, or no one job), the PO code it was bought on, a typed total and a note, and how it met its money: the card charge it is matched to (`mercury_transaction_id`, `match_kind` minute · total · asked · picked), another way it was paid, or the bill it became. A page is one picture or PDF of it, with `filed_at` and the Drive ids once `photo-save` has filed it under **Team only › Tickets** in the job's folder. The rules are `src/lib/tickets/` (`ticket.ts` the states and their words, `ticketMatch.ts` how a ticket meets its charge).
 - **Storage**: the private bucket `counter-tickets`, `<uploader>/<ticket_id>/<page_id>.<ext>`, 10 MB, pictures and PDFs; the copy stays after the filing.
 - **RLS**: the taker, the office and the holder of the card that paid read a ticket; the taker and the office write it; `counter_tickets_guard` holds the taker's limits ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → *`counter_tickets`*).
+
+#### `public.job_build_waits`
+- **Purpose**: A Build job marked as waiting, with a reason, so the Bridge's Build desk stops counting it against the crew (punch list #192 write A, v2.8709, `docs/migrations/20261127074500_job_build_waits.md`). One row a wait: the reason picked from six, the person's words, who marked it and when, who lifted it and when. A job holds at most one wait that is not lifted, and its status does not change.
+- **Written by**: `set_job_build_wait`, for the office alone; each change also writes one line on the job's Activity (`job_activity_events`, `build_wait_marked` and `build_wait_lifted`).
+- **RLS**: whoever reads the job reads its wait; nobody writes from the app ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → *A Build job's wait*).
 
 #### `public.receipt_requests` · `public.receipt_links`
 - **Purpose**: A receipt asked for on a card charge, and the link that takes its photo with no sign-in (punch list #299 PR 1, v2.7101, `docs/migrations/20261113061500_receipt_requests.md`). A request is one row a charge: whose card, when its link was opened and answered, the ticket it became (`counter_tickets`, `source = link`), when it closes, and what the text did (PR 2, v2.7142, `docs/migrations/20261113140000_receipt_texts.md`): the cell texted and when, the reminder, why no text could go, and the tries of a text that was turned away; and the office's Got it (`office_done_at`, `office_done_by`, v2.7148, `docs/migrations/20261113150000_receipt_requests_office.md`). A link is one row a code, the code kept only as its SHA-256, naming the one to ten requests it opens for fourteen days.
