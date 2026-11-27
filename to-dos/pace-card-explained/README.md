@@ -13,7 +13,7 @@ summary: >
   it is red only on a fresh percent. What is this? explains the card and opens by itself once. The
   office's line says dollars over in place of points. On a small job, a gap of a tenth of the hours
   counts. Clocked in with no job, the superintendent sees the pace of the next stop.
-next: Calls 1 and 2 wait on a mock-up of before and after and on screenshots, which Taunya asked for on 2026-11-27 and the fixing thread makes. Calls 3 and 4 are answered and stay as built. Both small mends held on 2026-11-26: v2.8599 live and in the simulator, v2.8598 in the simulator, staged by an Exit from View as. The wider gate waits, on the owner's word, until reloads are timed on the new build.
+next: Retire the card once PR #10059 is live: it is call 1's answer, the card warning when the money is ahead of the work. All four calls were answered by Taunya on 2026-11-27, and calls 2, 3 and 4 stay as built. Both small mends held on 2026-11-26: v2.8599 live and in the simulator, v2.8598 in the simulator, staged by an Exit from View as. The wider gate waits, on the owner's word, until reloads are timed on the new build.
 size: M, built as one PR, an XS for the Job Budget card and an S for the reload mend, all built; left: the looks (XS)
 blocker: None in the code. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8048 · 8058 · 8120 · 8122 · 8562 · 8582 · 8598 · 8599
@@ -115,17 +115,17 @@ that bundles it reading as behind. The owner, 2026-11-20: "Yes, do it".
 | No hours budget | *This job has no hours budget yet.* The office sets it. |
 | Money ahead, hours not | The hours' own headline, and one grey line that the office watches the money. |
 
-## The four calls left for the owner (two answered 2026-11-27)
+## The four calls, all answered 2026-11-27
 
 Each is built on its default. Each is one small change either way.
 
 1. **Money ahead, hours not: should the crew's card stay calm?** Built: yes. Materials are bought before the
    work they are for, and the crew cannot see or change dollars.
-   **Asked 2026-11-27, not answered:** Taunya asked for a mock-up of before and after first. The fixing thread draws it.
+   **Answered 2026-11-27 by Taunya**, after a mock-up of before and after: *I don't want to stay calm, I want the warning.* The card warns when the money is ahead of the work. Built by the fixing thread in PR #10059.
 2. **Still 40% files a Status Report.** It clears the report-due reminder and counts in the reports chip, as
    the **Set the %** window's own save does. The other way is a mark that is no report, which needs a place to
    keep it.
-   **Asked 2026-11-27, not answered:** Taunya asked for screenshots and more context first. The fixing thread has it.
+   **Answered 2026-11-27 by Taunya**, asked whether that one press should keep counting as the report that was due: *Yes, keep filing a report.* It stays as built.
 3. **A percent is old after 8 hours.** On a job that is over, the card asks again on each day after work went
    in. The other way is a longer wait, a crew day or a week.
    **Answered 2026-11-27 by Taunya:** *okay*. It stays at 8 hours, as built.

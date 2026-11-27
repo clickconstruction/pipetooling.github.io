@@ -24,7 +24,7 @@ ver: v2.7074 · 7075 · 7076 · 7078 · 7079
 
 # A site's materials on one screen (#330)
 
-This card sits beside three others. **Materials on site** (#209, `to-dos/materials-on-site/README.md`)
+This card sits beside three others. **Materials on site** (#209, closed 2026-11-27; its card lives in git history at the deleting commit)
 built the ledger, the cages and boxes, the counts and the photos; nothing in its ledger changes
 here. **The material location report** (#268, closed) is the site's paper; it stays, and gains a
 third reading in PR 5. **Stickers before boxes** (#329, `to-dos/stickers-before-boxes/README.md`)
