@@ -395,8 +395,10 @@ export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS = 'signed_a
 
 /**
  * `value_num` — the labor burden factor (v2.3291, the Labor refresh PR 2): the multiplier on a
- * recorded field wage that gives the crew rate a bid is costed at (taxes, insurance, the truck).
- * Seeded at 1.20 by the migration; the crew-rate card (PR 4) reads it. Dev writes; all authenticated read.
+ * recorded field wage that gives the crew rate a bid is costed at. It stands for depreciation on the tools and
+ * the truck a person uses (Taunya, 2026-11-27; this comment read *taxes, insurance, the truck* until then).
+ * Seeded at 1.20 by the migration, and she kept 1.20 that day. Where it reaches and where it does not is
+ * `laborBurdenWords.ts`, drawn for a developer in Settings. Dev writes; all authenticated read.
  */
 export const APP_SETTINGS_KEY_LABOR_BURDEN_FACTOR_V1 = 'labor_burden_factor_v1' as const
 
