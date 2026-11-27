@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
-import { isWordField } from '../../lib/jobs/lienWindowEscape'
+import { LIEN_WINDOW_HELD_WORDS, isWordField } from '../../lib/jobs/lienWindowEscape'
 import { registerModal, resetModalStackForTests, unregisterModal } from '../../lib/modalStack'
 import LienInstrumentsModal from './LienInstrumentsModal'
 // The § Rules window is a lazy chunk that carries every help guide: loaded here, outside every case's clock.
@@ -36,6 +36,10 @@ async function openWindow(open = true) {
   return onClose
 }
 const escape = () => fireEvent.keyDown(document.body, { key: 'Escape' })
+/** The dark backdrop around the window's card. */
+const backdrop = () => document.querySelector<HTMLElement>('[data-lien-window]')!
+/** The line under the title that says why the window stayed open. */
+const heldLine = () => document.querySelector<HTMLElement>('[data-lien-window-held]')
 /** The fields in the window a person types words or a day into. */
 function wordFields(): Array<HTMLInputElement | HTMLTextAreaElement> {
   const all = Array.from(document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-lien-window-card] input, [data-lien-window-card] textarea'))
@@ -79,6 +83,58 @@ describe('LienInstrumentsModal · Escape', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.change(field, { target: { value: was } })
     escape()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('says why it stayed, in one line under the title, until the next press in the window', async () => {
+    const onClose = await openWindow()
+    expect(heldLine()).toBeNull()
+    const field = theDayField()
+    fireEvent.keyDown(field, { key: '2' })
+    fireEvent.change(field, { target: { value: '2027-01-15' } })
+    expect(heldLine()).toBeNull()
+    escape()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(heldLine()?.textContent).toBe(LIEN_WINDOW_HELD_WORDS)
+    expect(heldLine()?.getAttribute('role')).toBe('status')
+    // A second Escape keeps the line. A press inside the window takes it away.
+    escape()
+    expect(heldLine()).not.toBeNull()
+    fireEvent.click(document.getElementById('lien-instruments-title')!)
+    expect(heldLine()).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('a press on the backdrop closes a window nothing was typed in', async () => {
+    const onClose = await openWindow()
+    fireEvent.click(backdrop())
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a press on the backdrop stays over typed words and says why, and the × still closes', async () => {
+    const onClose = await openWindow()
+    const field = theDayField()
+    const was = field.value
+    fireEvent.keyDown(field, { key: '2' })
+    fireEvent.change(field, { target: { value: '2027-01-15' } })
+    fireEvent.click(backdrop())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(heldLine()?.textContent).toBe(LIEN_WINDOW_HELD_WORDS)
+    // A press inside the card is never a press on the backdrop.
+    fireEvent.click(document.querySelector('[data-lien-window-card]')!)
+    expect(onClose).not.toHaveBeenCalled()
+    // Once the field reads as it did, the backdrop closes the window again.
+    fireEvent.change(field, { target: { value: was } })
+    fireEvent.click(backdrop())
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('the × closes a window that holds typed words, with no question', async () => {
+    const onClose = await openWindow()
+    const field = theDayField()
+    fireEvent.keyDown(field, { key: '2' })
+    fireEvent.change(field, { target: { value: '2027-01-15' } })
+    fireEvent.click(document.querySelector<HTMLButtonElement>('[data-lien-window-card] button[aria-label="Close"]')!)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

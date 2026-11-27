@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { fieldsHoldUnsavedWords, isWordField, lienWindowEscapeAction, type LienWindowEscapeState } from './lienWindowEscape'
+import { LIEN_WINDOW_HELD_WORDS, fieldsHoldUnsavedWords, isWordField, lienWindowBackdropAction, lienWindowEscapeAction, type LienWindowEscapeState } from './lienWindowEscape'
+import { plainWordsFailures } from '../plainWords'
 
 const clean: LienWindowEscapeState = { handled: false, topmost: true, busy: false, unsavedWords: false }
 
@@ -25,6 +26,20 @@ describe('Escape on a job’s Lien window', () => {
   it('waits while a write is in flight', () => {
     expect(lienWindowEscapeAction({ ...clean, busy: true })).toBe('ignore')
     expect(lienWindowEscapeAction({ ...clean, busy: true, unsavedWords: true })).toBe('ignore')
+  })
+})
+
+describe('a press on the backdrop around a job’s Lien window', () => {
+  it('closes a window nothing was typed in, and stays over typed words as the key does', () => {
+    expect(lienWindowBackdropAction({ unsavedWords: false })).toBe('close')
+    expect(lienWindowBackdropAction({ unsavedWords: true })).toBe('stay')
+  })
+})
+
+describe('what a held window says', () => {
+  it('says why it stayed and what closes it, in plain words', () => {
+    expect(LIEN_WINDOW_HELD_WORDS).toBe('This window stayed open because you typed something that is not saved. Save it or cancel it, or press × to close without it.')
+    expect(plainWordsFailures(LIEN_WINDOW_HELD_WORDS)).toEqual([])
   })
 })
 
