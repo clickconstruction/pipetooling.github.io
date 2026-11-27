@@ -47,7 +47,7 @@ Closed the desk? People → Users shows {{button:outline|Back to Ana's desk}} in
 
 ## Made a mistake
 
-Typed the name wrong? Open their desk. On the **Status** row press {{button:outline|Delete…}}. The same press sits in the row's **⋯** menu on People → Users. Delete is for a person made by mistake. It works while nothing points at them yet. The confirm names what goes with them, like the pay row the form wrote. Press {{button:red|Delete Ana}} and the row and the roster record are gone for good. Someone with hours, pay, paperwork or customers cannot be deleted. The window names what they have and offers {{button:red|Archive instead}}. A dev, the controller or a pay-approved leader may delete. Those are the same people who may archive.
+Typed the name wrong? Open their desk. On the **Status** row press {{button:outline|Delete…}}. The same press sits in the row's **⋯** menu on People → Users. Delete is for a person made by mistake. It works while nothing points at them yet. The confirm names what goes with them, like the pay row the form wrote. Press {{button:red|Delete Ana}} and the row and the roster record are gone for good. A test person is the one exception. Their name starts with ZZ. The confirm says a copy is kept for 90 days. A dev can put them back from Recently deleted in that time. Someone with hours, pay, paperwork or customers cannot be deleted. The window names what they have and offers {{button:red|Archive instead}}. A dev, the controller or a pay-approved leader may delete. Those are the same people who may archive.
 
 ## Related
 

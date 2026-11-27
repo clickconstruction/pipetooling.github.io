@@ -5,7 +5,11 @@ import {
   type DeletedRecordBundle,
   type RestoreDeletedRecordsResult,
 } from '../lib/deletedRecordsArchive'
+import { restoreFunctionFor } from '../lib/deletedRecordsRestoreDoor'
 import { formatErrorMessage } from '../utils/errorHandling'
+
+/** What Preview and Restore read off a bundle: its handle, and the two facts that pick its function. */
+type RestorableBundle = Pick<DeletedRecordBundle, 'group_key' | 'kind' | 'tables'>
 
 /**
  * Dev-only "Recently deleted" state: load restorable bundles, preview a restore, commit it.
@@ -42,13 +46,17 @@ export function useDeletedRecordsArchive({ enabled }: { enabled: boolean }) {
     if (enabled) void load()
   }, [enabled, load])
 
-  /** Dry run: reports what would be inserted, plus warnings/blockers. Commits nothing. */
-  const runPreview = useCallback(async (groupKey: string) => {
+  /**
+   * Dry run: reports what would be inserted, plus warnings/blockers. Commits nothing. It takes the bundle, since
+   * a deleted test person goes back through a function of its own (`restoreFunctionFor`).
+   */
+  const runPreview = useCallback(async (bundle: RestorableBundle) => {
+    const groupKey = bundle.group_key
     setSubmitting(true)
     setBusy({ groupKey, action: 'preview' })
     setError(null)
     try {
-      setPreview({ groupKey, result: await restoreDeletedRecords(groupKey, true) })
+      setPreview({ groupKey, result: await restoreDeletedRecords(groupKey, true, restoreFunctionFor(bundle)) })
     } catch (e) {
       setError(formatErrorMessage(e))
       setPreview(null)
@@ -60,12 +68,13 @@ export function useDeletedRecordsArchive({ enabled }: { enabled: boolean }) {
 
   /** Commit. Returns the envelope so the caller can toast/report; reloads on success. */
   const runRestore = useCallback(
-    async (groupKey: string): Promise<RestoreDeletedRecordsResult | null> => {
+    async (bundle: RestorableBundle): Promise<RestoreDeletedRecordsResult | null> => {
+      const groupKey = bundle.group_key
       setSubmitting(true)
       setBusy({ groupKey, action: 'restore' })
       setError(null)
       try {
-        const result = await restoreDeletedRecords(groupKey, false)
+        const result = await restoreDeletedRecords(groupKey, false, restoreFunctionFor(bundle))
         if (!result.ok) {
           setError(result.error || 'Restore failed.')
           return result

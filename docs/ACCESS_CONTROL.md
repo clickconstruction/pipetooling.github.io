@@ -1993,6 +1993,10 @@ the Monday email's switch `your_week_email_on_v1` is a dev's to change (`dev_upd
   Every foreign key into `users(id)` or `people(id)` is counted first and any row that points at the person is a hold, answered instead of deleting (the record's own `employment_stints` row, written from its dates, is not one — v2.6798);
   the doors (the desk's Status row *Delete…*, the Users row's ⋯ *Delete…*) run the dry run, then the typed confirm `Delete <name>`, or name the holds and offer *Archive instead*.
   A client still deletes neither table.
+  Since v2.8677 (punch list #443, row 12, migration `20261127022551`) the same function, behind the same gate, first copies a test person's users row and workday template into `deleted_records_archive` under the People record's id, and answers `copy_kept`.
+  A test person is one whose `users.name` or `users.card_name` starts with ZZ, and anyone else is deleted as before with no copy of the users row.
+  `restore_deleted_test_person(p_group_key, p_dry_run)`, `SECURITY DEFINER` behind `is_dev()` and the same ZZ rule read off the copy, puts the users row, the People record, the pay row and the workday template back in one transaction, and refuses in words a person who is on the roster already, an email another person holds, a pay row that stands under the name and a People record that stands.
+  It is granted to `authenticated` and revoked from `anon`, it adds no policy, and a client still writes `deleted_records_archive` through no door of its own.
 - **Unchanged**: `is_dev()`, `has_payroll_access()`, `charge_standings()` and every other gate read the caller's row by `auth.uid()`;
   the three hide flags (`is_sample`, `is_digital_twin`, `is_walk_tester`) are not widened to a person with no login, who is a real worker on every roster and picker;
   `roster_people.has_login` reads the column, so the pay rollups and crew pickers are as before.
@@ -2355,6 +2359,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 - **UI (v2.699)**: **Settings → Data & recovery → Recently deleted (dev)** — lists restorable bundles and drives the two RPCs. the block is dev-gated inside `SettingsDataTab` (`isDev`;
   since v2.6766 the `settings-data` group also opens to the controller and the owner for their own blocks);
   the RPCs enforce dev independently, so the UI gate is convenience, not the boundary.
+  Since v2.8677 a person's bundle that holds a copy of the users row goes to `restore_deleted_test_person` in place of `restore_deleted_records` (`restoreFunctionFor`), which gates on `is_dev()` itself (see *A row made by mistake can be deleted*).
 
 ### Bid history is DB-captured, read with the bid (v2.4598, `20261007040000_bid_changes.sql`)
 - **What**: An `AFTER INSERT/UPDATE/DELETE` row trigger (`record_bid_change()`, `SECURITY DEFINER`) on the seventeen tables that hold what people type on a bid (`bid_changes_tables()`) writes each real change into **`public.bid_changes`**: who (`auth.uid()`), when, the columns, old and new values, and the row's name, count row and version.

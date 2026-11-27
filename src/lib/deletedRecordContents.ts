@@ -41,6 +41,10 @@ const ARCHIVE_TABLE_LABELS: Record<string, string> = {
   purchase_orders: 'purchase orders',
   material_templates: 'material templates',
   people: 'person',
+  // Punch list #443, row 12: a deleted test person's bundle holds the account row and the workday template too.
+  users: 'account row',
+  salary_work_schedule_templates: 'workday template',
+  people_pay_config: 'pay row',
   people_labor_jobs: 'sub labor jobs',
   person_licenses: 'licences',
   writeups: 'writeups',
