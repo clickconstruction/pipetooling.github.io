@@ -79,7 +79,9 @@ export const FILE_PICKER_PAD = 11
  * The four presses that are not buttons or links (the follow-up, 2026-11-27, on a read of the portal at 375 px that
  * found them at 17 to 32 px): each stands 44 px tall too.
  *   - A tick or a radio is pressed by its label, so the label grows. The box itself keeps its size.
- *   - A pick (`select`).
+ *   - A pick (`select`). It takes a set height, not a least one (finding 335, the simulator's look of 2026-11-27):
+ *     Safari on an iPhone gives a pick whose height is left to it a least height of its own, over the page's, so the
+ *     two picks of the quote form stood 30 px there while a desk Chrome read 44. A height the page sets is kept.
  *   - A fold's line (`summary`). It takes padding and never a flex, which would lose its marker.
  *   - A file picker.
  * A field a person types in is not a press, and it is left as it is.
@@ -93,7 +95,7 @@ export function phoneThumbPressesCss(shell: string): string {
     `${shell} button[data-press-in-line] { margin-top: ${back}px; margin-bottom: ${back}px; } ` +
     `${shell} a[href] { padding-top: ${pad}px; padding-bottom: ${pad}px; margin-top: -${pad}px; margin-bottom: -${pad}px; } ` +
     `${shell} label:has(input[type="checkbox"]), ${shell} label:has(input[type="radio"]) { min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
-    `${shell} select { min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
+    `${shell} select { box-sizing: border-box; height: ${PHONE_PRESS_MIN_HEIGHT}px !important; } ` +
     `${shell} summary { box-sizing: border-box; min-height: ${PHONE_PRESS_MIN_HEIGHT}px; padding-top: ${FOLD_LINE_PAD}px; padding-bottom: ${FOLD_LINE_PAD}px; } ` +
     `${shell} input[type="file"] { box-sizing: border-box; min-height: ${PHONE_PRESS_MIN_HEIGHT}px !important; padding-top: ${FILE_PICKER_PAD}px; padding-bottom: ${FILE_PICKER_PAD}px; } }`
   )
