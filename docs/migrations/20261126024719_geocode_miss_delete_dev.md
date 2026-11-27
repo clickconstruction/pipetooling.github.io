@@ -31,3 +31,5 @@ The client calls no new name: it deletes from the table through the untyped clie
 ## Test
 
 `npm run test:pg:address-geocode-misses` applies this migration a second time after the table's, which must change nothing, and plays `supabase/tests/address_geocode_misses/20_dev_delete.sql`: an assistant's delete reaches no row; a dev in training mode is held; the dev deletes one miss by its key and the other two stand; a second delete reaches no row; anon is refused. No Postgres runs on the Mac that built this, so the SQL beds job on the PR is the proof of the SQL.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); no new name in `database.ts`, since the file makes only one delete policy on `address_geocode_misses`.

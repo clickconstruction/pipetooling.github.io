@@ -13,7 +13,7 @@ Fully close the app, or the browser tab. Open it again. On phones, swipe it away
 
 ## 2. Wait a few seconds on the Loading screen
 
-If loading is slow, the screen offers a **Taking too long? Fix the app** link after a few seconds. After about 8 seconds the app stops waiting. It shows the sign-in screen on its own. If the whole office is stuck at the same time, the server is likely having trouble. That usually resolves within minutes. Your data is safe. Try again shortly.
+If loading is slow, the screen offers a **Taking too long? Fix the app** link after a few seconds. After about 8 seconds the app stops waiting. If the app already knows you are signed in, it opens. If not, it shows the sign-in screen. If the whole office is stuck at the same time, the server is likely having trouble. That usually resolves within minutes. Your data is safe. Try again shortly.
 
 ## 3. Run the repair page
 

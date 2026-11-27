@@ -1,6 +1,6 @@
 # 20261126110711_agreements_on_file_site.sql (2026-11-26, v2.8659)
 
-Documents → Agreements reads the site a paper names (punch list #439, piece 3: `to-dos/site-nda-for-vendors/README.md`). No screen reads the new columns yet: the site filter on Agreements is a client PR built on this once it is pushed.
+Documents → Agreements reads the site a paper names (punch list #439, piece 3: `to-dos/site-nda-for-vendors/README.md`). Since v2.8668 the tab's **Find by site…** asks the view by `site_address_key`, and a line says its paper's site from `site_address`.
 
 ## What it makes
 
@@ -42,3 +42,5 @@ The types PR (`npm run gen-types:linked`: the view's row gains three fields, and
 ## Its bed
 
 `supabase/tests/paper_site/20_scenario.sql` (`npm run test:pg:paper-site`), which applies this file a second time after `*_paper_names_a_site.sql`. Its cases for the view: the view's last three columns are the three of a site, in order and of their types; a sent agreement that names an address reads its key and its address as written on its line; one that names a development reads the development; one that names no site reads three nulls; a filter by a site's key finds its one line. The `agreements-on-file` and `paper-party` beds run their own scenarios over the wider view.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); types regenerated in #9987.

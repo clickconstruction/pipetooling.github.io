@@ -5,7 +5,7 @@ file: TROUBLESHOOTING.md
 type: Troubleshooting guide
 purpose: Common issues and how to resolve them
 audience: Devs + AI agents
-last_updated: 2026-11-17
+last_updated: 2026-11-26
 ---
 
 Common issues and how to resolve them.
@@ -173,7 +173,7 @@ Never raise `max_rows` instead — it moves the cliff and hides it again.
 
 **Symptoms**: a read fails at app start with *Lock was stolen by another request* (Safari) or *Lock broken by another request with the 'steal' option* (Chrome), most often after a laptop wakes, on a slow signal, or with several app tabs open.
 
-**Cause**: supabase-js reads the login under a browser lock (`lock:sb-<ref>-auth-token`) before every request. When renewing the login holds it past 5 s, the next request steals it and the one waiting is rejected before it is sent. Since v2.4350 `isAuthLockStolenError` makes `isRetryableError` retry it (every other `AbortError` is still the user cancelling), and both formatters show *The app was busy renewing your sign-in, so this did not load.* A screen still showing it has run out of retries; a reload clears it.
+**Cause**: supabase-js reads the login under a browser lock (`lock:sb-<ref>-auth-token`) before every request. When renewing the login holds it past 5 s, the next request steals it and the one waiting is rejected before it is sent. Since v2.4350 `isAuthLockStolenError` makes `isRetryableError` retry it (every other `AbortError` is still the user cancelling), and both formatters show *The app was busy renewing your sign-in, so this did not load.* A screen still showing it has run out of retries: on `OfflineRetryPanel` the failure is marked `neverSent` and offers **Retry**, which never runs by itself (v2.8598, `offlineRecoveryState`), and on any other screen a reload clears it.
 
 ## RPC returns 404 (e.g. approve_clock_sessions)
 

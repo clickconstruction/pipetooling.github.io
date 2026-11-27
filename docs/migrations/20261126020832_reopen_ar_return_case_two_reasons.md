@@ -33,3 +33,5 @@ The client calls the function by its old name with its old argument and already 
 ## Test
 
 `npm run test:pg:primary-money-desks` applies this migration a second time after the desks' two, which must change nothing, and plays `supabase/tests/primary_money_desks/30_reopen_two_reasons.sql`: an assistant closes three cases, one each way; a case settled another way and a case not coming open again; the replaced case is refused and still names its deposit; an open case and a case already reopened are refused; a reopened case closes again; a primary is refused at the door. No Postgres runs on the Mac that built this, so the SQL beds job on the PR is the proof of the SQL.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); no new name in `database.ts`, since the function is replaced under its own name.

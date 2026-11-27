@@ -5,7 +5,7 @@ file: SALARY_CLOCK_SESSIONS.md
 type: Runbook / Reference
 purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
 audience: Developers, Operators
-last_updated: 2026-11-23
+last_updated: 2026-11-26
 ---
 
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
@@ -107,7 +107,7 @@ Resolution order for calendar display: **time off → working hours (when the pe
 
 ## Working hours
 
-Since v2.8345 a person can have **working hours**: a `set` row on `person_available_hours`, a week with a start and an end for each day in 15-minute blocks, written only by `set_working_hours` for a dev or the controller. Since v2.8356 the sync reads them:
+Since v2.8345 a person can have **working hours**: a `set` row on `person_available_hours`, a week with a start and an end for each day in 15-minute blocks, written only by `set_working_hours` for a dev or the controller. For a salaried person the door writes `salaried_week_hours` too: each day's length on a set and, since v2.8607, the standard week of 8 hours Monday to Friday when a set week in force is taken off (migration `20261125225108`). Since v2.8356 the sync reads them:
 
 - **The day's ranges** come from the newest `set` row that had started (`effective_from` on or before the day) and was saved before the day began. Hours saved during a day reach the clock from the next day.
 - **No range** is a day off: the day's unapproved `salary_schedule` rows are deleted and nothing is made. The template's weekend rule is not asked.

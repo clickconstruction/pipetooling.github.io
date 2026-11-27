@@ -115,7 +115,7 @@ Each row is one to-do. The row opens with its **number**. You say *#16* in a not
 **#17** · **Submittals** `stages 1 → 6c shipped` — what it is, in a sentence. **Next:** the smallest step that ships. Then the links: {{chip:blue|▣ mockup}} {{chip:blue|▣ before-after-5b}} {{chip:purple|◇ design canvas}} {{chip:gray|history}} {{chip:gray|folder}}. On the right: **Size** (XS under an hour · S a sitting · M a day of PRs · L a multi-day train) and what **Blocks** it.
 :::
 
-- **▣ mock-ups** open as pages. The mock-ups are the drawings made for the to-do, served beside the app.
+- **▣ mock-ups** open as pages. The mock-ups are the drawings made for the to-do, served beside the app. A **pictures** chip opens the card's pictures page. The pictures page is not a mock-up.
 - **◇ artifacts** are design canvases on claude.ai the to-do links.
 - **history** is every pull request that touched the to-do, newest first. **folder** is everything saved next to it.
 - A row with no drawing yet says {{chip:yellow|▢ waiting on a mock-up}}. The **Waiting on a mock-up** toggle by the filters shows only those. A row whose work changes no screen says *mock-up not required* and why.

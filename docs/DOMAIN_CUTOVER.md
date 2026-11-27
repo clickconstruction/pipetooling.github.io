@@ -5,7 +5,7 @@ file: DOMAIN_CUTOVER.md
 type: Runbook
 purpose: The exact steps to make clicktooling.com this app's main URL, with pipetooling.com kept forever as a path-preserving redirect so no link in the wild breaks
 audience: Owner + AI agents
-last_updated: 2026-11-24
+last_updated: 2026-11-26
 key_sections:
   - name: "Decision & prep already done"
   - name: "Prerequisites (before cutover day)"
@@ -44,7 +44,7 @@ Prep merged in v2.2440 — all zero-behavior-change:
    steps.
 3. **Evacuate the old clicktooling.com app** to plumbingtooling.com first — cutover here
    must not race it.
-4. `supabase config push` the auth allowlist (if not already applied) so magic links may
+4. `supabase config push` the auth allowlist (if not already applied; the push writes the whole `[auth]` block, so compare the file with the live settings first, `EDGE_FUNCTIONS.md`) so magic links may
    redirect to the new domain.
 
 ## Cutover day (about an hour, in this order)

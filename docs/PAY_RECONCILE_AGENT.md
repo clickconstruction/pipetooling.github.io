@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-09-17
+last_updated: 2026-11-26
 sections: [The contract, The part memo, Person admin, The scripts, Reading rules, The test bed]
 ---
 
@@ -37,7 +37,7 @@ Apple Pay "Tristen" · 2 of 2 from $1,067.23
 
 ## Person admin
 
-Four more functions (migration `20260918100000_pay_person_admin`, v2.3584), each needing a reason and writing a row to `pay_admin_events` with the before and after:
+Four more functions (migration `20260918100000_pay_person_admin`, v2.3584), each needing a reason and writing a row to `pay_admin_events` with the before and after (since v2.8629 a pay row saved on a screen leaves a `set_pay_config` row there too, `payload.by` `screen`, with no reason asked: `ACCESS_CONTROL.md`, *A wage changed on a screen leaves a line*):
 
 | Call | Use it for |
 |---|---|

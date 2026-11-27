@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: 6b0b4883a
 audience: Developers, AI Agents
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 ---
 
 ## Overview
@@ -265,7 +265,7 @@ Edit mode has **no Save button** (v2.1080): four `useJobFormAutosaveSlice` insta
 
 ### 3. Identity fields — extracted
 
-`JobFormIdentityFields` (v2.1091), fully controlled. Shell keeps `jobFormServiceTypeSelectOptions` (1321–1330: role-filtered + the current type injected in edit), `headerTradePill` (1333–1337), the `onTradePillClick` close-then-navigate to `/jobs?tab=stages&stagesJob=…`, and `hideHcpEntryField` (397, seeded from the `hideHcpFieldSetting` localStorage cache and re-decided by `applyEditJob`; effect 400–403 only refreshes that cache for the next open). Since v2.4783 the fields mount `JobFormAddressPin` under Job address (the *On the map* line: `geocode-one` on blur, counted in the fields' one local state `pinBlur`, or after a pause; the county it landed in; advice only, nothing saved on the job; words in `addressPinWords.ts`).
+`JobFormIdentityFields` (v2.1091), fully controlled. Shell keeps `jobFormServiceTypeSelectOptions` (1321–1330: role-filtered + the current type injected in edit), `headerTradePill` (1333–1337), the `onTradePillClick` close-then-navigate to `/jobs?tab=stages&stagesJob=…`, and `hideHcpEntryField` (397, seeded from the `hideHcpFieldSetting` localStorage cache and re-decided by `applyEditJob`; effect 400–403 only refreshes that cache for the next open). Since v2.4783 the fields mount `JobFormAddressPin` under Job address (the *On the map* line: `geocode-one` on blur, counted in the fields' local state `pinBlur`, or after a pause; the county it landed in; advice only, nothing saved on the job; words in `addressPinWords.ts`). Since v2.8640 the pin hands its point up (`onPoint`), the fields keep it under the address's map key (`pinPoint`), and `JobFormAddressOnFile` draws `JobFormAddressSameSpot`'s question **Is this the same place?** over `useSameSpotOnFile` once the box is left (GLOSSARY → **Addresses that look alike**).
 
 ### 3a–3c. Edit-mode stack — extracted
 
