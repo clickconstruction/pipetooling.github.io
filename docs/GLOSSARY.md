@@ -3127,6 +3127,7 @@ The charges the text cannot finish are a **Needs you** line, *N card charges wai
 The same state shows as a chip beside a recent card charge on Banking's ledger and User Sort and in the **Receipt** column of Job Summary's card-charge drill-down (`lib/tickets/receiptState.ts`, `components/tickets/ReceiptStateChip.tsx`, v2.7152).
 A row for a charge texted and reminded with no receipt also has **Text again** (v2.8697, `receiptAgainPress`): the press reads *Text Jordan again*, a window asks first, and the office's own text goes on a new link.
 The office may text again twice for one charge, twelve hours apart (`RECEIPT_AGAIN_MAX`, `RECEIPT_AGAIN_REST_HOURS`), and the row rests off the list for twelve hours after each press.
+Since v2.8728 the Team queue's line on that charge says so, *The office texted again Wed 9:02 AM.*, and the Banking chip's title with it (`lib/tickets/receiptAgainLine.ts`, beside the shared kernel so the function is not redeployed).
 **Function**: `receipt-request`, called by the cron of the same name.
 The office's Text again calls the same function, signed in.
 **Guides**: *turn on receipt texts for card charges* (the owner), *answer the text about a charge on your card* (the holder), *sort the team's card purchases from the office* (the office).

@@ -252,6 +252,20 @@ describe('TallyTeamQueue', () => {
     expect(within(card).getAllByTestId('tally-team-receipt-link')).toHaveLength(2)
   })
 
+  it('a charge the office texted again says so on its line (punch list #299, v2.8728)', async () => {
+    const hoursBack = (h: number) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString()
+    listReceiptRequestsByCharge.mockResolvedValueOnce(
+      new Map<string, unknown>([['t-fuel', { mercury_transaction_id: 't-fuel', holder_name: 'Ann Reyes', no_text_why: null, texted_at: hoursBack(60), reminded_at: hoursBack(40), answered_at: null, closed_at: null, text_tries: 0, again_at: hoursBack(2), again_count: 1 }]]),
+    )
+    renderWithProviders(<TallyTeamQueue />)
+    const card = await screen.findByTestId('tally-team-day-card')
+    await settle()
+    const line = within(within(card).getAllByTestId('tally-team-line')[0]!).getByTestId('tally-team-receipt-line')
+    // Two hours back is yesterday in the first two hours after midnight, and the line then names the weekday.
+    expect(line.textContent).toMatch(/^Reminded [A-Z][a-z]{2} \d{1,2}:\d{2} [AP]M\. The office texted again (?:[A-Z][a-z]{2} )?\d{1,2}:\d{2} [AP]M\. No receipt yet\.$/)
+    expect(line.getAttribute('data-tone')).toBe('waiting')
+  })
+
   it('a queue with no request on any charge draws no receipt line, and a read that fails leaves the queue as it was', async () => {
     renderWithProviders(<TallyTeamQueue />)
     const card = await screen.findByTestId('tally-team-day-card')

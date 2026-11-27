@@ -23,6 +23,8 @@ describe('what the cell says', () => {
   it('a charge the app texted about says when, and one it reminded says that too', () => {
     expect(receiptStateOf({ ticket: null, request: request({ texted_at: '2026-11-04T19:14:00.000Z' }) }, NOW)).toEqual({ chip: 'Texted 1:14 PM', tone: 'waiting', title: 'No receipt yet.' })
     expect(receiptStateOf({ ticket: null, request: request({ texted_at: '2026-11-03T00:14:00.000Z', reminded_at: '2026-11-04T00:00:00.000Z' }) }, NOW)).toEqual({ chip: 'Texted Mon 6:14 PM', tone: 'waiting', title: 'Reminded Tue 6:00 PM. No receipt yet.' })
+    // The cell's title says the office texted again (v2.8728), as the Team queue's line does.
+    expect(receiptStateOf({ ticket: null, request: { ...request({ texted_at: '2026-11-03T00:14:00.000Z', reminded_at: '2026-11-04T00:00:00.000Z' }), again_at: '2026-11-04T15:02:00.000Z', again_count: 1 } }, NOW)).toEqual({ chip: 'Texted Mon 6:14 PM', tone: 'waiting', title: 'Reminded Tue 6:00 PM. The office texted again 9:02 AM. No receipt yet.' })
   })
 
   it('a charge it could not text says why and what mends it', () => {
