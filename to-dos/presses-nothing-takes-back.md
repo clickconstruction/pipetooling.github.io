@@ -333,12 +333,14 @@ by line after that day's walk of five of them.
   pressed: each is a write in Drive on its own yes. The ZZ customer's folder above them stays, empty. Beside them, on rows this list does
   not hold: the copies Deleted records keeps for 90 days, two job numbers used, and one more five-minute row of bid time
   on the dev's account. The made-up address's kept miss was cleared with row 16's press.
-- Three ZZ Test companies on Trade partners, by the walker's report of sitting 34 on 2026-11-27, reads only, on rows this list does not hold.
+- Three ZZ Test companies on Trade partners, by the walker's report of sitting 34 on 2026-11-27, reads only, two of them because of row 20.
   They stand beside the ZZ Test Sprinkler Co, which stays on the person's word of that day, *Keep it as the test project's sub*.
-  *ZZ Test Walk Co* shows a live **Remove from the bench…**, so one press behind a confirm takes it off, on its own yes.
+  *ZZ Test Walk Co* shows a live **Remove from the bench…**, so one press behind a confirm takes it off.
+  The person said yes to that press on 2026-11-27, and it is not yet made.
+  Read again that day: the row reads *no contact yet* and *address not set*, and the press is the page's only one.
   *ZZ Test trade no page, delete me* and *ZZ Test trade two, delete me* show no such press, and each names a sink address.
   Read in the code that day: the press shows only on a company with no history (`src/lib/gc/benchRemove.ts`, v2.6749), so each of the two holds some.
-  What holds each was not read, and whether anything takes a company with history off the bench is still to be read before a row is written.
+  What holds each was not read. Nothing takes either off the bench: row 20.
   None was touched.
 
 ## When a take-back is built
