@@ -84,7 +84,7 @@ already.
 4. **After Save.** The map says *Saved on* the job, and offers **Text it from my phone…** at once.
    That press makes the link and opens the phone's own Messages with the words written. The Share
    sheet loses its *Make a link* step: the first press there makes the link. The Share sheet is
-   drawn whole on [#394](../painted-map-share-sheet/README.md), which replaces this mock-up's
+   drawn whole on #394 (closed 2026-11-27; its card lives in git history at the deleting commit), which replaces this mock-up's
    `share` state.
 5. **A wrong job.** **Move it to another job…** joins *Rename this map* and *Throw this map away*,
    for the painter and the office. The database already allows the move.
@@ -369,7 +369,7 @@ sits, and that is not yet tried on a real phone.
    matching jobs above pages for every word, so **Paint a map** stays third for *paint*.
 3. **The Saved band** (S). **Built, v2.7866.** The map says *Saved on* the job and offers **Text it from my phone…**
    at once, with one blue press on the screen and the press back in view after a place is added.
-   The Share sheet itself is built ([#394](../painted-map-share-sheet/README.md)), so this is what
+   The Share sheet itself is built (#394 (closed 2026-11-27; its card lives in git history at the deleting commit)), so this is what
    is left of the old share step. The press is the Share sheet's own. It was built against the
    sheet's older press, the same day the sheet got its instant one (#394 step 3). #394's walk on an
    iPhone simulator found the band still making the link first, and saying *The link is ready.

@@ -12,7 +12,7 @@ summary: >
   screen. Most presses are 20 to 30 px tall. The mock-up draws three whole directions on the same
   three moments: one list of jobs soonest first, the same desk made to fit, and a today card first.
   The owner picked the one list.
-next: A simulator walks the mend for the list's small window once it is live; #428 has the walk's steps. The owner opens the desk on his phone, now that all eight PRs are on main, and says what still reads wrong. Then this card is retired.
+next: A simulator walks the mend for the list's small window once it is live; #428 has the walk's steps. The owner opens the desk on his phone, now that all eight PRs are on main, and says what still reads wrong. Then this card is retired. Answered 2026-11-27 by Taunya, *Second nine stand*, to the pick *Keep them sliding*: the chip strips do not wrap. The owner's own phone look was taken off the same day. The card is retired once the simulator's look at the mend reads clean.
 size: L as a train of eight, all built, and one small PR for three leftovers, built; left: a look
 blocker: None. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ---
