@@ -50,7 +50,12 @@ describe('moneyInDepositsFromRows', () => {
 
   it('keeps a pending deposit at its whole amount, on the day it was made', () => {
     const out = moneyInDepositsFromRows([{ id: 'p1', amount: '250.50', kind: 'checkDeposit', created_at: '2026-10-26T17:00:00.000Z', counterparty_name: null, note: null }], [], null)
-    expect(out).toEqual([{ mercuryTransactionId: 'p1', usd: 250.5, kind: 'checkDeposit', counterpartyName: null, state: 'pending', dayYmd: '2026-10-26' }])
+    expect(out).toEqual([{ mercuryTransactionId: 'p1', usd: 250.5, kind: 'checkDeposit', counterpartyName: null, state: 'pending', dayYmd: '2026-10-26', bankDayYmd: null, checkNumber: null }])
+  })
+
+  it('carries what the bank says of a pending check: the day it names and the number it read (#437, piece 2)', () => {
+    const out = moneyInDepositsFromRows([{ id: 'p1', amount: 4980, kind: 'checkDeposit', created_at: '2026-10-23T17:00:00.000Z', counterparty_name: null, note: null, check_number: ' 03310 ', bank_day: '2026-10-30T21:00:00.000Z' }], [], null)
+    expect(out[0]).toMatchObject({ state: 'pending', dayYmd: '2026-10-23', bankDayYmd: '2026-10-30', checkNumber: '03310' })
   })
 })
 

@@ -42,6 +42,52 @@ export type { MoneyInDeposit, MoneyInDepositFilter, MoneyInUnlinkedPayment } fro
 
 /** Business days a pending Mercury deposit usually takes to post: Friday's deposit posts Tuesday. */
 export const PENDING_POSTS_BUSINESS_DAYS = 2
+
+/** Where a pending deposit's chip sits, and which of the bank's words go with it. */
+export type PendingDepositDay = {
+  /** The day the chip sits on, before it is slid forward to today. */
+  dayYmd: string
+  /** The day the bank names for the check to clear, or null when the bank names none. */
+  bankDayYmd: string | null
+  /** `bank`: the chip sits on the bank's day. `guess`: on the app's guess of the posting day. `late`: the bank's day has passed and the deposit still has not posted. */
+  by: 'bank' | 'guess' | 'late'
+}
+
+/**
+ * The day a pending deposit's chip sits on (punch list #437, piece 2). The app guesses the posting day, two bank
+ * days after the deposit. The bank names a day of its own for a check, the day it clears, usually later than the
+ * posting. So the bank's day takes the guess's place when it is no later than the guess. When it is later, the chip
+ * stays on the guessed posting day, since that is the day the deposit will read *Landed* on this line, and its
+ * words add the bank's day. A deposit still pending after the bank's day sits on today and says so.
+ */
+export function pendingDepositDay(depositedYmd: string, bankDayYmd: string | null, todayYmd: string): PendingDepositDay {
+  const guess = addBusinessDays(depositedYmd, PENDING_POSTS_BUSINESS_DAYS)
+  const bank = bankDayYmd && /^\d{4}-\d{2}-\d{2}$/.test(bankDayYmd) && bankDayYmd >= depositedYmd ? bankDayYmd : null
+  if (!bank) return { dayYmd: guess, bankDayYmd: null, by: 'guess' }
+  if (bank < todayYmd) return { dayYmd: todayYmd, bankDayYmd: bank, by: 'late' }
+  return bank <= guess ? { dayYmd: bank, bankDayYmd: bank, by: 'bank' } : { dayYmd: guess, bankDayYmd: bank, by: 'guess' }
+}
+
+/**
+ * The end of a pending deposit's line, after *deposited Fri*:
+ *
+ *   posts ~Tue                                  the bank names no day
+ *   the bank says it clears Mon                 the bank's day, in place of the guess
+ *   posts ~Tue · the bank says it clears Dec 2  the bank's day is after the posting
+ *   the bank named Mon and has not posted it    the bank's day has passed
+ */
+export function pendingDepositWords(at: PendingDepositDay, chipYmd: string, word: (ymd: string) => string): string {
+  if (!at.bankDayYmd) return `posts ~${word(chipYmd)}`
+  if (at.by === 'late') return `the bank named ${word(at.bankDayYmd)} and has not posted it`
+  const bank = `the bank says it clears ${word(at.bankDayYmd)}`
+  return at.by === 'bank' ? bank : `posts ~${word(chipYmd)} · ${bank}`
+}
+
+/** A check's number as the bank read it, without its leading zeros: *01184* reads *1184*. Null when it read none. */
+export function checkNumberWords(number: string | null | undefined): string | null {
+  const n = (number ?? '').trim().replace(/^0+(?=.)/, '')
+  return n || null
+}
 /** Days a claimed online payment or bank transfer takes to land, when it was not a mailed check. */
 export const CLAIM_OTHER_ARRIVES_DAYS = 2
 
@@ -390,11 +436,13 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
       if (bill.jobId) matchedBillJobs.add(bill.jobId)
     }
     const payerName = pay?.payerName ?? bill?.payerName ?? ((d.counterpartyName ?? '').trim() || capitalize(depositKindWord(d.kind)))
-    const reference = pay?.referenceNumber ?? null
+    // The check's number: the one typed on the payment, else the one the bank read off the check (#437, piece 2).
+    const reference = pay?.referenceNumber ?? (d.state === 'pending' ? checkNumberWords(d.checkNumber) : null)
     const what = reference ? `check #${reference}` : depositKindWord(d.kind)
     const jobId = pay?.jobId ?? bill?.jobId ?? null
     if (d.state === 'pending') {
-      const posts = onLine(addBusinessDays(dDay, PENDING_POSTS_BUSINESS_DAYS))
+      const at = pendingDepositDay(dDay, d.bankDayYmd ?? null, todayYmd)
+      const posts = onLine(at.dayYmd)
       if (posts > weekSunday) continue
       put({
         ...blank,
@@ -404,7 +452,7 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
         payerName,
         usd: d.usd,
         dayYmd: posts,
-        sub: `${what} · deposited ${word(dDay)} · posts ~${word(posts)}`,
+        sub: `${what} · deposited ${word(dDay)} · ${pendingDepositWords(at, posts, word)}`,
         reference,
         eventYmd: dDay,
         jobId,
