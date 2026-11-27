@@ -710,6 +710,8 @@ last_updated: 2026-11-27
 > `lienPayoffStep` gains the step `bank`, with no press, and `releaseMoneyGate` holds on it with `why: 'check'`, also while the bank is being asked and when its read failed.
 > A reason typed there is saved as `fields.releasedBeforeClearedReason`.
 > Since v2.8735 (punch list #437, call 4) `releaseMoneyGate` takes `mayReleaseEarly` and answers `anyway`: on `why: 'check'` a reason lifts the hold only for a leader, a controller or a dev (`canActBeforeCheckClears`, the one list `canConfirmFunds` reads too), and the tab draws *who can* in the press's place for anyone else.
+> Since v2.8742 the table refuses the same two writes from anyone but those three, through the trigger `job_lien_filings_early_on_check_guard` of migration `20261127164654`.
+> The table reads no bank row, so the screen is still what knows a check has not cleared.
 > `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
 > No migration and no new write.
 > **v2.8632 (the payoff card, #435 piece 4):** `PayoffsWindow` hands each open place's `PlaceCard` a `PayoffCardBlock`, drawn over the liens' rows: five stops, the line for today, and a `ValueLines` of the asked day (`ChangeableValue`), the due day and the clearing day (`WorkedOutValue`).
