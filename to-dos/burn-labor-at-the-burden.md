@@ -1,18 +1,20 @@
 ---
 name: "A job's burn prices labor at the burden, so burn and budget are measured the same way"
 number: 448
-group: ready
-status: asked and decided 2026-11-27 · Taunya's *Yes, burn at the burden* to the sheet that asked *Should burn price labor at the burden too?* · read the same day from the code on main · not built
+group: close
+status: asked and decided 2026-11-27 · Taunya's *Yes, burn at the burden* to the sheet that asked *Should burn price labor at the burden too?* · read the same day from the code on main · a mock-up of the Costs tab drawn the same day with two homes for the one new line, and A picked, *Picks stand* · built the same day as v2.8731, client only, the multiply on the events before the burn's kernel · not walked live
 summary: >
   A job's budget prices its labor hours at the crew rate, which is the average field wage times the
   burden factor, 1.20 today. The job's burn prices the hours actually worked at raw wages. So the two
   sides of one comparison use two rulers, and the burn reads about a sixth kinder than the bid. On the
   sheet's own example, 100 hours at a $30 wage are budgeted as $3,600 and burn as $3,000. Taunya's
   answer is to price the burn's labor at the burden too. The Costs tab keeps showing the wages paid.
-next: Draw the burn section with its one new line first, since the burn's numbers change on five screens and no mock-up is drawn yet. Then build it as one PR (S). The burn's team labor is multiplied by the burden factor where the burn is worked out, and the burn section says so in one line. Decide first whether the multiply happens inside the burn's kernel, which the edge copies, or in the loader beside it: the second keeps the PR client only.
-size: S
+next: A look that writes nothing, once v2.8731 is live. On a ZZ Test job with clocked hours and a price, open the Costs tab. Read **Where the money went**, Team labor, and the line on the **Spent so far** tile. The line's wages are the table's Team labor, and its result is the wages times 1.20. On Job Summary the same job's Burn agrees with the job's window, and its Labor column is the wages. Then this card is retired.
+size: S, built as one PR; left: a look (XS)
+mockup: to-dos/burn-labor-at-the-burden/mockup.html
+ver: v2.8731
 blocker: none
-opinion: build — it is one multiplier at one place, and it stops a job reading on budget when its labor is a sixth over
+opinion: built as A — one multiply on the way into the burn, and the line that says so on the tile; retire it on a clean look
 ---
 
 # A job's burn prices labor at the burden (#448)
@@ -126,3 +128,17 @@ function `npm run check:edge-drift` then names. That is the reason to try the lo
   overhead and might.
 - **The other way was to take the burden off the budget.** It would make the burn agree with the bid by
   cheapening the bid's labor, which is the wrong direction: the bid's rate is what the job was sold at.
+
+## Where it stands
+
+**Built 2026-11-27 as v2.8731, one PR, client only.** The fragment is `docs/recent-features/v2.8731.md`.
+
+- **The mock-up came first**, `mockup.html` in this card's folder: the Costs tab's tiles, the by-section table and Where the money went, before and after, on a made-up job. It drew two homes for the one new line. The person at the keyboard that day picked **A**, *Picks stand*: the line on the **Spent so far** tile, and the wages and the factor in the Labor row of the by-section table.
+- **The multiply is on the way in, not in the kernel.** `src/lib/jobs/burnAtBurden.ts` prices each `team_labor` event at its wage times the factor before the events reach `buildJobBurn`. `jobBurn.ts` and its edge copy are as they were, so no function is behind and nothing is deployed.
+- **What this card called the burn section is the Costs tab's verdict now.** The four-tile Burn section of `JobCostsBurnSection.tsx` is no longer drawn by the tab; the tab draws the verdict (`JobCostsVerdict.tsx`), one chart and a folded detail. The line went on the verdict's **Spent so far** tile.
+- **Where it reaches:** the Costs tab's tiles, by-section table, chart and daily bars; the printed costs packet; Job Summary's Burn column; the Pipeline's burn card; Bids → Bid Costs → Bid vs actual.
+- **GC mode's own-work cost** was read, as this card asked. It adds up a job's charge events and does not read the burn, so it is a job's spend at wages paid and is left so.
+- **Settings → Data & recovery → Labor burden factor (dev)** now lists a job's burn under *Where it reaches*.
+- **Not changed, and worth its own read:** the line budgets under the verdict (`JobCostsLineBudgets`) still take labor at wages against a budget in hours at the crew rate.
+
+**Not walked live.** The look in `next` is what is left.
