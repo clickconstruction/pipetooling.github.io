@@ -2,7 +2,7 @@
 name: "Usage paths: what people do most, how far each press is, and what to move to the front"
 number: 190
 group: waiting
-status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk was taken off on 2026-11-25 on the user's word, and was never taken. Decision 5 answered 2026-11-25 (UTC) in the managing session: retire the Jobs page's Billing tab, built in v2.8698. The rows were read on 2026-11-27: the desk row already has the next move and the office presses it there, and the rows cannot see the Team row. Taunya's answers of 2026-11-27: PR 2 is not closed until a look at 1280 px, and PR 3 is a recorder first, built in PR #10037.
+status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk was taken off on 2026-11-25 on the user's word, and was never taken. Decision 5 answered 2026-11-25 (UTC) in the managing session: retire the Jobs page's Billing tab, built in v2.8698. The rows were read on 2026-11-27: the desk row already has the next move and the office presses it there, and the rows cannot see the Team row. Taunya's answers of 2026-11-27: PR 2 is closed unbuilt after the look at 1280 px, and PR 3 is a recorder first, built in PR #10037.
 summary: >
   The owner asked to look at what people are primarily doing, find the actions with many
   clicks and much navigating, and decide which buttons to move up toward the front. This
@@ -17,9 +17,9 @@ summary: >
   at all: calls, texts and the Pipeline row's own buttons leave no row, so the count
   cannot see them. The plan is three small PRs, the recorder first. The walk the owner
   was advised to take, which this to-do narrowed, was taken off on 2026-11-25.
-next: Read the Edit tab's rows (`job-edit-row` in Settings → Usage) on or after 2026-12-18, three weeks from the recorder's PR #10037: the count of Team opens against the other rows, by role. That read decides PR 3. For PR 2, the walking thread looks at one Waiting and one Working row at 1280 px and says what each draws as its next move and what is missing; then Taunya decides.
+next: Read the Edit tab's rows (`job-edit-row` in Settings → Usage) on or after 2026-12-18, three weeks from the recorder's PR #10037: the count of Team opens against the other rows, by role. That read decides PR 3. PR 2 is closed unbuilt.
 size: S as three PRs, XS S S, and the Billing tab's retirement (S, built).
-blocker: PR 3 waits on three weeks of the new rows, to 2026-12-18. PR 2 waits on the look at 1280 px.
+blocker: PR 3 waits on three weeks of the new rows, to 2026-12-18.
 ver: v2.8698
 opinion: PR 1 is live and the Billing tab is retired; close PR 2, since the desk row already carries the next move and the rows show it pressed there, and move nothing else on the counts alone, since they cannot see the slow parts and the walk that would have was taken off
 mockup: to-dos/usage-paths/mockup.html
@@ -502,7 +502,16 @@ Thirty-one days of PR 1's rows, 2026-10-27 to 2026-11-26, about 22 working days.
 
 **What it says for PR 2.** The premise was wrong. The desk row already draws the next move: the table's blue button reads **Move to Working** on a Waiting row and **Ready to Bill** on a Working row (`JobsStagesTable.tsx`, there since v2.4117 at the latest, a month before this card). The office moves a job from the row, 19 times on 12 days, and from the window 3 times on one day. There is nothing left for PR 2 to move. The pick was to close it.
 
-**Answered 2026-11-27 (UTC) in the managing session:** *Have walking look at a Waiting and a Working row at 1280 px first.* PR 2 stays open until that look says what each row draws as its next move and what is missing.
+**Answered 2026-11-27 (UTC) in the managing session:** *Have walking look at a Waiting and a Working row at 1280 px first.* The look was made the same day by the walking thread, on the live site at 1280 px as the dev, reads only, nothing in a row pressed.
+Every Waiting row draws a blue **Move to Working** at the right end of its first line, 126 by 27 px, and none is dead.
+Every Working row draws a blue **Ready to Bill** in the same place, 99 by 27 px.
+A Working row with no priced line also draws a grey **Add the price ›**, and its **Ready to Bill** is still live.
+Read in the code and not pressed: **Move to Working** asks nothing first, **Ready to Bill** asks with its two boxes, a Waiting row has no way back on its face, and both presses stand 27 px tall.
+Not read: what the row's ⋯ holds, and the row under 1100 px.
+
+**Answered 2026-11-27 (UTC) in the managing session, after that look:** *Close PR 2 unbuilt.*
+It is quoted from that session's record of the pick she read and let stand.
+The card stays open for the recorder's read on or after 2026-12-18.
 
 **What it says for PR 3.** Nothing, either way. The Edit tab's Team row is not inside a marked container, so no row records it. What the rows do show is the door: *Open the Edit tab* is half of every press on the row. The pick is to close PR 3 unbuilt. If a count is wanted first, the smaller piece is to mark the Edit tab's rows so the next read says what is pressed behind that door.
 
@@ -545,7 +554,7 @@ in part 2 was read from the controls, not written.
 |---|---|---|
 | Proposal and mock-up | #6196 | merged 2026-10-26; the owner said go on PR 1 the same day |
 | PR 1 · the recorder | v2.5904 · #6244 | live 2026-10-27, served from 10:15 AM Chicago. Walked on clicktooling.com as the dev, every dial blocked, nothing typed or saved: 15 presses wrote 15 rows, one each, none naming a person. At 1280 wide, a row's Call, Assign work, the bubble, the door's Call, Open job and Share wrote the three rows frame 5 draws: `call_pressed · #surface=pipeline-row`, `pipeline-row · #Assign work` and `job-window · #Share job`, all from `/jobs`. At 768 the table and the window's header count. At 375 the window's phone bar counts Status ▾ and Note; the phone's Pipeline list is not marked yet. On Messages the call task, Waiting on them, the thread and the reply box count, and on a phone the ways sheet writes nothing until a way dials. Settings → Usage names Pipeline row, job window and Call. The supply-house rep's Call and the customer-waiting Calls had nothing to press that day; the button they share was proven by a render test. The 25 test rows from the walks are under the dev role |
-| PR 2 · the row's next move | | not started, and not closed. The read of 2026-11-27 finds the button already on the desk row. Taunya's answer of 2026-11-27: *Have walking look at a Waiting and a Working row at 1280 px first* |
+| PR 2 · the row's next move | | closed unbuilt on Taunya's word of 2026-11-27, after the look at 1280 px she asked for: the desk row already draws **Move to Working** and **Ready to Bill** |
 | PR 3 · the crew chip's + | | not started. Taunya's answer of 2026-11-27: *A recorder first (XS) and read again in three weeks*. The recorder is PR #10037: each row of the Edit tab counts its editor being opened. The next read is on or after 2026-12-18 |
 | The walk | | taken off on 2026-11-25 on the user's word; it was never taken |
 | The Billing tab's retirement | v2.8698 | built; decision 5 answered *Retire it* on 2026-11-25, and the PR was held for Taunya to say it again |
