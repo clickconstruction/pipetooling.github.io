@@ -25,7 +25,7 @@ import OfflineRetryPanel from './OfflineRetryPanel'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../lib/offlineRecoveryState'
-import { BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE } from '../lib/offlineRecoveryState'
+import { AUTO_TRY_WAIT_MS, BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE, BACK_ONLINE_TRIED_MESSAGE } from '../lib/offlineRecoveryState'
 
 const NETWORK = { kind: 'network' as const, message: OFFLINE_ERROR_MESSAGE }
 
@@ -114,6 +114,40 @@ describe('OfflineRetryPanel', () => {
       window.dispatchEvent(new Event('online'))
     })
     expect(onRetry).toHaveBeenCalledTimes(2)
+  })
+
+  it('after the automatic try, the line says trying again for eight seconds and then hands the press back (finding 308)', () => {
+    vi.useFakeTimers()
+    try {
+      const onRetry = vi.fn()
+      renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={onRetry} surface="quickfill-deck" idempotent />)
+      act(() => {
+        setOnLine(true)
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(onRetry).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(BACK_ONLINE_AUTO_MESSAGE)).toBeTruthy()
+      act(() => {
+        vi.advanceTimersByTime(AUTO_TRY_WAIT_MS - 1)
+      })
+      expect(screen.getByText(BACK_ONLINE_AUTO_MESSAGE)).toBeTruthy()
+      act(() => {
+        vi.advanceTimersByTime(1)
+      })
+      // The failure still stands: the line no longer says it is trying, and nothing more was tried.
+      expect(screen.queryByText(BACK_ONLINE_AUTO_MESSAGE)).toBeNull()
+      expect(screen.getByText(BACK_ONLINE_TRIED_MESSAGE)).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+      expect(onRetry).toHaveBeenCalledTimes(1)
+      // The signal comes back again: one more try by itself, and the line says so again.
+      act(() => {
+        window.dispatchEvent(new Event('online'))
+      })
+      expect(onRetry).toHaveBeenCalledTimes(2)
+      expect(screen.getByText(BACK_ONLINE_AUTO_MESSAGE)).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('Retry is 44 px tall on a phone and keeps its desk height on a desktop (punch list #414, v2.8361)', async () => {
