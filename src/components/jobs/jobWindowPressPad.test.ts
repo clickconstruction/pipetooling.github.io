@@ -15,6 +15,8 @@ function sized(el: HTMLElement, width: number, height: number): HTMLElement {
 function press(root: HTMLElement, width: number, height: number, html = 'Open'): HTMLButtonElement {
   const b = document.createElement('button')
   b.innerHTML = html
+  // A press with no border, unless a case gives it one: the test page's own button comes with 2 px (finding 340).
+  b.style.borderWidth = '0'
   root.appendChild(b)
   sized(b, width, height)
   return b
@@ -37,6 +39,25 @@ describe('padSmallPresses', () => {
     expect(square.style.getPropertyValue('--press-pad-x')).toBe('11px')
     expect(square.style.getPropertyValue('--press-pad-y')).toBe('11px')
     expect(big.hasAttribute('data-press-pad')).toBe(false)
+  })
+
+  it('a press with a border reaches 44: the border is added to the pad, which is drawn from inside it (finding 340)', () => {
+    const root = document.body.appendChild(document.createElement('div'))
+    const bordered = press(root, 120, 28)
+    bordered.style.borderWidth = '1px'
+    const thick = press(root, 30, 30)
+    thick.style.borderWidth = '1px 2px 3px 2px'
+    const bare = press(root, 120, 28)
+    expect(padSmallPresses(root)).toBe(3)
+    // 28 px wants 8 px over and under. Drawn from inside a 1 px border, that is 9: 28 less its two borders, and 9 twice, is 44.
+    expect(bordered.style.getPropertyValue('--press-pad-y')).toBe('9px')
+    expect(bordered.style.getPropertyValue('--press-pad-x')).toBe('0px')
+    expect(28 - 2 + 2 * 9).toBe(44)
+    // Borders that differ take the wider one on each axis, so a tap is never under 44.
+    expect(thick.style.getPropertyValue('--press-pad-x')).toBe('9px')
+    expect(thick.style.getPropertyValue('--press-pad-y')).toBe('10px')
+    // No border: as before.
+    expect(bare.style.getPropertyValue('--press-pad-y')).toBe('8px')
   })
 
   it('leaves the strip, the head, a press with a press inside, a clipped press and one not drawn alone', () => {

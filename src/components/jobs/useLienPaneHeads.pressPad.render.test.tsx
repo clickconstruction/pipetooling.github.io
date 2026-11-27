@@ -29,7 +29,8 @@ function Pane({ phone, startOpen }: { phone: boolean; startOpen: boolean }) {
       </button>
       {open ? (
         <div ref={paneRef} data-lien-pane-phone={phone ? 'yes' : undefined}>
-          <button type="button" ref={sized(86, 20)}>
+          {/* No border here: the test page's own button comes with 2 px, which the pad would add (finding 340). */}
+          <button type="button" ref={sized(86, 20)} style={{ borderWidth: 0 }}>
             Fix it
           </button>
           <button type="button" ref={sized(300, 44)}>

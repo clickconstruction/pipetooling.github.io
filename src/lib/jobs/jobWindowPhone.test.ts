@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accountQuietWords, headerScrollState, jobAccountsLine, jobWindowMoneyLine, jobWindowSheetRows, pressPad, SHEET_LABELS, type JobWindowSheetDoors } from './jobWindowPhone'
+import { accountQuietWords, headerScrollState, jobAccountsLine, jobWindowMoneyLine, jobWindowSheetRows, pressPad, pressPadFromInside, PRESS_TARGET, SHEET_LABELS, type JobWindowSheetDoors } from './jobWindowPhone'
 import type { EditJobBillingBar } from './editJobBillingBar'
 
 describe('headerScrollState', () => {
@@ -84,5 +84,42 @@ describe('jobAccountsLine', () => {
     expect(jobAccountsLine([], true)).toEqual({ text: 'None yet', act: 'Add job account' })
     expect(jobAccountsLine([{ houseName: 'Ferguson', stateWord: '✓' }, { houseName: 'Reece', stateWord: 'none yet' }], true)).toEqual({ text: 'Ferguson ✓ · Reece none yet', act: 'Add another' })
     expect(jobAccountsLine([], false).act).toBeNull()
+  })
+})
+
+describe('pressPadFromInside (finding 340)', () => {
+  /** What a tap can land on along one axis: the press inside its two borders, and the pad on each side of that. */
+  const tap = (size: number, border: number, pad: number) => size - 2 * border + 2 * pad
+
+  it('a press 28 px tall with a 1 px border reaches 44 from inside its border, where it reached 42', () => {
+    const sized = pressPad({ width: 120, height: 28 })!
+    expect(sized).toEqual({ x: 0, y: 8 })
+    // The pad as it was drawn: 8 px from inside a 1 px border.
+    expect(tap(28, 1, sized.y)).toBe(42)
+    const drawn = pressPadFromInside(sized, { x: 1, y: 1 })
+    expect(drawn).toEqual({ x: 0, y: 9 })
+    expect(tap(28, 1, drawn.y)).toBe(PRESS_TARGET)
+  })
+
+  it('the Lien desk’s band press, 27.2 px with a 1 px border, takes a tap of 44 or more', () => {
+    const drawn = pressPadFromInside(pressPad({ width: 146.8, height: 27.2 })!, { x: 1, y: 1 })
+    expect(tap(27.2, 1, drawn.y)).toBeGreaterThanOrEqual(PRESS_TARGET)
+  })
+
+  it('a press with no border is padded as before', () => {
+    const sized = pressPad({ width: 86, height: 20 })!
+    expect(pressPadFromInside(sized, { x: 0, y: 0 })).toEqual(sized)
+    expect(tap(20, 0, sized.y)).toBe(PRESS_TARGET)
+  })
+
+  it('adds the border on the sides that grow and nothing on a side that does not', () => {
+    expect(pressPadFromInside({ x: 0, y: 12 }, { x: 2, y: 2 })).toEqual({ x: 0, y: 14 })
+    expect(pressPadFromInside({ x: 11, y: 11 }, { x: 1, y: 1 })).toEqual({ x: 12, y: 12 })
+    expect(pressPadFromInside({ x: 12, y: 0 }, { x: 1, y: 3 })).toEqual({ x: 13, y: 0 })
+  })
+
+  it('a border a browser cannot say is none', () => {
+    expect(pressPadFromInside({ x: 0, y: 12 }, { x: Number.NaN, y: Number.NaN })).toEqual({ x: 0, y: 12 })
+    expect(pressPadFromInside({ x: 0, y: 12 }, { x: -1, y: -1 })).toEqual({ x: 0, y: 12 })
   })
 })
