@@ -198,6 +198,12 @@ export function paperDefTexts(def: PaperDef): Array<{ where: string; text: strin
 export function paperDefProblems(def: PaperDef): string[] {
   const problems: string[] = []
 
+  // The paper's own names can be typed over (punch list #416), so each must still say something.
+  if (!def.title.trim()) problems.push('The paper has no title.')
+  if (!def.job.trim()) problems.push('The paper names no job.')
+  if (!def.company.trim()) problems.push('The paper names no company.')
+  if (!def.protectedParty.trim()) problems.push('The paper does not say who it protects.')
+
   if (def.levels.length === 0) problems.push('The paper has no level.')
   const ids = def.levels.map((l) => l.id)
   for (const level of def.levels) {

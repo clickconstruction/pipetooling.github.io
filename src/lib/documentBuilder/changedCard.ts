@@ -10,6 +10,7 @@
  */
 import { val } from '../valuesInPlace'
 import { PAPER_OFF, type PaperDef, type PaperStop } from './documentBuilder'
+import { PAPER_NAMES_PAGE } from './paperEdit'
 import { plural } from './sheet'
 
 /** The page the flow shows: its step, and for a topic the stop it stands on. */
@@ -56,18 +57,20 @@ export type ChangedRow = {
   part: string | null
   /** True for the page open on the right. */
   open: boolean
+  /** False for a page no step of the flow shows: the paper's own names, which are typed on a card of this side. */
+  opens: boolean
 }
 
-const PAGE_LABELS: Record<string, string> = { notice: 'Before you start', basis: 'The basis', site: 'Match the paper to the site', review: 'Review' }
+const PAGE_LABELS: Record<string, string> = { [PAPER_NAMES_PAGE]: "The paper's names", notice: 'Before you start', basis: 'The basis', site: 'Match the paper to the site', review: 'Review' }
 
 /** The changed pages as rows, in the order `changedPages` gives them. `openPage` is `shownPageId`'s answer. */
 export function changedRows(def: PaperDef, changed: ReadonlyArray<string>, openPage: string | null = null): ChangedRow[] {
   return changed.map((page) => {
     const [head, key, level] = page.split(':')
-    if (head !== 'topic' || key == null) return { page, label: PAGE_LABELS[page] ?? page, level: null, part: null, open: page === openPage }
+    if (head !== 'topic' || key == null) return { page, label: PAGE_LABELS[page] ?? page, level: null, part: null, open: page === openPage, opens: page !== PAPER_NAMES_PAGE }
     const label = def.topics.find((t) => t.key === key)?.label ?? key
-    if (level == null) return { page, label, level: null, part: 'Its name', open: false }
+    if (level == null) return { page, label, level: null, part: 'Its name', open: false, opens: true }
     const name = level === PAPER_OFF ? 'Off' : (def.levels.find((l) => l.id === level)?.name ?? level)
-    return { page, label, level: { stop: level, name }, part: null, open: page === openPage }
+    return { page, label, level: { stop: level, name }, part: null, open: page === openPage, opens: true }
   })
 }

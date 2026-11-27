@@ -30,6 +30,12 @@ const NOTICE_TEXT = ['title', 'placeholder', 'tick'] as const
 const SITE_TEXT = ['lead', 'title', 'asksNothing', 'placeholder'] as const
 const has = <T extends string>(list: readonly T[], k: string | undefined): k is T => k != null && (list as readonly string[]).includes(k)
 
+/** The paper's own names: what it is called, the job it is written for, the company and who it protects. No step of the flow shows them, so their page is `paper`. */
+export const PAPER_NAME_KEYS = ['title', 'job', 'company', 'protectedParty'] as const
+export type PaperNameKey = (typeof PAPER_NAME_KEYS)[number]
+/** The page that holds the paper's own names. */
+export const PAPER_NAMES_PAGE = 'paper'
+
 const topicAt = (def: PaperDef, key: string | undefined): PaperTopic | undefined => def.topics.find((t) => t.key === key)
 
 /** The words at a path, or null when the path names nothing. */
@@ -37,6 +43,7 @@ export function paperWordsAt(def: PaperDef, path: string): string | null {
   const p = path.split('.')
   const [head, a, b, c, d] = p
   if (head === 'words' && a != null && a in def.words) return def.words[a as WordKey]
+  if (head === PAPER_NAMES_PAGE) return has(PAPER_NAME_KEYS, a) ? def[a] : null
   if (head === 'notice') {
     if (a === 'lines') return def.notice.lines[Number(b)] ?? null
     return has(NOTICE_TEXT, a) ? def.notice[a] : null
@@ -83,6 +90,7 @@ export function withPaperWords(def: PaperDef, path: string, words: string): Pape
   if (was == null || was === words) return def
   const [head, a, b, c, d] = path.split('.')
   if (head === 'words' && a != null) return { ...def, words: { ...def.words, [a]: words } }
+  if (head === PAPER_NAMES_PAGE) return has(PAPER_NAME_KEYS, a) ? { ...def, [a]: words } : def
   if (head === 'notice') return a === 'lines' ? { ...def, notice: { ...def.notice, lines: setAt(def.notice.lines, Number(b), words) } } : { ...def, notice: { ...def.notice, [a as string]: words } }
   if (head === 'site') return a === 'lines' ? { ...def, site: { ...def.site, lines: setAt(def.site.lines, Number(b), words) } } : { ...def, site: { ...def.site, [a as string]: words } }
   if (head !== 'topic' || a == null || b == null) return def
@@ -142,6 +150,7 @@ export function withoutPaperLine(def: PaperDef, listPath: string, index: number)
 /** The page a path is on. */
 export function pathPage(path: string): string {
   const [head, a, b] = path.split('.')
+  if (head === PAPER_NAMES_PAGE) return PAPER_NAMES_PAGE
   if (head === 'notice') return 'notice'
   if (head === 'site') return 'site'
   if (head === 'words') return a != null && isBasisWord(a) ? 'basis' : 'review'
@@ -165,6 +174,7 @@ export function paperPages(def: PaperDef): string[] {
 
 /** What a page holds, to hold against the same page of another revision. */
 function pageContents(def: PaperDef, page: string): unknown {
+  if (page === PAPER_NAMES_PAGE) return PAPER_NAME_KEYS.map((k) => def[k])
   if (page === 'notice') return def.notice
   if (page === 'site') return def.site
   if (page === 'basis') return Object.fromEntries(Object.entries(def.words).filter(([k]) => isBasisWord(k)))
@@ -176,10 +186,14 @@ function pageContents(def: PaperDef, page: string): unknown {
   return level === PAPER_OFF ? (topic.offSays ?? null) : (topic.levels[level] ?? null)
 }
 
-/** The pages that differ from the published revision. None before the first publish: there is nothing to differ from. */
+/**
+ * The pages that differ from the published revision. None before the first publish: there is nothing to differ from.
+ * The paper's own names lead the list when one of them changed. They are a page of the paper and of no step of the
+ * flow, so `paperPages` does not list them.
+ */
 export function changedPages(draft: PaperDef, published: PaperDef | null): string[] {
   if (!published) return []
-  return paperPages(draft).filter((page) => !sameContents(pageContents(draft, page), pageContents(published, page)))
+  return [PAPER_NAMES_PAGE, ...paperPages(draft)].filter((page) => !sameContents(pageContents(draft, page), pageContents(published, page)))
 }
 
 /** True when the words at a path differ from the published revision's. False before the first publish. */
@@ -200,6 +214,7 @@ function withPieceAsWas(topic: PaperTopic, piece: 'fact' | 'offSays', was: strin
 
 /** The draft with one page put back as the published revision has it. */
 export function revertPage(draft: PaperDef, published: PaperDef, page: string): PaperDef {
+  if (page === PAPER_NAMES_PAGE) return { ...draft, title: published.title, job: published.job, company: published.company, protectedParty: published.protectedParty }
   if (page === 'notice') return { ...draft, notice: published.notice }
   if (page === 'site') return { ...draft, site: published.site }
   if (page === 'basis' || page === 'review') {
@@ -217,6 +232,7 @@ export function revertPage(draft: PaperDef, published: PaperDef, page: string): 
 
 /** A page's name, for the list of what changed: *Photos and video, Standard*. */
 export function pageName(def: PaperDef, page: string): string {
+  if (page === PAPER_NAMES_PAGE) return "The paper's names"
   if (page === 'notice') return 'Before you start'
   if (page === 'basis') return 'The basis'
   if (page === 'site') return 'Match the paper to the site'

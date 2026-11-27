@@ -7144,7 +7144,7 @@ The one press for every trade that is ready reaches only a trade awarded on the 
 Above that press a line for each ready party names who its email goes to (`batchGoesTo`, v2.8487), a reason that holds more than three parties reads as one counted line that opens the names (`heldLines`, v2.8435), the press to one party names its contact whole (`pressName`, v2.8433) and a row says how many times its send went (`sentWords`, v2.8437).
 Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of words on the flow is a field named by a **path** into the paper, and a **page** is the flow's own, a topic at a level among them ([`paperEdit.ts`](../src/lib/documentBuilder/paperEdit.ts)).
 Since v2.8460 a topic's section name, the names of the facts above the basis slider, the basis page's line while the paper is Off and the last step's press with the line under it are fields too, each at the path [`flowFields.ts`](../src/lib/documentBuilder/flowFields.ts) names.
-The levels' names, and the paper's title, job, company and party, are not fields.
+The levels' names are not fields.
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
 Since v2.8439 that press asks first, with **Not yet** as the safe answer (`walkedPublishConfirm`), and since v2.8511 the insurance sheet's two publish presses ask the same way (`jobPublishConfirm`, `usualPublishConfirm`).
@@ -7153,6 +7153,8 @@ The **open cell** is the map's cell for the page the flow shows on the right, ou
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 Since v2.8468 a walked builder's left column has two **sides** behind a switch: **Edit**, the map and the changed pages, and **Share**, the builder's link and the send ([`builderSide.ts`](../src/lib/documentBuilder/builderSide.ts)).
 The side is in the address as `side=share`, both sides stay drawn so a half typed note survives a look at the map, and on a phone the Share side stands without what a GC sees under it.
+Since v2.8469 the paper's own **names**, its title, the job, the company and who it protects, are fields on a card of the Edit side, at paths under `paper.` on a page of their own that no step of the flow shows ([`paperNames.ts`](../src/lib/documentBuilder/paperNames.ts)).
+A name left empty holds the publish, and a name is not held to the plain-words rules.
 Since v2.8264 (step 6) a trade's **certificate is held against a job's sheet**, one certificate for each job: the card **Certificates for this job** says where each stands, and **Check it against the sheet** ticks one line for each name, the place, the certificate holder and each coverage with its amount (`certificates.ts`, `sheetAsks`).
 A certificate is **outdated** when one of those lines changes on the published sheet, and not when the sheet's other words do.
 

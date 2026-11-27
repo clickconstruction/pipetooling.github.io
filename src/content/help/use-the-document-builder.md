@@ -57,6 +57,8 @@ The bar reads *Draft not saved* when a save fails. Type again to send the draft 
 
 Nobody outside sees a draft. No clause wording is typed here. A clause stays grey bars.
 
+The paper's own names are in the card **The paper's names**, at the foot of the **Edit** view. They are the title, the job, your company and who the paper protects. Press a name and type over it. A name left empty holds the publish.
+
 ## Read the map
 
 The map has a row for each topic and a column for each level.

@@ -33,6 +33,9 @@ import { CHANGED_LEGEND, changedCardEmpty, changedCardHead, changedRows, shownPa
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { BUILDER_SIDES, BUILDER_SIDE_SWITCH, builderSideHolds } from '../../lib/documentBuilder/builderSide'
 import { useBuilderSide } from './builderSideContext'
+import { PAPER_NAMES_WORDS, paperNameRows } from '../../lib/documentBuilder/paperNames'
+import { BuilderField } from './BuilderField'
+import { ValueLine, ValueLines } from '../valuesInPlace/ValuesInPlace'
 import { levelInk } from './levelTone'
 
 /** The writes the builder makes. A smoke hands its own in. */
@@ -412,9 +415,14 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
                   {row.part ? <span style={{ ...CHIP, ...CHIP_TONES.wait }}>{row.part}</span> : null}
                 </div>
                 <div style={BTNS}>
-                  <button type="button" aria-label={`Open ${pageName(draft, row.page)}`} style={SMALL_PRESS} onClick={() => show(row.page)}>
-                    Open it
-                  </button>
+                  {row.opens ? (
+                    <button type="button" aria-label={`Open ${pageName(draft, row.page)}`} style={SMALL_PRESS} onClick={() => show(row.page)}>
+                      Open it
+                    </button>
+                  ) : (
+                    // No step on the right shows the paper's names: they are typed on the card under this one.
+                    <span style={FINE}>Typed on the card below.</span>
+                  )}
                   {published ? (
                     <button type="button" aria-label={`Put ${pageName(draft, row.page)} back to revision ${rec.revision}`} style={SMALL_PRESS} onClick={() => change(revertPage(draftRef.current, published, row.page))}>
                       {`Back to revision ${rec.revision}`}
@@ -423,6 +431,20 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
                 </div>
               </div>
             ))}
+          </div>
+          {/* The paper's own names (punch list #416): no step of the flow shows them, so they are typed here, one fact a line. */}
+          <div style={CARD} data-paper-names="">
+            <h3 style={CARD_TITLE}>{PAPER_NAMES_WORDS.title}</h3>
+            <p style={MUTED}>{PAPER_NAMES_WORDS.lead}</p>
+            <ValueLines>
+              {paperNameRows(draft).map((row) => (
+                <ValueLine key={row.key} label={row.label}>
+                  {/* With the marks off nothing on the builder is a field, the names included. */}
+                  <BuilderField editing={marks} text={row.words} mark={edit.mark(row.path)} label={row.field} onType={(words) => edit.onWords(row.path, words)} />
+                </ValueLine>
+              ))}
+            </ValueLines>
+            <p style={FINE}>{PAPER_NAMES_WORDS.fine}</p>
           </div>
           </div>
           <div data-builder-side="share" style={{ display: side === 'share' ? 'grid' : 'none', gap: 12, minWidth: 0 }}>
