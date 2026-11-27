@@ -2,7 +2,7 @@
 /**
  * Render smokes for the Quickfill "Complete, no Total Bill" station since v2.6750 (punch list #176,
  * decision 4: the hidden Jobs Billing station's three checks folded in): each row wears a chip for
- * what its bill lacks, the Jobs Billing tab is a door, Edit job opens the job form, and empty is the
+ * what its bill lacks, the Pipeline is a door, Edit job opens the job form, and empty is the
  * good state in the station's own words.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -39,7 +39,7 @@ const rows: CompleteNoBillRow<JobWithDetails>[] = [
 afterEach(() => cleanup())
 
 describe('QuickfillCompleteNoBillSection · the three checks on each row (v2.6750)', () => {
-  it('draws a chip for each gap, the rows in the kernel’s order, and the Jobs Billing tab as a door', () => {
+  it('draws a chip for each gap, the rows in the kernel’s order, and the Pipeline as a door', () => {
     renderWithProviders(<QuickfillCompleteNoBillSection rows={rows} clockSummaryByJobId={new Map()} jobsListBusy={false} />)
     const first = document.querySelector('[data-complete-no-bill-row="j-1010"]')!
     expect(first.textContent).toContain('1010 · Lot 4 Kestrel')
@@ -47,7 +47,7 @@ describe('QuickfillCompleteNoBillSection · the three checks on each row (v2.675
     const second = document.querySelector('[data-complete-no-bill-row="j-1060"]')!
     expect([...second.querySelectorAll('[data-bill-gap]')].map((el) => el.textContent)).toEqual(['no Specific Work'])
     expect(document.querySelectorAll('[data-complete-no-bill-row]')).toHaveLength(2)
-    expect(screen.getByRole('link', { name: 'Jobs Billing tab' }).getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(screen.getByRole('link', { name: 'Pipeline' }).getAttribute('href')).toBe('/jobs?tab=stages')
   })
 
   it('Edit job opens the job form on that job, and waits while the jobs list is busy', () => {

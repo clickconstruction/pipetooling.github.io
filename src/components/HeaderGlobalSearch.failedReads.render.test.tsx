@@ -50,7 +50,7 @@ vi.mock('../hooks/useAuth', async () => {
 // The two Vite-only sources the box loads once the role lands: one guide, no punch-list rows.
 vi.mock('../lib/helpGuideRegistry', () => ({
   HELP_GUIDES: [
-    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=billing', body: 'x' },
+    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=stages', body: 'x' },
   ],
 }))
 vi.mock('virtual:punch-list', () => ({

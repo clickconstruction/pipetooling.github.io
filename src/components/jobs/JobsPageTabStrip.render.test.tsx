@@ -19,7 +19,7 @@ import { phoneTabRows } from '../../lib/phoneLayout/phoneTabRows'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
-/** The row as `Jobs.tsx` drew it at v2.8285. Kept whole, one condition a button, so the comparison is with the page itself. */
+/** The row as `Jobs.tsx` drew it at v2.8285, less the Billing tab, which left in v2.8698 and left its bar after Pipeline. Kept whole, one condition a button, so the comparison is with the page itself. */
 function StripBefore({ authRole, myRole, activeTab, stickyTabStrip }: { authRole: string | null; myRole: string | null; activeTab: string; stickyTabStrip: boolean }) {
   const isPrimaryOrUnknown = authRole === 'primary' || myRole === 'primary' || (authRole === null && myRole === null)
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
@@ -60,12 +60,7 @@ function StripBefore({ authRole, myRole, activeTab, stickyTabStrip }: { authRole
           {showPrimaryRestrictedTabs && (
             <>
               {showStagesAndBillingTabs && (
-                <>
-                  <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-                  <button type="button" onClick={press} style={pageTabStyle(activeTab === 'billing')}>
-                    Billing
-                  </button>
-                </>
+                <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
               )}
               {showTeamLaborTab && (
                 <button type="button" onClick={press} style={pageTabStyle(activeTab === 'combined-labor')}>
@@ -114,7 +109,7 @@ function StripBefore({ authRole, myRole, activeTab, stickyTabStrip }: { authRole
 
 const ROLES: Array<string | null> = [null, 'dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'estimator', 'primary', 'helpers', 'subcontractor']
 /** Every value the page's open tab takes, with Billed, which has no tab in the row. */
-const OPEN: string[] = ['teams-summary', 'reports', 'stages', 'billing', 'combined-labor', 'subs', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
+const OPEN: string[] = ['teams-summary', 'reports', 'stages', 'combined-labor', 'subs', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
 
 const OFF = phoneTabRows({ phoneLayoutOn: false, barNamesPage: false })
 const ON_BAR_NAMES_PAGE = phoneTabRows({ phoneLayoutOn: true, barNamesPage: true })
@@ -192,14 +187,14 @@ describe('JobsPageTabStrip, on the new phone layout', () => {
     const view = drawStrip('dev', 'stages')
     const strip = view.container.querySelector('[data-jobs-page-tabs]') as HTMLElement
     const stops = Array.from(strip.querySelectorAll<HTMLElement>('button, a, input, select, textarea, [tabindex]'))
-    expect(stops.map((s) => s.textContent)).toEqual(['Crew P&L', 'Reports', 'Pipeline', 'Billing', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
+    expect(stops.map((s) => s.textContent)).toEqual(['Crew P&L', 'Reports', 'Pipeline', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
     expect(stops.every((s) => s.tagName === 'BUTTON' && !s.hasAttribute('tabindex') && !(s as HTMLButtonElement).disabled)).toBe(true)
   })
 
-  it('keeps the two thin bars, before Billing and before Inspections', () => {
+  it('keeps the two thin bars, after Pipeline and before Inspections', () => {
     const view = drawStrip('dev', 'stages')
     const bars = Array.from(view.container.querySelectorAll('span')).filter((s) => s.textContent === '|')
-    expect(bars.map((b) => b.nextElementSibling?.textContent)).toEqual(['Billing', 'Inspections'])
+    expect(bars.map((b) => b.nextElementSibling?.textContent)).toEqual(['Team', 'Inspections'])
   })
 
   it('lights the open tab alone, and none for Billed', () => {
@@ -222,7 +217,7 @@ describe('JobsPageTabStrip, on the new phone layout', () => {
     expect(strip.style.background).toBe('var(--surface)')
     const scroller = strip.querySelector('.tab-strip-scroll') as HTMLElement
     expect(scroller.getAttribute('aria-label')).toBe('Jobs tabs')
-    expect(scroller.querySelectorAll('button')).toHaveLength(10)
+    expect(scroller.querySelectorAll('button')).toHaveLength(9)
     // One line: the row never folds.
     expect((scroller.firstElementChild as HTMLElement).style.flexWrap).toBe('nowrap')
   })

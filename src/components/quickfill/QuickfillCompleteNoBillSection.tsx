@@ -14,8 +14,8 @@ import { COMPLETE_BILL_GAP_WORDS, type CompleteBillGap, type CompleteNoBillRow, 
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { EmptyState } from '../EmptyState'
 
-/** The Jobs Billing tab, where the three fields are typed; the hidden station's door (v2.6750). */
-export const JOBS_BILLING_TAB_HREF = '/jobs?tab=billing'
+/** The Pipeline, where a job's window holds the three fields. It was the Jobs Billing tab until that tab left in v2.8698. */
+export const JOBS_PIPELINE_HREF = '/jobs?tab=stages'
 
 function formatShortDate(iso: string | null | undefined): string {
   const t = calendarYmdInAppTzFromIso(iso ?? '')
@@ -98,8 +98,8 @@ export function QuickfillCompleteNoBillSection({
         <strong>% complete</strong> field when no report has one) whose bill cannot go out: no{' '}
         <strong>Total Bill</strong> or no <strong>Specific Work</strong> line. Each row says which, and notes a job
         with no <strong>Other job charges</strong>. Open a job to fill the bill in so it can be billed, or work the{' '}
-        <Link to={JOBS_BILLING_TAB_HREF} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-          Jobs Billing tab
+        <Link to={JOBS_PIPELINE_HREF} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+          Pipeline
         </Link>
         .
       </p>
