@@ -28,7 +28,7 @@ Two partial indexes, since every list of a site's papers reads by site: `idx_per
 ## What it leaves as it was
 
 - **Who writes a site.** The table's policies answer by role and name no column. Whoever may write a paper may write its site, and nobody else.
-- **The signer.** `get-contract-for-signer`, `accept-contract` and the signed copy read the row by a list of columns they name. Nothing of a site reaches a signer until one of them is changed to say so. The PR that prints an address owes that function's change and its deploy.
+- **The signer.** `get-contract-for-signer`, `accept-contract` and the signed copy read the row by a list of columns they name. Nothing of a site reached a signer until v2.8676 changed all three to read `site_address` and `site_prints_address`, by one rule (`_shared/paperSitePrint.ts`): the address alone, and only when the box is ticked.
 - **Documents → Agreements.** `agreements_on_file` names its own columns, so it answers as before. A site filter there needs the view to answer the site, which is a migration of its own: `20261126110711_agreements_on_file_site.sql`.
 - **The triggers of the table.** None watches these columns.
 - **A new version of a paper.** `create_pending_contract_versions_after_book_save` copies a paper by a list of columns it names, so the copy it makes names no site. The client PR that sends a site's paper (v2.8660) left that as it is.

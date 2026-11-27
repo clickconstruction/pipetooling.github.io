@@ -4,6 +4,11 @@ import {
   PAPER_SITE_WORDS,
   SITE_ADDRESS_MAX,
   SITE_KEY_MAX,
+  SITE_PRINT_BOX_LABEL,
+  SITE_PRINT_HINTS,
+  sitePrintBox,
+  sitePrintsAtSend,
+  type SitePrintReady,
   paperSiteColumns,
   paperSiteLabel,
   paperSiteOfEntry,
@@ -20,7 +25,7 @@ import {
 } from './paperSite'
 import { normalizeAddressKey } from '../developments/notInIt'
 import { plainWordsFailures } from '../plainWords'
-import { plainSentence } from '../valuesInPlace'
+import { plainSentence, val } from '../valuesInPlace'
 
 // Every address and name here is made up.
 const QUARRY = '118 Old Quarry Trl, Sampleton, TX'
@@ -52,13 +57,57 @@ describe('paperSiteColumns', () => {
     expect(paperSiteColumns(null)).toEqual({ site_development_id: null, site_address_key: null, site_address: null, site_prints_address: false })
   })
 
-  it('never writes both kinds, an address with no key, or the print', () => {
+  it('never writes both kinds, an address with no key, or the print unasked', () => {
     for (const s of [site(QUARRY), ranch, null]) {
       const c = paperSiteColumns(s)
       expect(c.site_development_id != null && c.site_address_key != null).toBe(false)
       expect(c.site_address != null && c.site_address_key == null).toBe(false)
       expect(c.site_prints_address).toBe(false)
     }
+  })
+
+  it('writes the print only when the box is ticked, and only beside an address', () => {
+    expect(paperSiteColumns(site(QUARRY), true)).toEqual({ site_development_id: null, site_address_key: key(QUARRY), site_address: QUARRY, site_prints_address: true })
+    expect(paperSiteColumns(site(QUARRY), false).site_prints_address).toBe(false)
+    // The row refuses a print with no address to print: a development and no site never ask for one.
+    expect(paperSiteColumns(ranch, true).site_prints_address).toBe(false)
+    expect(paperSiteColumns(null, true).site_prints_address).toBe(false)
+  })
+})
+
+describe('sitePrintBox', () => {
+  it('is no box for a paper with no site, or a site with no address', () => {
+    for (const ready of ['checking', 'yes', 'no', 'unread'] as SitePrintReady[]) {
+      expect(sitePrintBox(null, true, ready)).toBeNull()
+      expect(sitePrintBox(ranch, true, ready)).toBeNull()
+    }
+  })
+
+  it('starts off, and says the signer reads nothing about the site', () => {
+    expect(sitePrintBox(site(QUARRY), false, 'yes')).toEqual({ label: 'Print the site’s address on the paper', checked: false, dead: false, hint: 'The signer reads nothing about the site.' })
+  })
+
+  it('ticked, says the very line the signer reads, with the address', () => {
+    const box = sitePrintBox(site(QUARRY), true, 'yes')!
+    expect(box.checked).toBe(true)
+    expect(box.dead).toBe(false)
+    expect(plainSentence(box.hint)).toBe(`Above the paper the signer reads Site address: ${QUARRY}.`)
+    // The address is a value, drawn apart from the words.
+    expect(box.hint).toContain(val('address', QUARRY))
+  })
+
+  it('is dead and unticked until the signer’s page can show an address, whatever was ticked', () => {
+    expect(sitePrintBox(site(QUARRY), true, 'checking')).toEqual({ label: SITE_PRINT_BOX_LABEL, checked: false, dead: true, hint: 'Checking the signer’s page…' })
+    expect(sitePrintBox(site(QUARRY), true, 'no')).toEqual({ label: SITE_PRINT_BOX_LABEL, checked: false, dead: true, hint: 'The signer’s page cannot show an address yet. This stays off until it can.' })
+    expect(sitePrintBox(site(QUARRY), true, 'unread')).toEqual({ label: SITE_PRINT_BOX_LABEL, checked: false, dead: true, hint: 'The signer’s page did not answer, so this stays off. Close this window and try again.' })
+  })
+
+  it('a send writes the print on only for a live box, ticked, on an address', () => {
+    expect(sitePrintsAtSend(site(QUARRY), true, 'yes')).toBe(true)
+    expect(sitePrintsAtSend(site(QUARRY), false, 'yes')).toBe(false)
+    for (const ready of ['checking', 'no', 'unread'] as SitePrintReady[]) expect(sitePrintsAtSend(site(QUARRY), true, ready)).toBe(false)
+    expect(sitePrintsAtSend(ranch, true, 'yes')).toBe(false)
+    expect(sitePrintsAtSend(null, true, 'yes')).toBe(false)
   })
 })
 
@@ -141,7 +190,22 @@ describe('the words', () => {
   })
 
   it('passes the plain-words rules', () => {
-    const lines = [PAPER_SITE_WORDS.none, PAPER_SITE_WORDS.title, PAPER_SITE_WORDS.lead, PAPER_SITE_WORDS.notForASiteHint, PAPER_SITE_WORDS.typeMore, PAPER_SITE_WORDS.onFileOnly, plainSentence(paperSiteSentence(site(QUARRY))), signedForSiteWords('Tallgrass Supply Co.', 'Vendor NDA', 'Nov 12')]
+    const lines = [
+      PAPER_SITE_WORDS.none,
+      PAPER_SITE_WORDS.title,
+      PAPER_SITE_WORDS.lead,
+      PAPER_SITE_WORDS.notForASiteHint,
+      PAPER_SITE_WORDS.typeMore,
+      PAPER_SITE_WORDS.onFileOnly,
+      PAPER_SITE_WORDS.kept,
+      plainSentence(paperSiteSentence(site(QUARRY))),
+      signedForSiteWords('Tallgrass Supply Co.', 'Vendor NDA', 'Nov 12'),
+      SITE_PRINT_BOX_LABEL,
+      SITE_PRINT_HINTS.off,
+      SITE_PRINT_HINTS.no,
+      SITE_PRINT_HINTS.unread,
+      plainSentence(sitePrintBox(site(QUARRY), true, 'yes')!.hint),
+    ]
     for (const line of lines) expect(plainWordsFailures(line), line).toEqual([])
   })
 })

@@ -27,6 +27,14 @@ const io = vi.hoisted(() => ({
   failAddresses: null as unknown,
   answers: [] as unknown[],
   failAnswers: false,
+  /** What the signer's page answers when asked whether it can show an address: yes, no, or no answer at all. */
+  showsSite: true as boolean | 'fail',
+}))
+vi.mock('../../lib/contracts/sitePrintReadyIo', () => ({
+  readSignerPageShowsSite: async () => {
+    if (io.showsSite === 'fail') throw new Error('Failed to fetch')
+    return io.showsSite
+  },
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -60,6 +68,9 @@ vi.mock('../../lib/contracts/personPaperSendIo', () => ({
     io.wrote.push(`wrote ${pending.plan.kind} ${pending.site ? JSON.stringify(pending.site) : 'no site'}`)
     return 'new-row'
   },
+  writePaperPrintsAddress: async (documentId: string, printsAddress: boolean) => {
+    io.wrote.push(`print ${documentId} ${printsAddress ? 'on' : 'off'}`)
+  },
 }))
 vi.mock('../../hooks/useAddressesOnFile', () => ({
   readAddresses: async () => {
@@ -75,12 +86,27 @@ vi.mock('../../hooks/useAddressLookAlikes', () => ({
 }))
 // The Send window is its own file's to test: here it draws the site's line it was handed, and its button sends.
 vi.mock('../contracts/ContractSendWindow', () => ({
-  ContractSendWindow: (p: { again?: boolean; docId: string | null; siteSlot?: ReactNode; preparePartyPaper?: (input: { signerName: string; signerEmail: string; typedCompany: string; keep: boolean }) => Promise<string> }) => (
+  ContractSendWindow: (p: {
+    again?: boolean
+    docId: string | null
+    siteSlot?: ReactNode
+    preparePartyPaper?: (input: { signerName: string; signerEmail: string; typedCompany: string; keep: boolean }) => Promise<string>
+    onRowWritten?: (docId: string) => void
+  }) => (
     <div data-testid="send-window">
       {`${p.again ? 'again' : 'first'}|${p.docId}`}
       {p.siteSlot}
       {p.preparePartyPaper ? (
-        <button type="button" onClick={() => void p.preparePartyPaper!({ signerName: 'Lena Park', signerEmail: 'lena@tallgrass.example', typedCompany: '', keep: false }).then((docId) => io.wrote.push(`sends ${docId}`))}>
+        <button
+          type="button"
+          onClick={() =>
+            void p.preparePartyPaper!({ signerName: 'Lena Park', signerEmail: 'lena@tallgrass.example', typedCompany: '', keep: false }).then((docId) => {
+              // As the real window does: the row is pinned once it is written, and the email goes after. Here it never goes.
+              p.onRowWritten?.(docId)
+              io.wrote.push(`sends ${docId}`)
+            })
+          }
+        >
           fake party send
         </button>
       ) : null}
@@ -97,6 +123,7 @@ beforeEach(() => {
   io.failAddresses = null
   io.answers = []
   io.failAnswers = false
+  io.showsSite = true
   io.addressRows = [
     { kind: 'job', id: 'j1', address: QUARRY, developmentId: 'd1', label: 'J1340' },
     { kind: 'job', id: 'j2', address: QUARRY, developmentId: 'd1', label: 'J1352' },
@@ -254,5 +281,140 @@ describe('Send a paper · the site', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Name a site…' }))
     const dialog = await screen.findByRole('dialog', { name: 'Which site is it for?' })
     await waitFor(() => expect(dialog.textContent).toContain('permission denied for table jobs_ledger'))
+  })
+})
+
+/**
+ * Part 3e: the box **Print the site's address on the paper** under a named site. Off until ticked, its words say what
+ * the signer reads, and it is dead until the signer's page can show an address.
+ */
+describe('Send a paper · the box that prints the site’s address', () => {
+  const BOX = 'Print the site’s address on the paper'
+  const box = () => screen.getByRole('checkbox', { name: BOX }) as HTMLInputElement
+  const hint = () => screen.getByTestId('contract-send-site-print-hint').textContent
+
+  it('there is no box until a site is named, then it is there, off, and says the signer reads nothing', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    expect(screen.queryByRole('checkbox', { name: BOX })).toBeNull()
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(hint()).toBe('The signer reads nothing about the site.'))
+    expect(box().checked).toBe(false)
+    expect(box().disabled).toBe(false)
+    // Left off, the send writes the print off.
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toHaveLength(2))
+    expect(io.wrote[0]).toContain('"site_prints_address":false')
+  })
+
+  it('ticked, the words say the line the signer reads, and the send writes the print on with the row', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(box())
+    expect(box().checked).toBe(true)
+    expect(hint()).toBe(`Above the paper the signer reads Site address: ${QUARRY}.`)
+    expect(io.wrote).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() =>
+      expect(io.wrote).toEqual([`wrote insert ${JSON.stringify({ site_development_id: null, site_address_key: KEY_QUARRY, site_address: QUARRY, site_prints_address: true })}`, 'sends new-row']),
+    )
+  })
+
+  it('a new site unticks the box, and taking the site off takes the box away', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(box())
+    expect(box().checked).toBe(true)
+    await pickSite('118 old', /^118 Old Quarry Trl Barn/)
+    await waitFor(() => expect(siteLine().textContent).toContain(`For the site at ${BARN}.`))
+    await waitFor(() => expect(box().disabled).toBe(false))
+    expect(box().checked).toBe(false)
+    expect(hint()).toBe('The signer reads nothing about the site.')
+    fireEvent.click(screen.getByRole('button', { name: 'Take the site off' }))
+    await waitFor(() => expect(screen.queryByRole('checkbox', { name: BOX })).toBeNull())
+  })
+
+  it('is dead and off while the signer’s page cannot show an address, and a send then writes the print off', async () => {
+    io.showsSite = false
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(hint()).toBe('The signer’s page cannot show an address yet. This stays off until it can.'))
+    expect(box().disabled).toBe(true)
+    expect(box().checked).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toHaveLength(2))
+    expect(io.wrote[0]).toContain('"site_prints_address":false')
+    cleanup()
+
+    // The page did not answer at all: the same hold, with its own reason.
+    io.showsSite = 'fail'
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(hint()).toBe('The signer’s page did not answer, so this stays off. Close this window and try again.'))
+    expect(box().disabled).toBe(true)
+  })
+
+  it('once the row is written the site and the box stand as sent: no press changes them before the send is pressed again', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(box())
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toHaveLength(2))
+    // The email has not gone (a send that failed after the write). The window is still open on the same row.
+    await waitFor(() => expect(siteLine().textContent).toBe(`For the site at ${QUARRY}.Kept with the paper when Send email was pressed.`))
+    expect(screen.queryByRole('button', { name: 'Change the site…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Take the site off' })).toBeNull()
+    expect(box().checked).toBe(true)
+    expect(box().disabled).toBe(true)
+    expect(hint()).toBe(`Above the paper the signer reads Site address: ${QUARRY}.`)
+  })
+
+  it('a paper sent with no site stands as sent too', async () => {
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(siteLine().textContent).toBe('This paper names no site.Kept with the paper when Send email was pressed.'))
+    expect(screen.queryByRole('button', { name: 'Name a site…' })).toBeNull()
+  })
+
+  it('a copy that was there already takes the box as the office left it, and is written only when it differs', async () => {
+    // A copy for the site under this contact, which the look before the email window did not find (no contact yet).
+    io.personDocuments = [paper({ id: 'at-quarry', site_address_key: KEY_QUARRY, site_prints_address: false })]
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(box())
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toEqual(['print at-quarry on', 'sends at-quarry']))
+    cleanup()
+
+    // Left off on a copy that prints nothing: nothing is written.
+    io.wrote = []
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toEqual(['sends at-quarry']))
+    cleanup()
+
+    // Left off on a copy that printed it: the print is turned off.
+    io.wrote = []
+    io.personDocuments = [paper({ id: 'at-quarry', site_address_key: KEY_QUARRY, site_prints_address: true })]
+    await openOn(/^Lena Park/)
+    await screen.findByTestId('send-window')
+    await pickSite('118 old', /^118 Old Quarry Trl, Sampleton, TX/)
+    await waitFor(() => expect(box().disabled).toBe(false))
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.wrote).toEqual(['print at-quarry off', 'sends at-quarry']))
   })
 })

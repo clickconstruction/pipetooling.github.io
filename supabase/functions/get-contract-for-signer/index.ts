@@ -8,6 +8,7 @@ import type { FormSchema } from '../_shared/formSchema.ts'
 import { paperForName } from '../_shared/companyPaper.ts'
 import { isPartyPaperName, paperAudience, paperForWords, paperWord } from '../_shared/paperSigner.ts'
 import { JOB_PAPER_NOT_READY, clausePaperFor, isJobPaperNotReady, isSettingsPaperBare, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
+import { printedSiteAddress } from '../_shared/paperSitePrint.ts'
 
 const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
@@ -51,7 +52,9 @@ serve(async (req) => {
     const sample = sampleStateFromToken(raw)
     if (sample) {
       const sr = sampleContractResponse(sample)
-      return new Response(JSON.stringify(sr.body), { status: sr.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      // The sample paper names no site. The key is in the answer all the same, as it is in a real paper's (#439).
+      const body = sr.status === 200 ? { ...sr.body, site_address: null } : sr.body
+      return new Response(JSON.stringify(body), { status: sr.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -71,7 +74,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id, applied_contract_template_document_id, job_required_paper_id, party_contact_id, party_name, signer_name, signer_title, signing_for',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id, applied_contract_template_document_id, job_required_paper_id, party_contact_id, party_name, signer_name, signer_title, signing_for, site_address, site_prints_address',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -105,6 +108,8 @@ serve(async (req) => {
       signer_title: string | null
       signing_for: string | null
       job_required_paper_id: string | null
+      site_address: string | null
+      site_prints_address: boolean | null
     }
     // A trade partner company's paper (GC mode, B6-b-i) names the company, never its stored name.
     const companyName = r.company_id
@@ -228,6 +233,9 @@ serve(async (req) => {
         signer_title: paperWord(r.signer_title),
         signing_for: paperWord(r.signing_for),
         audience: paperAudience(r, partyContact),
+        // The site's address, only when the office ticked the box that prints it (punch list #439); else null. Nothing
+        // else of a site is read here or handed on: not its key, not its development, not that the paper names one.
+        site_address: printedSiteAddress(r),
         document_name: r.document_name,
         signing_body_html: r.signing_body_html,
         signing_body_format: r.signing_body_format,
