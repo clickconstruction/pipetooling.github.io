@@ -584,6 +584,16 @@ export function weOweWords(n: number): string {
 }
 
 /**
+ * What we owe a person today, as a sentence for the statement's foot. `weOweWords` is a cell's word, and in a
+ * sentence it read *We owe {name} settled today.* (finding 313, a walk of 2026-11-27).
+ */
+export function weOweTodaySentence(name: string, n: number): string {
+  const who = name || 'them'
+  if (n === 0) return `We owe ${who} nothing today.`
+  return n < 0 ? `We owe ${who} nothing today. They are paid over by ${money(n)}.` : `We owe ${who} ${money(n)} today.`
+}
+
+/**
  * The address a person's statement is opened at: a roster person's own id, else the key as it is.
  * `ledgerSubKeyFromParam` reads it back against the people the ledger knows.
  */
@@ -732,7 +742,7 @@ export function buildSubStatement(sheets: readonly LedgerSheet[], key: string, r
 export function statementCheckWords(st: SubStatement, rosterBalanceDue: number | null | undefined): { agrees: boolean | null; words: string } {
   const held = st.credit > 0 ? ` They hold a credit of ${money(st.credit)}.` : st.credit < 0 ? ` Their credit is short by ${money(st.credit)}.` : ''
   const over = (st.overPaid > 0 ? ` ${money(st.openOnSheets)} is still open on sheets and ${money(st.overPaid)} was paid past a sheet's total.` : '') + held
-  if (rosterBalanceDue == null || !Number.isFinite(rosterBalanceDue)) return { agrees: null, words: `We owe ${st.name || 'them'} ${weOweWords(st.owedToday)} today.${over}` }
+  if (rosterBalanceDue == null || !Number.isFinite(rosterBalanceDue)) return { agrees: null, words: `${weOweTodaySentence(st.name, st.owedToday)}${over}` }
   const agrees = Math.abs(cents(rosterBalanceDue) - st.openOnSheets) < 0.005
   return agrees
     ? { agrees: true, words: `Agrees with People → Subs, where Balance due reads ${money(rosterBalanceDue)}.${over}` }
