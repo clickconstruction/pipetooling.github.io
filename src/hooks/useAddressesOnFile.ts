@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { addressesOnFile, type AddressOnFile, type AddressRow } from '../lib/addresses/addressesOnFile'
+import { withRetry, type RetryOptions } from '../utils/errorHandling'
 
 /**
  * The addresses the company already has, for the job form's address box (punch list #439, piece 1). One read of
@@ -23,16 +24,30 @@ let reading: Promise<Read> | null = null
 
 type Page = { data: unknown; error: unknown }
 
-/** Every row of a table, a thousand at a time, since one read answers a thousand at most. */
-export async function everyRow(table: string, select: string, orderBy = 'id'): Promise<Record<string, unknown>[]> {
+/**
+ * Every row of a table, a thousand at a time, since one read answers a thousand at most.
+ *
+ * Each page is tried again when it fails in a way that is safe to send again (`withRetry`, the rule every other read
+ * of the app goes by, through `withSupabaseRetry`). Finding 343, the simulator's looks of 2026-11-27: the picker of
+ * a site asks three tables at once, each waits on the sign-in lock, and on a slow phone one of them lost it. A bare
+ * read threw that at once, so the picker opened on the red line with **Retry** on two opens of two. A lost lock is
+ * the one failure always safe to send again, since the request never left. It is now a quiet second try.
+ *
+ * A refusal is not tried again. What is thrown in the end is the read's own error, as before, so every caller's
+ * words for a failure are the ones it had.
+ */
+export async function everyRow(table: string, select: string, orderBy = 'id', retry: RetryOptions = {}): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = []
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = (await (supabase as unknown as SupabaseClient)
-      .from(table)
-      .select(select)
-      .order(orderBy, { ascending: true })
-      .range(from, from + PAGE - 1)) as Page
-    if (error) throw error
+    const data = await withRetry(async () => {
+      const { data, error } = (await (supabase as unknown as SupabaseClient)
+        .from(table)
+        .select(select)
+        .order(orderBy, { ascending: true })
+        .range(from, from + PAGE - 1)) as Page
+      if (error) throw error
+      return data
+    }, retry)
     const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : []
     out.push(...rows)
     if (rows.length < PAGE) return out
