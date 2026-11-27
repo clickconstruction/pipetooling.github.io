@@ -2,7 +2,7 @@
 name: "The Bridge: a desk behind every stage card"
 number: 192
 group: ready
-status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering · 2026-11-25 (UTC): write A answered yes in the managing session, not built; write B is not on that record
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering · 2026-11-25 (UTC): write A answered yes in the managing session; write B is not on that record · 2026-11-27: write A's ground built as v2.8709 (the table and its one function, a migration alone, not pushed); its screens are the next PR
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,9 +14,9 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: Build write A, a Build job marked waits, with a reason, as one PR with a migration (S to M). The owner still answers write B's yes-or-no line under § The two writes, drawn; a yes on write B is one migration and a strip on four desks.
+next: Push write A's migration (v2.8709) on Taunya's yes, then build its screens as a second PR that owes nothing (S to M): Name why it waits on a stalled Build row, the window, Lift the wait, the chip on the job's Stages card and the fact row in the job window. The owner still answers write B's yes-or-no line under § The two writes, drawn; a yes on write B is one migration and a strip on four desks.
 size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker; the four desks are built; left: write A (S to M)
-blocker: Nothing for write A. The owner's yes or no on write B is open, drawn as a mock-up beside this card (2026-11-09), and the card recommends no for now. The thresholds are settled as his numbers.
+blocker: Write A's screens wait on the push of its migration (v2.8709), which waits on Taunya's yes. The owner's yes or no on write B is open, drawn as a mock-up beside this card (2026-11-09), and the card recommends no for now. The thresholds are settled as his numbers.
 ask: owner · decide · Write B: record a desk's plan on bridge_calls with a kind marker, or keep recording with the lit link only?
 opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
 ---
@@ -162,7 +162,7 @@ he planned on a desk that was not the link.
   the crew? Yes or no.
   **Answered 2026-11-25 (UTC) in the managing session:** *Yes.*
   It is quoted from that session's record of the user's answers.
-  Write A is not built, and it is the piece to build next, as drawn above.
+  Write A is built in two PRs. The first is its ground, v2.8709: the table `job_build_waits` and the one function `set_job_build_wait`, a migration alone, since a PR that held the screens too would make every deploy wait on its push. The second is the screens, as drawn above.
   The card calls it one small PR, and its list is a table with the four fences, the desk's write, a fifth group in `buildDesk.ts` and the chip and fact row on two job surfaces, so it is sized S to M here.
 - Write B: record a desk's plan on `bridge_calls` with a kind marker, or keep recording with the
   lit link only? Yes or no.

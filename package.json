@@ -138,6 +138,7 @@
     "test:pg:lien-bill-months": "bash scripts/pgtest-lien-bill-months.sh",
     "test:pg:lien-closed-days": "bash scripts/pgtest-lien-closed-days.sh",
     "test:pg:lien-run-left-out": "bash scripts/pgtest-lien-run-left-out.sh",
+    "test:pg:job-build-waits": "bash scripts/pgtest-job-build-waits.sh",
     "test:pg:lien-print-stands": "bash scripts/pgtest-lien-print-stands.sh",
     "test:pg:lien-notice-record-delete": "bash scripts/pgtest-lien-notice-record-delete.sh",
     "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",
