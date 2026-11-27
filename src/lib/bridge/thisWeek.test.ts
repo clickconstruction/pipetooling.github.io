@@ -41,7 +41,7 @@ describe('buildThisWeek', () => {
     })
     expect(moves.map((m) => m.key)).toEqual(['bill', 'chase', 'approve', 'price', 'pct', 'field_day', 'overhead', 'bid'])
     expect(moves[0]).toMatchObject({ title: 'Bill the finished work', why: '$228k finished and not yet billed on 14 jobs; the biggest lever on both lines', lever: '+$228k owed to you', door: { to: '/jobs?tab=stages' } })
-    expect(moves[1]).toMatchObject({ title: 'Chase the 48 late invoices', lever: '$228k', door: { to: '/jobs?tab=billing' } })
+    expect(moves[1]).toMatchObject({ title: 'Chase the 48 late invoices', lever: '$228k', door: { to: '/jobs?tab=stages&stagesSection=billed' } })
     expect(moves[2]).toMatchObject({ title: 'Approve the 585h pending', why: '104 sessions; the top line and payroll ($7,448/week) read low until then', lever: 'accuracy' })
     expect(moves[3]).toMatchObject({ title: 'Price jobs 912, 1067, 1044 and 1 more', lever: '4 jobs' })
     expect(moves[4]).toMatchObject({ title: 'Set % complete on 6 jobs', lever: '≈ $20.3k' })

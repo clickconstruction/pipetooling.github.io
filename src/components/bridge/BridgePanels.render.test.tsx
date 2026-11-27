@@ -87,7 +87,7 @@ describe('the chart panels on a phone (v2.8279)', () => {
     const row = cells('bridge-owed-sources')
     expect(row.slice(0, 4)).toEqual(['input', 'read from', 'what can be wrong', ''])
     expect(row[4]).toBe('owed to you')
-    expect(row[7]).toBe('Open Billing')
+    expect(row[7]).toBe('Open Billed')
     unmount()
   })
 
@@ -106,7 +106,7 @@ describe('the chart panels on a phone (v2.8279)', () => {
       expect(table.textContent).not.toContain('what can be wrong')
       const row = cells('bridge-owed-sources')
       expect(row[0]).toBe('owed to you')
-      expect(row[1]).toBe('Open Billing')
+      expect(row[1]).toBe('Open Billed')
       // Every source and every door is still there.
       expect(screen.getByRole('link', { name: 'Open Collections' }).getAttribute('href')).toBe('/jobs?tab=collections')
       expect(screen.getAllByRole('link')).toHaveLength(owed().sources.length)

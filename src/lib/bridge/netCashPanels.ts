@@ -18,7 +18,7 @@ const signed = (n: number): string => `${n >= 0 ? '+' : ''}${shortK(n)}`
 
 export const NET_DOORS = {
   banking: { to: '/banking', label: 'Sort' },
-  billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
+  billing: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' },
   approvals: { to: '/people?tab=hours&approvals=1', label: 'Approve' },
   bridge: { to: '/bridge', label: 'The window' },
 } as const
@@ -74,7 +74,7 @@ export type CashPanel = { waterfall: PanelBar[]; sources: PanelSourceRow[]; lowe
 
 export const CASH_DOORS = {
   bank: { to: '/bridge', label: 'Read again' },
-  billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
+  billing: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' },
   banking: { to: '/banking', label: 'Sort' },
   approvals: { to: '/people?tab=hours&approvals=1', label: 'Approve' },
   sheets: { to: '/people?tab=subs', label: 'Open sheets' },

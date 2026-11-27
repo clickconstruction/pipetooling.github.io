@@ -332,8 +332,8 @@ export function BridgeBillDesk(props: BridgeBillDeskProps) {
       folds={folds}
       footer={
         <div>
-          <Link to="/jobs?tab=billing" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: '0.84rem', color: 'var(--text-link)', textDecoration: 'none' }} data-testid="bridge-bill-open-billing">
-            Open Billing ›
+          <Link to="/jobs?tab=stages&stagesSection=readyToBill" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: '0.84rem', color: 'var(--text-link)', textDecoration: 'none' }} data-testid="bridge-bill-open-ready">
+            Open Ready to bill ›
           </Link>
         </div>
       }

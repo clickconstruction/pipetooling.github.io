@@ -3,7 +3,7 @@ title: bill a customer and get paid
 category: Billing & Money
 roles: assistant, master_technician, primary
 keywords: billing, ready to bill, invoice, stripe, bill customer, paid, accounts receivable, record payment, cash, check, paid outside stripe
-where: /jobs?tab=billing
+where: /jobs?tab=stages
 order: 10
 ---
 Every job moves through one pipeline. This guide covers the billing half, how a working job becomes money in the bank.
@@ -384,3 +384,16 @@ Stripe and emailed invoices need a customer email. The app now flags the gap ear
 - On **Jobs → Pipeline**, an amber {{chip:yellow|No email (N)}} chip appears by the section chips. It shows whenever Ready to Bill jobs are missing one. You click it for the list, then open Edit Job to fix.
 - Marking a job **Ready to Bill** without an email shows a heads-up toast right then.
 - If you reach **Bill Customer** anyway, an amber banner at the top lets you **type the email right there**. It saves to the job, and optionally to the customer's record if that is blank too. Stripe billing unlocks immediately, with no reopening.
+
+## Where the Billing tab went
+
+The Jobs page had a **Billing** tab. It listed every open job with its line items. That tab is gone. An old link to it opens the Pipeline.
+
+Most of what it showed has a home:
+
+- A job's line items are in the job's window, on the **Bill** tab.
+- A job's paid, billed and unbilled money is on its Pipeline row.
+- Every job's money in one list is on **Job Summary**.
+- A job's team hours and sub labor are on **Job Summary** too.
+
+Two things left with the tab. The Pipeline's search does not read a line item's words. No screen flags a job with no labor recorded.

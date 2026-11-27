@@ -201,8 +201,7 @@ export const stagesOpenRowStyle: CSSProperties = {
  * (which must be position: relative and add STAGES_EDIT_MODE_RAIL_WIDTH of
  * left padding) rather than as an extra table column, so no colgroup/colSpan
  * bookkeeping; the cell box spans the full row height, so the rail does too.
- * The Billing tab (v2.1635) reuses it as its whole actions cell with
- * side: 'right' — rail on the row's right edge, divider on its left.
+ * side: 'right' puts the rail on the row's right edge, divider on its left.
  */
 export const STAGES_EDIT_MODE_RAIL_WIDTH = 18
 

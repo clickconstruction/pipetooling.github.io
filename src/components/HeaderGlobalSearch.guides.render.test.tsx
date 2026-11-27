@@ -26,7 +26,7 @@ vi.mock('../hooks/useAuth', async () => {
 // The guides and the punch list are Vite-only modules the box loads on its first open (PR 3): two guides and one row.
 vi.mock('../lib/helpGuideRegistry', () => ({
   HELP_GUIDES: [
-    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=billing', body: 'x' },
+    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=stages', body: 'x' },
     { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk'], order: 2, body: 'x' },
   ],
 }))
@@ -77,9 +77,9 @@ describe('HeaderGlobalSearch — guides and the punch list', () => {
     const row = screen.getByTestId('go-anywhere-door-guide:bill-a-customer-and-get-paid')
     expect(row.textContent).toContain('bill a customer and get paid')
     // The Pages group comes first, lit; the guide's row carries its second press.
-    expect(screen.getByTestId('go-anywhere-door-page:/jobs?tab=billing')).toBeTruthy()
+    expect(screen.getByTestId('go-anywhere-door-page:/jobs?tab=stages')).toBeTruthy()
     fireEvent.click(screen.getByTestId('go-anywhere-there-guide:bill-a-customer-and-get-paid'))
-    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/jobs?tab=billing'))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/jobs?tab=stages'))
   })
 
   it('# finds a to-do for the owner and the developers, and nothing for an assistant', async () => {
