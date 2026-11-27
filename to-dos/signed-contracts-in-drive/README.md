@@ -11,7 +11,7 @@ summary: >
   within ten minutes, and a paper it cannot file waits with its reason and its door. The jobs drive and
   Find a file are open to estimators, who cannot read a contract in the app today, so filing there lets
   an estimator read it. The owner was told that first and chose the job's folder.
-next: The owner's look at a signed contract's Drive line and at the card on Where files go. Then his word to retire the card.
+next: The walking thread's look, reads only, at a signed contract's Drive line, the Signed contracts card on Where files go and the Signed contract chip in Find a file. On a clean look the card is retired: Taunya's word of 2026-11-27, *All ten stand*, to the pick *Yes, on a clean look*.
 size: M as a train of six (S · M · S · M · S · S); shipped: PR 1 to 6 and one fix; left: the owner's look (XS)
 blocker: None. All six PRs and the fix are merged and live.
 opinion: your call — the code is done and walked; the look is yours

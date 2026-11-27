@@ -11,7 +11,7 @@ summary: >
   named document name its evidence record: the document shows the record's date, hash and audio
   door, the record shows "transcript on file" with a door to the document, and the case brief and
   search carry the pair.
-next: Nothing left to build or deploy. On the owner's word, the link goes on this week's transcripts through the seat (a section-free `plan_person_doc { doc_id, evidence_id }` per transcript, `counsel_only: true` where the record is); then the owner's look and delete the file.
+next: The look at the two chips on the ZZ Test person (People → HR, the Documents view and the Evidence tab), then delete the file. Answered 2026-11-27 by Taunya, *All ten stand*, to the pick *No*: the transcripts of the case this card was written for are not tied to their records.
 size: S
 blocker: None.
 opinion: build — one nullable column and two chips, and it turns a pile of transcripts into evidence a reader can open from either side

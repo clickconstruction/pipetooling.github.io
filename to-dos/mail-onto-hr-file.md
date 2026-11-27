@@ -11,7 +11,7 @@ summary: >
   Let the mail tag take a person as its target: each mail becomes an HR entry on its day with the
   sender, the recipients, the subject and the body as plain text, the entry carries the Gmail id
   and thread id, and a later mail in the thread follows by itself as the job tag's does.
-next: Nothing left to build or deploy. The October mails of the case go on as one tag each on the owner's word (`plan_mail_tag` with `tag.person` from the login's box, then `apply_mail_tag`); then the owner's look and delete the file. Not seen live: a later mail following into a tagged thread (no test login writes to a thread; the writes test holds the follow).
+next: The look at the one conversation line on the ZZ Test person's Timeline (People → HR), then delete the file. Answered 2026-11-27 by Taunya, *All ten stand*, to the pick *No*: the October mails of the case are not tagged onto the file. Not seen live: a later mail following into a tagged thread (no test login writes to a thread; the writes test holds the follow).
 ver: v2.6715
 size: S
 blocker: None.
