@@ -20,6 +20,10 @@ function client(a: { rows?: Answer; rpc?: Answer[]; throws?: boolean }) {
       calls.push(['select', cols])
       return chain
     },
+    eq: (col: string, v: string) => {
+      calls.push(['eq', [col, v]])
+      return chain
+    },
     is: (col: string, v: null) => {
       calls.push(['is', [col, v]])
       return chain
@@ -65,6 +69,20 @@ describe('the read', () => {
     expect(await buildWaitsIoOver(client({ rows: { data: null, error: { message: 'relation "public.job_build_waits" does not exist', code: '42P01' } } }).db).loadOpen()).toBeNull()
     expect(await buildWaitsIoOver(client({ throws: true }).db).loadOpen()).toBeNull()
     expect(await buildWaitsIoOver(client({}).db).loadOpen()).toEqual([])
+  })
+})
+
+describe('the read of one job, for the job window', () => {
+  it('asks for that job’s wait that is not lifted', async () => {
+    const c = client({ rows: { data: [{ job_id: 'j878', reason: 'materials', note: null, since_at: '2026-10-26T18:00:00.000Z', marked_by_name: 'Dana Office' }], error: null } })
+    expect(await buildWaitsIoOver(c.db).loadOpenForJob('j878')).toEqual({ jobId: 'j878', reason: 'materials', note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' })
+    expect(c.calls).toEqual([['from', 'job_build_waits'], ['select', 'job_id, reason, note, since_at, marked_by_name'], ['eq', ['job_id', 'j878']], ['is', ['lifted_at', null]]])
+  })
+
+  it('a job that does not wait, a refused read and one that never came back are all null', async () => {
+    expect(await buildWaitsIoOver(client({}).db).loadOpenForJob('j878')).toBeNull()
+    expect(await buildWaitsIoOver(client({ rows: { data: null, error: { message: 'permission denied for table job_build_waits', code: '42501' } } }).db).loadOpenForJob('j878')).toBeNull()
+    expect(await buildWaitsIoOver(client({ throws: true }).db).loadOpenForJob('j878')).toBeNull()
   })
 })
 

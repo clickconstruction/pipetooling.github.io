@@ -1835,7 +1835,7 @@ export default function DevelopmentPage() {
         </Card>
 
         {/* Papers for this site (punch list #439): what outside companies were sent for this development or a job in it. Drawn only when there is one. */}
-        <DevelopmentSitePapers developmentId={dev.id} addresses={siteAddresses} />
+        <DevelopmentSitePapers developmentId={dev.id} addresses={siteAddresses} clientName={whoIsThis} siteName={dev.name} />
 
         {/* Secrecy on this site (punch list #439, piece 4): one paper our own people sign before any job here opens. The office presses, the estimator reads. */}
         <SiteSecrecy site={{ developmentId: dev.id }} role={role} testId="development-site-secrecy" />

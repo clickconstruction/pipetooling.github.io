@@ -984,6 +984,7 @@ Since v2.8162 the party's own page lists them: a supply house's window has a **P
 That list reads `person_contract_documents` itself, every kind and every state, under the reader's own policy, so it changes no policy and an estimator is answered an outside company's papers alone.
 An estimator opens a signed paper's record from its name there.
 Since v2.8665 (punch list #439) the same gate draws **Papers for this site** on a job's Documents tab, and since v2.8669 on a development's page: the outside companies' papers that name the site, read from `person_contract_documents` under the reader's own policy with no press on a line, so no policy changed for it.
+Since v2.8710 **The proof** and **Make the packet** on a development's page are drawn by that same gate, `canReadPartyPapers`, for the office and an estimator: the packet reads, and its **Print** files a copy under Sent copies by `fileSentCopy`, which that table's own policy decides.
 Since v2.8693 a development's page draws **Secrecy on this site** for the office and the estimator (`canReadSecrecy`) and its presses for the four office roles alone (`canTurnSecrecy`), the same line the database holds in the functions of `20261127052337_site_secrecy.sql`.
 Since v2.8378 (punch list #403, the owner's second decision, `20261123184149_estimator_reach.sql`) an estimator who is not a digital twin and not in training also reads that record's two other reads for an outside company's paper: the form's layout (`contract_form_templates_estimator_outside`, a form such a paper is filled on) and the signature's image (`contract_signer_signatures_estimator_outside` on `storage.objects`, which asks `estimator_reads_paper`).
 A training estimator still reads the paper's row and reads neither, and the four roles read both as before.
@@ -1608,7 +1609,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **The text** (PR 2, v2.7142, `docs/migrations/20261113140000_receipt_texts.md`): the switch `app_settings` `receipt_texts_v1` is read by every signed-in user and changed by the owner or a dev alone (`master_or_dev_update_receipt_texts`, `is_master_or_dev()`);
   Settings → Phone and texts draws its card for those two roles (`canSwitchTexts`).
   The trigger `receipt_texts_stamp` writes the day it went on from the database's clock and turns a value that does not read into off, for any writer.
-  `receipt_texts_due()` and the `receipt-request` function run for the service role alone (the function by `X-Cron-Secret`);
+  `receipt_texts_due()` and the `receipt-request` function's sweep run for the service role alone (the sweep by `X-Cron-Secret`);
+  since v2.8697 the function has one other caller, the office's **Text again**, below;
   the sweep writes the request's text columns, and the Team queue reads them under the request's own policy, so the office sees every charge's line and a holder only their own.
   **The office's items** (v2.7148, `docs/migrations/20261113150000_receipt_requests_office.md`): `receipt_requests_to_chase()` hands the office (`is_office_staff()`, never an archived caller) each open request the text cannot finish, with the charge's store, amount and day, which an assistant does not read on `mercury_transactions`;
   everyone else gets no rows.

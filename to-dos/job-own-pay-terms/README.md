@@ -139,7 +139,7 @@ Screens that read **no** calendar yet, the payer's or the job's. None of this is
 - In hand in another session (branch `pay-calendar-last-readers`): the Development page's Money
   look, Messages' They owe us, the residential flow, Quickfill's Billed awaiting payment.
 - Parked on #323: the payment forecast email and the Money waiting email.
-- Waiting on #318: the Bridge's Collect pile and cash runway, the Dashboard's Money in strip, the
+- Waiting on #318 (closed 2026-11-27 with all of it built; its card lives in git history at the deleting commit): the Bridge's Collect pile and cash runway, the Dashboard's Money in strip, the
   Monday Bridge email.
 - Not built on #323: the Needs you line, GC Review's *expected pay by* box, the *~N days* on a
   customer's profile.

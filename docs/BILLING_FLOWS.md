@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-11-25
+last_updated: 2026-11-27
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -351,7 +351,7 @@ All routes render inside the authed layout in `src/App.tsx`. Billing-relevant:
 
 | Route | Surface | Billing-relevant params |
 |---|---|---|
-| `/jobs` | `src/pages/Jobs.tsx` | `?tab=` `stages` \| `billing` \| `reports` \| `sub_sheet_ledger` \| `combined-labor` \| `teams-summary` \| `parts` \| `job-summary` \| `inspections` (union also has a vestigial `billed`; legacy redirects: `receivables`→`reports`, `ledger`→`billing`, `billed`→`stages`, `labor`→`sub_sheet_ledger`; role redirects strip `combined-labor`/`teams-summary` for assistant/superintendent). Deep links: `?edit=<jobId>` (opens Edit Job), `?editLabor=<hcp>`, `?editParts=<jobId>`, `?openBankPayments=true|1` (opens the AR/Bank Payments modal on Stages), `?customer=<id>` (filter), `?teamLaborJob=…`, `?newJob=true&project=<id>` |
+| `/jobs` | `src/pages/Jobs.tsx` | `?tab=` `stages` \| `reports` \| `sub_sheet_ledger` \| `combined-labor` \| `teams-summary` \| `parts` \| `job-summary` \| `inspections` (union also has a vestigial `billed`; legacy redirects: `receivables`→`reports`, `billing`→`stages` and `ledger`→`stages` since the Billing tab left in v2.8698, `billed`→`stages`, `labor`→`sub_sheet_ledger`; role redirects strip `combined-labor`/`teams-summary` for assistant/superintendent). Deep links: `?edit=<jobId>` (opens Edit Job), `?editLabor=<hcp>`, `?editParts=<jobId>`, `?openBankPayments=true|1` (opens the AR/Bank Payments modal on Stages), `?customer=<id>` (filter), `?teamLaborJob=…`, `?newJob=true&project=<id>` |
 | `/accounts-receivable` | `src/pages/JobsAccountsReceivable.tsx` | none — thin wrapper that mounts `BankPaymentsModal` always-open over the billed rows (role-gated by `canRoleSeeArBankUnallocatedOrgNudge`); linked from the Dashboard pinned quick row and Quickfill |
 | `/banking` | `src/pages/Banking.tsx` | `?product=mercury|stripe` (`stripe` = a dev and the controller since v2.6761) + `?tab=`. Mercury tabs: `ledger` \| `sorting` \| `drag_sort` \| `accounting` \| `card_review` (alias `user_review`, pre-v2.2899) \| `category_review` \| `reconciliation` \| `visuals` (master_technician is pinned to Mercury, off `ledger`; the controller reaches `ledger` and Stripe since v2.6761). Stripe tabs: `invoices` \| `data` (the read-only panels above). Feeds payments only indirectly (Mercury sync + sorting config used by the AR modal). |
 | `/quickfill` | `src/pages/Quickfill.tsx` | no URL params; billing sections: "Billed Awaiting Payment", "Complete, no Total Bill", unallocated-deposits banner linking to `/accounts-receivable` |

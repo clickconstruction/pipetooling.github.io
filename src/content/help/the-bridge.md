@@ -214,14 +214,16 @@ That line is a chip on the job's card on Jobs → Stages. The job's Activity als
 
 To end the wait, press **Waiting, with a reason** at the foot and open the job's row. Press **Lift the wait ›**. The job counts on the window again, and its Activity gets a second line.
 
+The office can end the wait without the Bridge. The job's Edit tab has a **Waits** row with {{button:outline|Lift the wait}}. Read [the Edit tab reads as rows](/help/job-window-tabs#the-edit-tab-reads-as-rows).
+
 ## Bill, broken down
 
 Press Bill's row on the pipe, or **Break it down** on the Bill card. A window opens on the finished work that has no bill. The headline says how many dollars that is. One line under the headline says what the office bills a week. The same line says how many weeks of work the pile is.
 
 **Do this week** lists up to four things, each with one press.
 
-- The first row counts the jobs the office marked ready to bill. Press **Open Billing**.
-- The next rows name the two largest jobs with finished work and no bill. **Bill it** opens Billing for a job never billed. **Open the bill** opens Billing for a job billed in part.
+- The first row counts the jobs the office marked ready to bill. Press **Open Ready to bill**.
+- The next rows name the two largest jobs with finished work and no bill. **Bill it** opens the job's window for a job never billed. **Open the bill** opens the job's window for a job billed in part.
 - The last row counts the jobs with hours and no price. Press **Set prices** to list those jobs under the row. Each job has **Price the job ›**, which opens the job window.
 
 **Did the customer get these?** counts the bills marked billed by hand with no send on record. Press the row's button to list those bills under the row. Press a bill for the read that proves it and its door.
@@ -235,7 +237,7 @@ Four presses at the foot open the rest.
 - **What waiting costs** says what one more week of sitting costs. **Billable today** lists the ready jobs there. **The rule, lately** opens the table of every bill and its lag.
 - **How this is counted** gives the rules.
 
-**Open Billing ›** sits at the bottom. Nothing records here. Press {{button:outline|×}} or the Escape key to close the window.
+**Open Ready to bill ›** sits at the bottom. Nothing records here. Press {{button:outline|×}} or the Escape key to close the window.
 
 ## Collect, broken down
 
@@ -257,7 +259,7 @@ Three presses under the lists open the rest.
 - **What is in the pile** holds two tiles and the bar by where each bill stands. Everyone else is one line there, above what slows Collect before any call.
 - **How this is counted** gives the rules for a customer's pace, and for late and doubtful.
 
-One line at the foot says what the sheet asks for. **Copy the call sheet** puts the rows on the clipboard. **Open Billing** opens Billing. Esc closes the window.
+One line at the foot says what the sheet asks for. **Copy the call sheet** puts the rows on the clipboard. **Open Billed** opens the Pipeline's Billed stage. Esc closes the window.
 
 ## The dial
 

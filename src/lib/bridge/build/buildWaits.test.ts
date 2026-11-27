@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
+import { sentenceParts } from '../../valuesInPlace'
 import {
   BUILD_WAIT_NOTE_MAX,
   BUILD_WAIT_REASONS,
@@ -11,6 +12,8 @@ import {
   EMPTY_BUILD_WAIT_DRAFT,
   buildWaitChipWords,
   buildWaitDraftHold,
+  buildWaitFactNote,
+  buildWaitFactSentence,
   buildWaitFactWords,
   buildWaitLiftedWords,
   buildWaitMarkedWords,
@@ -50,6 +53,16 @@ describe('the words on the desk, the card and the job window', () => {
   it('the fact row names the day, the reason and who, by first name', () => {
     expect(buildWaitFactWords(wait())).toBe('Since Oct 26 · the GC is not ready for us · Dana')
     expect(buildWaitFactWords(wait({ markedByName: '' }))).toBe('Since Oct 26 · the GC is not ready for us')
+    // The job window draws the day, the reason and the name apart from the words (v2.8726).
+    expect(sentenceParts(buildWaitFactSentence(wait())).filter((p) => typeof p !== 'string')).toEqual([
+      { kind: 'since', text: 'Oct 26' },
+      { kind: 'reason', text: 'the GC is not ready for us' },
+      { kind: 'who', text: 'Dana' },
+    ])
+    // A line typed beside a picked reason is the row's second line. Another reason is its own words already.
+    expect(buildWaitFactNote(wait({ note: ' Slab pour moved. ' }))).toBe('Slab pour moved.')
+    expect(buildWaitFactNote(wait({ reason: 'other', note: 'The permit is with the city.' }))).toBe('')
+    expect(buildWaitFactNote(wait())).toBe('')
   })
 
   it('the why-line says what stops being counted and what still is', () => {

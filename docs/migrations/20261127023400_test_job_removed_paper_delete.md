@@ -136,3 +136,5 @@ Each write below is a write on prod and waits on its own yes.
 4. Press a grey **Delete…**. Nothing opens.
 5. **On its own yes**, press a live **Delete…**. The confirm names the paper and its button reads **Delete the paper**. Confirm. The toast reads the paper's name and *was deleted.* The line's count drops by one.
 6. Read `job_required_papers` for the job through the dev seat: the row is not there, and every row that drew grey stands. Tell `fixing` the count deleted, the count that stay, and each reason.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10003.

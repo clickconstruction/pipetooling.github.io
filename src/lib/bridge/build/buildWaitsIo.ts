@@ -13,6 +13,8 @@ import { buildWaitReasonOf, type BuildWait, type BuildWaitReason } from './build
 export type BuildWaitsIo = {
   /** Every wait that is not lifted, or null when the read was refused. */
   loadOpen: () => Promise<BuildWait[] | null>
+  /** One job's wait that is not lifted, for the job window's fact row (v2.8726). Null when the job does not wait, and when the read was refused. */
+  loadOpenForJob: (jobId: string) => Promise<BuildWait | null>
   mark: (jobId: string, reason: BuildWaitReason, note: string) => Promise<void>
   lift: (jobId: string) => Promise<void>
 }
@@ -50,6 +52,16 @@ export function buildWaitsIoOver(client: SupabaseClient): BuildWaitsIo {
         const { data, error } = await client.from('job_build_waits').select('job_id, reason, note, since_at, marked_by_name').is('lifted_at', null).order('since_at', { ascending: false }).limit(500)
         if (error) return null
         return ((data ?? []) as WaitRow[]).map(buildWaitFromRow).filter((w): w is BuildWait => w !== null)
+      } catch {
+        return null
+      }
+    },
+    async loadOpenForJob(jobId) {
+      try {
+        const { data, error } = await client.from('job_build_waits').select('job_id, reason, note, since_at, marked_by_name').eq('job_id', jobId).is('lifted_at', null).limit(1)
+        if (error) return null
+        const row = ((data ?? []) as WaitRow[])[0]
+        return row ? buildWaitFromRow(row) : null
       } catch {
         return null
       }

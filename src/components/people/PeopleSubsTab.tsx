@@ -26,6 +26,7 @@ import { buildSubOwedBreakdown, owedCsv, owedCsvFileName, owedMoney, owedPersonB
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { sheetOwedToChip, TEAM_SHEET_RULE, teamSheetsLineWords, type TeamSheetRule } from '../../lib/subWorkOrders/teamSheetRule'
 import { isRosterSub } from '../../lib/subWorkOrders/rosterSub'
+import { WE_OWE_NOTHING } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { SubOwedBlock } from './SubOwedBlock'
 import { SubPapersWindow } from '../jobs/SubPapersWindowConnected'
 import type { SubPapersOpen } from '../jobs/SubPapersWindow'
@@ -929,7 +930,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       onClick={() => setOwedOpenKey(`id:${row.personId}`)}
                       style={{ font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: '0.2rem 0', cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}
                     >
-                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : 'paid up'} ›
+                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : WE_OWE_NOTHING} ›
                     </button>
                   ) : (
                     <span style={{ color: 'var(--text-faint)' }}>—</span>
@@ -1141,7 +1142,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       onClick={() => setOwedOpenKey((prev) => (prev === owedKey ? null : owedKey))}
                       style={{ font: 'inherit', fontWeight: 'inherit', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
                     >
-                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : 'paid up'} {owedOpen ? '▾' : '▸'}
+                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : WE_OWE_NOTHING} {owedOpen ? '▾' : '▸'}
                     </button>
                   ) : (
                     '—'
@@ -1241,7 +1242,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                   <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}</span>
                   <button type="button" aria-expanded={isOpen} onClick={() => setOwedOpenKey((prev) => (prev === p.key ? null : p.key))} style={{ marginLeft: 'auto', font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: v.open > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
-                    {v.open > 0 ? <MoneyText text={owedMoney(v.open)} /> : 'paid up'} {isOpen ? '▾' : '▸'}
+                    {v.open > 0 ? <MoneyText text={owedMoney(v.open)} /> : WE_OWE_NOTHING} {isOpen ? '▾' : '▸'}
                   </button>
                 </div>
                 {isOpen && !narrow && p.personId ? renderOwedBlock(p.personId, p.name, null) : null}

@@ -21,7 +21,7 @@ opinion: the row directions shipped first and the red moved after, as planned; t
 
 ## The ask
 
-On 2026-11-11, while the Market and Sales work (#318) was being built, the request came to look again once it was
+On 2026-11-11, while the Market and Sales work (#318, closed 2026-11-27; its card lives in git history at the deleting commit) was being built, the request came to look again once it was
 live: is this the best we can do, is the purpose met, does the reader get something he can act on, and can he dig in
 to find the limiting factors of his company. The owner's own words for that purpose, the same day:
 

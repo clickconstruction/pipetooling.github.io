@@ -35,6 +35,9 @@ import { PermitLookAlikes } from './PermitLookAlikes'
 import { permitsLinkWithLooks, readPermitsLink } from '../../lib/research/permitsLink'
 import { loadBuilders, loadPermitsOfBuilder, markBuilder, pullPermitsBack, saveBuilder } from '../../lib/research/permitResearchIo'
 import { GoogleSearchPress } from './GoogleSearchPress'
+import { PermitAskFor } from './PermitAskFor'
+import { foldLookups, lookupPressedWords, type BuilderLookup, type LookupStanding, type LookupVerdict } from '../../lib/research/builderLookups'
+import { loadBuilderLookupOf, recordLookupCheck } from '../../lib/research/permitMarketIo'
 
 /**
  * Permits, Builders (punch list #302, PR 6): every name that pulled a commercial building permit
@@ -295,8 +298,16 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   )
 }
 
-/** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. Market opens the same sheet from a company's row (punch list #405). */
-export function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlumbers, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** False where no builder's permits in the city name a plumber: the sheet says nothing of one. */ namesPlumbers: boolean; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
+/**
+ * One builder: who to ask for, our mark with its reason, what kind of company it is, our bids with it, and its
+ * permits. Market opens the same sheet from a company's row (punch list #405).
+ *
+ * *Ask for* (v2.8732) is the call list's own block ([`PermitAskFor`]): what a one-time lookup found about this
+ * one name, read as the sheet opens and folded as the call list folds it, with **Checked**, **Wrong** and
+ * **Put back** kept the same way. Until that read lands the sheet shows the Google press alone, as it did, so
+ * it never says nobody looked before it knows.
+ */
+export function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlumbers, ground, onAnswered, onLookupChecked, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** False where no builder's permits in the city name a plumber: the sheet says nothing of one. */ namesPlumbers: boolean; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; /** A press on a looked-up fact was kept: a list behind the sheet reads its lookups again. */ onLookupChecked?: () => void; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToastContext()
   const name = builderName(row)
   const [mark, setMark] = useState<BuilderMarkValue | 'none'>(row.mark ?? 'none')
@@ -316,6 +327,36 @@ export function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlum
       live = false
     }
   }, [city, row.key, todayYmd])
+
+  // What was looked up about this one name. Null until the read lands; `unread` when it could not be read.
+  const [askFor, setAskFor] = useState<{ lookup: BuilderLookup | null; unread: boolean } | null>(null)
+  const [askForAsked, setAskForAsked] = useState(0)
+  const [checkingId, setCheckingId] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    loadBuilderLookupOf(row.key)
+      .then((read) => live && setAskFor({ lookup: read ? (foldLookups(read.rows, read.checks).get(row.key) ?? null) : null, unread: false }))
+      // A read after a press that fails keeps what the sheet already drew.
+      .catch(() => live && setAskFor((held) => held ?? { lookup: null, unread: true }))
+    return () => {
+      live = false
+    }
+  }, [row.key, askForAsked])
+
+  /** Checked, Wrong, Not right or Put back on one looked-up fact, kept as the call list keeps it. */
+  const checkFact = async (standing: LookupStanding, verdict: LookupVerdict) => {
+    setCheckingId(standing.row.id)
+    try {
+      await recordLookupCheck({ lookupId: standing.row.id, verdict })
+      showToast(lookupPressedWords(verdict, standing.row.fact, name), 'success')
+      setAskForAsked((n) => n + 1)
+      onLookupChecked?.()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setCheckingId(null)
+    }
+  }
 
   const hold = markHold(mark, reason)
   const markChanged = mark !== (row.mark ?? 'none') || (mark !== 'none' && reason.trim() !== (row.mark_reason ?? '').trim())
@@ -367,15 +408,21 @@ export function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlum
             <div style={muted}>
               {builderCountWords(row, reachWords(reach, todayYmd))} · last filed {shortDay(row.last_permit_on)}
             </div>
-            <div style={{ marginTop: 8 }}>
-              <GoogleSearchPress ask={googleAskForCompany(name, city)} words="Google the builder" />
-            </div>
           </div>
           <span style={{ flex: '1 1 auto' }} />
           <button type="button" aria-label="Close" onClick={onClose} disabled={saving} style={{ background: 'transparent', border: 0, color: 'var(--text-muted)', width: 36, height: 36, borderRadius: 8, fontSize: 20, lineHeight: 1, cursor: 'pointer' }}>
             ×
           </button>
         </div>
+
+        {/* Who to ask for (v2.8732): the call list's own block, the whole width of the sheet. */}
+        <section data-builder-ask-for>
+          {askFor ? (
+            <PermitAskFor name={name} city={city} lookup={askFor.lookup} unread={askFor.unread} me={authUserId} nameOf={(userId) => ground?.people.get(userId) ?? null} todayYmd={todayYmd} busyId={checkingId} onPress={(standing, verdict) => void checkFact(standing, verdict)} />
+          ) : (
+            <GoogleSearchPress ask={googleAskForCompany(name, city)} words="Google the builder" />
+          )}
+        </section>
 
         <section>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 6 }}>Our mark</div>

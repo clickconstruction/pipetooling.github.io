@@ -272,6 +272,28 @@ describe('/messages: Follow up with the kind pills', () => {
     expect(screen.queryByTestId('search-hits')).toBeNull()
   })
 
+  it('a re-read that fails behind a held view leaves the lines that match on the screen (finding 323)', async () => {
+    at('/messages?q=detention')
+    expect((await screen.findAllByTestId('search-hit')).length).toBeGreaterThanOrEqual(1)
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+    // The page hears a change (the tab came back to focus) and reads again; that read fails.
+    vi.mocked(loadMessagesView).mockImplementationOnce(() => Promise.reject(new Error('The read was refused.')))
+    fireEvent.focus(window)
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2), { timeout: 3000 })
+    await waitFor(() => expect(vi.mocked(loadMessagesView).mock.results[1]?.type).toBe('return'))
+    await Promise.resolve()
+    const list = screen.getByTestId('search-list')
+    expect(within(list).getAllByTestId('search-hit').length).toBeGreaterThanOrEqual(1)
+    expect(list.textContent).not.toContain('The read was refused.')
+  })
+
+  it('a first read that fails, with no view held, says so where the lines go (finding 323: as before)', async () => {
+    vi.mocked(loadMessagesView).mockImplementationOnce(() => Promise.reject(new Error('The read was refused.')))
+    at('/messages?q=detention')
+    await waitFor(() => expect(screen.getByTestId('search-list').textContent).toContain('The read was refused.'))
+    expect(screen.queryByTestId('search-hit')).toBeNull()
+  })
+
   it('keeps the search in the URL: a link with q= lands on the lines, and typing writes it (v2.5708)', async () => {
     at('/messages?kind=trade&q=detention')
     const box = (await screen.findByLabelText('Search every message')) as HTMLInputElement

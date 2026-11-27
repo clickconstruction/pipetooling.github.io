@@ -3,14 +3,15 @@
  * drill-down say beside a charge. A charge with its paper says which door the paper came by; a charge the app texted
  * about says when; a charge it could not text says why. A charge with none of these says nothing, since most of the
  * ledger is older than the receipt text. The Team queue draws the same facts as a chip and a line of their own
- * (`receiptLineWords`); this is the short form for a table cell. Pure.
+ * (`receiptLineWithAgain`, which adds the office's Text again to the shared `receiptLineWords`, v2.8728); this is the
+ * short form for a table cell. Pure.
  */
-import { receiptLineWords, type ReceiptRequestState } from './receiptText'
+import { receiptLineWithAgain, type ReceiptRequestAgainState } from './receiptAgainLine'
 
 /** What is known about one charge: the live ticket on it, and its request. */
 export interface ReceiptStateFacts {
   ticket: { source: string | null } | null
-  request: ReceiptRequestState | null
+  request: ReceiptRequestAgainState | null
 }
 
 export type ReceiptStateTone = 'has' | 'waiting' | 'held'
@@ -38,7 +39,7 @@ export function receiptStateOf(facts: ReceiptStateFacts | null | undefined, nowM
     return { chip: source === 'link' ? 'Receipt from the link' : 'Ticket', tone: 'has', title: TICKET_DOOR[source] ?? 'A ticket is on this charge.' }
   }
   if (!facts.request) return null
-  const line = receiptLineWords(facts.request, nowMs)
+  const line = receiptLineWithAgain(facts.request, nowMs)
   if (!line) return null
   return { chip: line.chip, tone: line.tone, title: [line.words, line.next].filter(Boolean).join(' ') }
 }
