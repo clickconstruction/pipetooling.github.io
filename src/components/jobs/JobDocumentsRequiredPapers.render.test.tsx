@@ -8,6 +8,7 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type BookPaperRow, type JobPapersRoster, parseJobPapersRoster } from '../../lib/jobs/jobPapers'
+import type { JobPaperRemovedDeleteIo } from '../../lib/jobs/jobPaperRemovedDeleteIo'
 import type { JobPapersIo } from '../../lib/jobs/jobPapersIo'
 import type { JobPaperProposal, JobPaperProposalsIo } from '../../lib/jobs/jobPaperProposalsIo'
 import type { JobPaperSettingsIo } from '../../lib/jobs/jobPaperSettingsIo'
@@ -376,5 +377,53 @@ describe('JobDocumentsRequiredPapers', () => {
     await screen.findByTestId('job-papers-summary')
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.getByText('A form from the Contract Book')).toBeTruthy()
+  })
+
+  // Punch list #443, row 10: the dev's fold of taken-off papers, under the papers. The fold's own smoke is JobPapersTakenOff.render.test.tsx.
+  const takenOff = [{ id: 'gone-1', paperName: 'ZZ Test gate rules', requiredAt: '2026-11-20T15:00:00Z', removedAt: '2026-11-24T20:00:00Z', copies: 0, proposals: 0, takenAs: 0, revisions: 0 }]
+  const fakeRemovedIo = (): JobPaperRemovedDeleteIo => ({ readRemoved: vi.fn(async () => takenOff), deletePaper: vi.fn(async () => undefined) })
+  const zzJob = { id: 'job-1', job_name: 'ZZ Test papers walk', customer_name: 'ZZ Test Customer' }
+
+  it('a dev on a ZZ test job reads Taken-off papers under the papers, on a job with none too, and it reads again after a Take off', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => saved) })
+    const removedIo = fakeRemovedIo()
+    renderWithProviders(<JobDocumentsRequiredPapers job={zzJob} role="dev" io={io} removedIo={removedIo} />)
+    const fold = await screen.findByTestId('job-papers-taken-off')
+    expect(fold.textContent).toContain('Taken-off papers · 1')
+    expect(removedIo.readRemoved).toHaveBeenCalledTimes(1)
+    // Under the papers and above the roster of who has signed.
+    const section = fold.closest('[data-job-required-papers]')!
+    const order = [...section.querySelectorAll('[data-job-paper="live"], [data-testid="job-papers-taken-off"], [data-job-papers-roster]')].map((el) => el.getAttribute('data-testid') ?? (el.hasAttribute('data-job-paper') ? 'paper' : 'roster'))
+    expect(order).toEqual(['paper', 'paper', 'job-papers-taken-off', 'roster'])
+    fireEvent.click(screen.getByRole('button', { name: 'Take Site rules and photo policy off' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take the paper off' }))
+    await waitFor(() => expect(io.removePaper).toHaveBeenCalledWith('site'))
+    await waitFor(() => expect(removedIo.readRemoved).toHaveBeenCalledTimes(2))
+    cleanup()
+    const none = fakeRemovedIo()
+    renderWithProviders(<JobDocumentsRequiredPapers job={zzJob} role="dev" io={fakeIo()} removedIo={none} />)
+    await screen.findByText('Nothing has to be signed before this job opens.')
+    expect((await screen.findByTestId('job-papers-taken-off')).textContent).toContain('Taken-off papers · 1')
+  })
+
+  it('nobody else reads Taken-off papers: not the office on a test job, not a dev on a real job, not a caller that hands no role', async () => {
+    for (const props of [{ job: zzJob, role: 'assistant' }, { job: { id: 'job-1', job_name: 'Larkfield Lot 9', customer_name: 'Larkfield Homes' }, role: 'dev' }, { job: { id: 'job-1' }, role: 'dev' }, { job: zzJob }]) {
+      const removedIo = fakeRemovedIo()
+      renderWithProviders(<JobDocumentsRequiredPapers {...props} io={fakeIo({ readRoster: vi.fn(async () => saved) })} removedIo={removedIo} />)
+      await screen.findByTestId('job-papers-summary')
+      expect(screen.queryByTestId('job-papers-taken-off')).toBeNull()
+      expect(removedIo.readRemoved).not.toHaveBeenCalled()
+      cleanup()
+    }
+  })
+
+  it('a read of the taken-off papers that fails draws no fold and leaves the pane whole, as before the function exists', async () => {
+    const removedIo: JobPaperRemovedDeleteIo = { readRemoved: vi.fn(async () => Promise.reject(Object.assign(new Error('Could not find the function'), { code: 'PGRST202' }))), deletePaper: vi.fn(async () => undefined) }
+    renderWithProviders(<JobDocumentsRequiredPapers job={zzJob} role="dev" io={fakeIo({ readRoster: vi.fn(async () => saved) })} removedIo={removedIo} />)
+    await screen.findByTestId('job-papers-summary')
+    await waitFor(() => expect(removedIo.readRemoved).toHaveBeenCalledTimes(1))
+    expect(screen.queryByTestId('job-papers-taken-off')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Take Site rules and photo policy off' })).toBeTruthy()
   })
 })

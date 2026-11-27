@@ -164,6 +164,8 @@ You can still text the sub a link. Find the sub's row in the table and press **C
 
 Press **Take off** on the paper's row and confirm. Nobody is asked to sign it for this job any more. Every signature already on file is kept.
 
+A paper you take off stays on file. Only the developer can delete one. The paper must be on a test job, with no copy on anyone's file.
+
 ## Change a paper's words
 
 The job keeps the words the paper had on the day you required it. Editing the Contract Book later does not change them. To use new words, take the paper off and add it again. Everyone then signs the new words.

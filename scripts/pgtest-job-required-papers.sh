@@ -15,8 +15,18 @@
 # the last one opens it, to that person alone; a Contract Book save mints nothing for a job's copy; the roster lists
 # the office, the crew, the subs and anyone else holding a copy; taking a paper off opens the job and keeps the
 # signatures, the same words put back bring them back, and new words ask for new signatures. It raises on its first
-# failed assertion and ends with "job_required_papers PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the
-# SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
+# failed assertion and ends with "job_required_papers PASSED".
+#
+# A second scenario, 30_removed_paper_delete.sql (punch list #443, row 10, migration *_test_job_removed_paper_delete,
+# which also runs a second time here): on a job named ZZ a dev requires three papers and takes them off, the list
+# answers the three, newest taken off first, a delete answers ok and the row is gone; a paper a person's copy names,
+# a GC proposal was made on or taken as, or a later revision names is refused in its own sentence and stays, with its
+# count in the list; nobody signed in, the office, a helper, a paper that is not there, a paper still on its job and a
+# taken-off paper of a job not named ZZ are refused, each in its own sentence; and a direct DELETE as the dev still
+# reaches no row. It ends with "removed_paper_delete PASSED".
+#
+# PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
+# ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -52,7 +62,14 @@ psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applyi
 # And the ground under #389's step 4, which replaces job_papers_require once more.
 GROUND="$(ls supabase/migrations/*_settings_page_ground.sql)"
 psql_as postgres -f - < "$GROUND" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $GROUND"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# The developer's delete of a test job's taken-off paper (punch list #443, row 10): two functions, replaced with the
+# same grants.
+TAKEBACK="$(ls supabase/migrations/*_test_job_removed_paper_delete.sql)"
+psql_as postgres -f - < "$TAKEBACK" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $TAKEBACK"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/job_required_papers/20_scenario.sql 2>&1 || true)"
 if ! grep -q "job_required_papers PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/job_required_papers/30_removed_paper_delete.sql 2>&1 || true)"
+if ! grep -q "removed_paper_delete PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "job-required-papers bed ok"
