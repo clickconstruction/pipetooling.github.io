@@ -626,8 +626,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     }
     let linkWords = ''
     if (entryId && draftTargets.length > 0) {
-      // The entry is written first, then one link a thing it corrects or completes; the table's guard refuses a bad pair in words.
-      const lk = await addAmendments({ personId, fromKind: 'hr_entry', fromId: entryId, targets: draftTargets, authUserId: authUser?.id ?? null })
+      // The entry is written first, then one link a thing it corrects or completes, through the HR door; the table's guard refuses a bad pair in words.
+      const lk = await addAmendments({ personId, fromKind: 'hr_entry', fromId: entryId, targets: draftTargets })
       if (lk.ok) {
         linkWords = ` ${amendmentCountWords(lk.made)} made.`
         setDraftTargets([])
@@ -1191,9 +1191,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   }
 
   const withdrawLink = async (id: string) => {
-    if (withdrawBusy) return
+    if (withdrawBusy || !personId) return
     setWithdrawBusy(true)
-    const r = await withdrawAmendment(id, withdrawWhy, authUser?.id ?? null)
+    const r = await withdrawAmendment(id, withdrawWhy, personId)
     setWithdrawBusy(false)
     if (!r.ok) {
       showToast(`The link stays: ${r.why}`, 'error')

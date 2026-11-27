@@ -152,7 +152,7 @@ describe('PersonFilePanel · corrections as links (punch list #315)', () => {
     expect(press.disabled).toBe(false)
     fireEvent.click(press)
     await waitFor(() => expect(withdrawAmendment).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(withdrawAmendment).mock.calls[0]?.slice(0, 2)).toEqual(['a1', 'two different trucks'])
+    expect(vi.mocked(withdrawAmendment).mock.calls[0]).toEqual(['a1', 'two different trucks', 'p-marcus'])
   })
 
   it("the narrative's Jump to flags a section cited by an entry corrected since", async () => {
