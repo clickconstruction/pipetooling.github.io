@@ -80,7 +80,7 @@ import {
   uploadPaintedPlacePhoto,
   type PaintedMapWhole,
 } from '../../lib/paintedMap/paintedMapIo'
-import { PAINTED_MAP_TEST_THROW_AWAY, paintedMapThrowAwayDoor, paintedMapThrownAwayWords } from '../../lib/paintedMap/paintedMapThrowAway'
+import { PAINTED_MAP_TEST_THROW_AWAY, PAINTED_MAP_THROWN_AWAY_TOAST_MS, paintedMapThrowAwayDoor, paintedMapThrownAwayWords } from '../../lib/paintedMap/paintedMapThrowAway'
 import type { PaintedPoint, SnapTarget } from '../../lib/paintedMap/paintedLine'
 import { clockWords, isRoughFix, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
 import { roughCircleWords } from '../../lib/paintedMap/preciseLocation'
@@ -905,7 +905,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         setError(gone.error)
         return
       }
-      toast?.showToast(paintedMapThrownAwayWords(gone.value), 'success')
+      toast?.showToast(paintedMapThrownAwayWords(gone.value), 'success', PAINTED_MAP_THROWN_AWAY_TOAST_MS)
       paintedMapsChanged()
       onClose()
       return

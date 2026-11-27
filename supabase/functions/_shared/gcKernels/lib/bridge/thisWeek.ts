@@ -38,7 +38,7 @@ export type ThisWeekInput = {
 
 export const THIS_WEEK_DOORS = {
   stages: { to: '/jobs?tab=stages', label: 'Open Stages' },
-  billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
+  billing: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' },
   approvals: { to: '/people?tab=hours&approvals=1', label: 'Open approvals' },
   jobs: { to: '/jobs?tab=stages', label: 'Open the jobs' },
   overhead: { to: '/people?tab=overhead', label: 'Open Overhead' },

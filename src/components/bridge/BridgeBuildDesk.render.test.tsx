@@ -188,7 +188,7 @@ describe('BridgeBuildDesk on the step frame (punch list #334, PR 1)', () => {
     expect(screen.getByText('Price the job ›').getAttribute('href')).toBe('/jobs?tab=stages&edit=2140')
     expect(screen.queryByTestId('bridge-build-set-pct')).toBeNull()
     fireEvent.click(rows[8]!.querySelector('button[aria-expanded]')!)
-    expect(screen.getByText('Bill it ›').getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(screen.getByText('Bill it ›').getAttribute('href')).toBe('/jobs?tab=stages&edit=2160')
 
     const counted = screen.getByTestId('bridge-step-fold-counted')
     expect(counted.textContent).toBe('How this is counted ›')

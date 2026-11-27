@@ -18,6 +18,10 @@
  * Each tsc takes its heap from the machine's memory (scripts/lib/typecheckHeap.mjs: 85% of it, from 12,288 MB
  * to 16,384 MB) through scripts/lib/runTsc.mjs, which also says in one line when tsc died of its heap and gave
  * no verdict. The build's `tsc -b` (scripts/tsc-build.mjs) goes through the same runner.
+ *
+ * Each part ends with one line on its memory (scripts/lib/typecheckMemory.mjs): the time, the heap it held
+ * against its cap and the most it held resident, with a warning from four fifths of the cap. CI forces a
+ * collection first, so its number is what the program needs; TYPECHECK_COLLECT=1 does the same anywhere.
  */
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
@@ -38,7 +42,7 @@ async function runParts() {
   const results = []
   for (const [index, part] of PARTS.entries()) {
     console.error(partWords({ index, part }))
-    const code = await runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)])
+    const code = await runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)], { label: part.name })
     results.push({ part, code })
     if (stoppedByHand(code)) break
   }

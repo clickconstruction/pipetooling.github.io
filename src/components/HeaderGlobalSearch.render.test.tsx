@@ -27,7 +27,7 @@ vi.mock('../hooks/useAuth', async () => {
 // guides and one row here, so a smoke never reaches the real registry or the build-time board.
 vi.mock('../lib/helpGuideRegistry', () => ({
   HELP_GUIDES: [
-    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=billing', body: 'x' },
+    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=stages', body: 'x' },
     { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk'], order: 2, body: 'x' },
   ],
 }))
@@ -99,7 +99,7 @@ describe('HeaderGlobalSearch — go anywhere', () => {
     renderWithProviders(<Box />)
     const box = await openAndType('> bill')
     await screen.findByTestId('go-anywhere-group-page')
-    expect(screen.getByTestId('go-anywhere-door-page:/jobs?tab=billing').textContent).toContain('Billing')
+    expect(screen.getByTestId('go-anywhere-door-page:/jobs?tab=stages').textContent).toContain('Pipeline')
     const settings = screen.getByTestId('go-anywhere-group-settings')
     expect(settings).toBeTruthy()
     expect(box.getAttribute('aria-activedescendant')).toBe('header-search-option-0')
@@ -123,13 +123,13 @@ describe('HeaderGlobalSearch — go anywhere', () => {
   })
 
   it('the empty box lists the doors this device remembers, newest first', async () => {
-    localStorage.setItem(recentDoorsKey(SMOKE_AUTH_USER_ID), JSON.stringify(['page:/jobs?tab=billing', 'dev:settings-phone-texts-hours', 'gone:door']))
+    localStorage.setItem(recentDoorsKey(SMOKE_AUTH_USER_ID), JSON.stringify(['page:/jobs?tab=stages', 'dev:settings-phone-texts-hours', 'gone:door']))
     renderWithProviders(<Box />)
     fireEvent.click(screen.getByRole('button', { name: /search jobs/i }))
     await settle()
     const recent = await screen.findByTestId('go-anywhere-group-recent')
     expect(recent.textContent).toContain('Recent')
     const rows = screen.getAllByTestId(/^go-anywhere-door-/).map((el) => el.getAttribute('data-testid'))
-    expect(rows).toEqual(['go-anywhere-door-page:/jobs?tab=billing', 'go-anywhere-door-dev:settings-phone-texts-hours'])
+    expect(rows).toEqual(['go-anywhere-door-page:/jobs?tab=stages', 'go-anywhere-door-dev:settings-phone-texts-hours'])
   })
 })

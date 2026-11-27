@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { jobsPageTabs, type JobsPageTabKey } from './jobsPageTabs'
+import { BILLING_TAB_RETIRED_WORDS, jobsPageTabs, retiredJobsTab, type JobsPageTabKey } from './jobsPageTabs'
 import { isAssistantLike } from '../subcontractorLikeRole'
 
 const words = (authRole: string | null, myRole: string | null = authRole) => jobsPageTabs({ authRole, myRole }).map((t) => t.label)
 
 /**
  * The row as the Jobs page drew it before this kernel, one condition a button, copied from the page's markup
- * of v2.8285. A `|` is the thin bar. The kernel must draw the same row for every pair of roles.
+ * of v2.8285, less the Billing tab, which left in v2.8698: its bar now sits before whichever tab follows
+ * Pipeline. A `|` is the thin bar. The kernel must draw the same row for every pair of roles.
  */
 function rowBefore(authRole: string | null, myRole: string | null): string[] {
   const isPrimaryOrUnknown = authRole === 'primary' || myRole === 'primary' || (authRole === null && myRole === null)
@@ -22,7 +23,7 @@ function rowBefore(authRole: string | null, myRole: string | null): string[] {
   row.push('reports:Reports')
   if (showStagesAndBillingTabs) row.push('stages:Pipeline')
   if (showPrimaryRestrictedTabs) {
-    if (showStagesAndBillingTabs) row.push('|', 'billing:Billing')
+    if (showStagesAndBillingTabs) row.push('|')
     if (showTeamLaborTab) row.push('combined-labor:Team')
     row.push('subs:Subs')
     if (showSuperintendentExtraTabs) row.push('parts:Parts')
@@ -41,17 +42,17 @@ const ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'superinte
 
 describe('jobsPageTabs', () => {
   it('a dev and a leader have the whole row, in its order', () => {
-    const whole = ['Crew P&L', 'Reports', 'Pipeline', 'Billing', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections']
+    const whole = ['Crew P&L', 'Reports', 'Pipeline', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections']
     expect(words('dev')).toEqual(whole)
     expect(words('master_technician')).toEqual(whole)
   })
 
   it('an assistant has no Crew P&L and no Team', () => {
-    expect(words('assistant')).toEqual(['Reports', 'Pipeline', 'Billing', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
+    expect(words('assistant')).toEqual(['Reports', 'Pipeline', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
   })
 
   it('a controller has no Crew P&L and keeps Team', () => {
-    expect(words('controller')).toEqual(['Reports', 'Pipeline', 'Billing', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
+    expect(words('controller')).toEqual(['Reports', 'Pipeline', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections'])
   })
 
   it('a superintendent has Reports and Subs', () => {
@@ -69,10 +70,10 @@ describe('jobsPageTabs', () => {
     expect(words(null, 'dev')).toEqual(words('dev'))
   })
 
-  it('draws a thin bar before Billing and before Inspections, and nowhere else', () => {
+  it('draws a thin bar after Pipeline and before Inspections, and nowhere else', () => {
     const bars = (role: string) => jobsPageTabs({ authRole: role, myRole: role }).filter((t) => t.barBefore).map((t) => t.key)
-    expect(bars('dev')).toEqual<JobsPageTabKey[]>(['billing', 'inspections'])
-    expect(bars('assistant')).toEqual<JobsPageTabKey[]>(['billing', 'inspections'])
+    expect(bars('dev')).toEqual<JobsPageTabKey[]>(['combined-labor', 'inspections'])
+    expect(bars('assistant')).toEqual<JobsPageTabKey[]>(['subs', 'inspections'])
     expect(bars('superintendent')).toEqual([])
     expect(bars('primary')).toEqual([])
   })
@@ -81,6 +82,21 @@ describe('jobsPageTabs', () => {
     const titled = jobsPageTabs({ authRole: 'dev', myRole: 'dev' }).filter((t) => t.title)
     expect(titled.map((t) => t.key)).toEqual(['materials'])
     expect(titled[0]!.title).toBe('Materials on site: what is in the cages and boxes on every job, what went missing, which containers are due a count')
+  })
+
+  it('has no Billing tab for any role (punch list #190, decision 5)', () => {
+    for (const role of ROLES) expect(words(role), role).not.toContain('Billing')
+  })
+
+  it('lands an old Billing link, and its older ledger name, on the Pipeline', () => {
+    expect(retiredJobsTab('billing')).toBe('stages')
+    expect(retiredJobsTab('ledger')).toBe('stages')
+    // A tab the row still has, the Billed stage's own address and no tab at all are left to the page.
+    for (const tab of ['stages', 'reports', 'subs', 'billed', '', null, undefined, 'toString', 'constructor']) expect(retiredJobsTab(tab), String(tab)).toBeNull()
+  })
+
+  it('says where bills are made, in words that pass for a first-timer', () => {
+    expect(BILLING_TAB_RETIRED_WORDS).toBe('The Billing tab is gone. Bills are made here on the Pipeline.')
   })
 
   it('every key is a tab once', () => {

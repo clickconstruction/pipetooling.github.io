@@ -264,7 +264,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 152–164 | `stagesContractChipFor` | 13 | Table, CardList, both unified rows, StagesPhoneRow | the contract chip's words and door (v2.4342, kernel `contractRowChip`) |
 | 178 / 207 | `STAGES_TABLE_MIN_WIDTH` = 880 / `STAGES_EDIT_MODE_RAIL_WIDTH` = 18 | — | tables, rows, CardList, BillingTab | sized columns total 516px |
 | 187–194 | `STAGES_OPEN_ROW_BAR` / `stagesOpenRowStyle` | 6 | Table, CardList, both unified rows | the opened row's blue bar + tint (v2.4131) |
-| 209–247 | `renderStagesEditModeRail` | 39 | Table, CardList, both unified rows, `JobsBillingTab` (side `right`) | |
+| 209–247 | `renderStagesEditModeRail` | 39 | Table, CardList, both unified rows (`JobsBillingTab`, the one caller of side `right`, left in v2.8698) | |
 | 254–256 | `renderStagesExpandedRowPanel` | 3 | `StagesExpandedThreadRow` | `position: sticky; left: 0` |
 | 285–316 / 318–347 | `renderStagesJobHcpChip` / `renderStagesJobHcpSubline` | 29 / 28 | chip: CardList, BillingTab, StagesPhoneRow · subline: Table, UnifiedJobRow | |
 | 355–406 | `renderStagesThreadFullscreenJobHeader` | 52 | CardList, JobCalendarModal, ActivityExpandModal, StagesExpandedThreadRow | narrow `JobCalendarJobIdentity` |

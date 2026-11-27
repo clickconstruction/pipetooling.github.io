@@ -38,7 +38,7 @@ function signedInRoutes(src: string): string[] {
 }
 
 const guides: HelpGuide[] = [
-  { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice', 'get paid'], order: 1, where: '/jobs?tab=billing', body: '' },
+  { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice', 'get paid'], order: 1, where: '/jobs?tab=stages', body: '' },
   { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk', 'lien notice'], order: 2, body: '' },
 ]
 const todos = [
@@ -285,12 +285,12 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
 
   it('Go there draws only where the viewer may go: never past the route guard, a hidden Settings tab or a shut door', () => {
     const forRole = (role: DoorViewer['role']) => doorsFor(plainViewer(role), sources).find((d) => d.id === 'guide:bill-a-customer-and-get-paid')
-    // The guide is for everyone; its page, the Billing tab, is the office's.
-    expect(forRole('assistant')?.also?.to).toBe('/jobs?tab=billing')
+    // The guide is for everyone; its page, the Pipeline, is the office's.
+    expect(forRole('assistant')?.also?.to).toBe('/jobs?tab=stages')
     expect(forRole('estimator')).toBeTruthy()
     expect(forRole('estimator')?.also).toBeUndefined()
     expect(forRole('helpers')?.also).toBeUndefined()
-    // A superintendent may enter /jobs, but the Billing tab's own door is gated shut, so no Go there.
+    // A superintendent may enter /jobs, but the Pipeline's own door is gated shut, so no Go there.
     expect(forRole('superintendent')?.also).toBeUndefined()
     const drift: string[] = []
     for (const v of every) {
@@ -303,7 +303,7 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
 
   it('a guide with a where line carries Go there, and every real guide’s where is a route src/App.tsx serves', () => {
     const bill = doors.find((d) => d.id === 'guide:bill-a-customer-and-get-paid')!
-    expect(bill.also).toEqual({ label: 'Go there', to: '/jobs?tab=billing' })
+    expect(bill.also).toEqual({ label: 'Go there', to: '/jobs?tab=stages' })
     expect(doors.find((d) => d.id === 'guide:send-lien-notices-from-the-lien-desk')!.also).toBeUndefined()
     const helpDir = resolve(root, 'src/content/help')
     const raw: Record<string, string> = {}
@@ -323,7 +323,7 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(hours[0]?.key).toBe('settings')
     expect(hours[0]?.doors[0]?.to).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-hours')
     const bill = searchDoors('how do I bill a customer', dev)
-    expect(bill.find((g) => g.key === 'page')?.doors[0]?.to).toBe('/jobs?tab=billing')
+    expect(bill.find((g) => g.key === 'page')?.doors[0]?.to).toBe('/jobs?tab=stages')
     expect(bill.find((g) => g.key === 'guide')?.doors[0]?.to).toBe('/help?g=bill-a-customer-and-get-paid')
     const lien = searchDoors('lien', dev)
     expect(lien.find((g) => g.key === 'guide')?.doors[0]?.to).toBe('/help?g=send-lien-notices-from-the-lien-desk')

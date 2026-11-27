@@ -26,7 +26,7 @@ vi.mock('../hooks/useAuth', async () => {
 // The two Vite-only sources the box loads once the role lands: two guides and one row.
 vi.mock('../lib/helpGuideRegistry', () => ({
   HELP_GUIDES: [
-    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=billing', body: 'x' },
+    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=stages', body: 'x' },
     { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk'], order: 2, body: 'x' },
   ],
 }))
@@ -93,14 +93,14 @@ describe('HeaderGlobalSearch — the box for every role', () => {
     expect(rpc).not.toHaveBeenCalled()
   })
 
-  it('an estimator sees a guide for everyone without its Go there, since the Billing tab is not a door for the role', async () => {
+  it('an estimator sees a guide for everyone without its Go there, since the Pipeline is not a door for the role', async () => {
     as('estimator')
     renderWithProviders(<Box doorsOnly />)
     await openAndType(/find a page, a setting or a guide/i, 'bill')
     const row = await screen.findByTestId('go-anywhere-door-guide:bill-a-customer-and-get-paid')
     expect(row.textContent).toContain('bill a customer and get paid')
     expect(screen.queryByTestId('go-anywhere-there-guide:bill-a-customer-and-get-paid')).toBeNull()
-    expect(screen.queryByTestId('go-anywhere-door-page:/jobs?tab=billing')).toBeNull()
+    expect(screen.queryByTestId('go-anywhere-door-page:/jobs?tab=stages')).toBeNull()
     // The lien guide is the office's: not drawn.
     expect(screen.queryByTestId('go-anywhere-door-guide:send-lien-notices-from-the-lien-desk')).toBeNull()
   })
@@ -146,7 +146,7 @@ describe('HeaderGlobalSearch — the box for every role', () => {
     expect(await screen.findByTestId('go-anywhere-door-page:/jobs?tab=reports')).toBeTruthy()
     fireEvent.change(screen.getByRole('combobox', { name: 'Search query' }), { target: { value: 'billing' } })
     await settle()
-    expect(screen.queryByTestId('go-anywhere-door-page:/jobs?tab=billing')).toBeNull()
+    expect(screen.queryByTestId('go-anywhere-door-page:/jobs?tab=stages')).toBeNull()
     unmount()
 
     as('primary')
