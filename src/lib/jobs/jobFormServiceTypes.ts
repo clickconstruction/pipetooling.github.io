@@ -2,7 +2,7 @@
  * Service-type visibility + default-pick for the Job form. Extracted verbatim
  * from JobFormModal. Pure.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../subcontractorLikeRole'
 import type { JobFormServiceType, MeServiceTypeColumns } from './jobFormTypes'
 

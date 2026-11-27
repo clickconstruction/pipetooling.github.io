@@ -6,7 +6,7 @@
  * `last_error`, and a run that stops sets `last_error` and leaves `last_ok_at` as it was. The team box's row is there
  * only once it has been read, after Settings holds its address. Pure.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { lineWhen } from './thread'
 
 /** How the reader is doing, as `gmail_sync_state` holds it. Null before its row is there. */

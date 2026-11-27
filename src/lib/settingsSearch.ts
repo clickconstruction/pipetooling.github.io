@@ -17,7 +17,7 @@
  * person on a tab where the card is not drawn.
  */
 
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { approvesCardLooks, makesOwnCard } from './brandKit/access'
 import { announceSettingsTarget } from './settingsTarget'
 import { HELP_GUIDE_URL_PARAM } from './helpGuideUrlParam'

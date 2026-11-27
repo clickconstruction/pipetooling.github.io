@@ -5,7 +5,7 @@
  * rule itself: whoever answered the person last when they are here today, else the seat for who they are, else nobody.
  * The owner and a dev set the seats, as the setting's policy allows; the GC office team reads them.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_OFFICE_TEAM } from '../gc/access'
 import type { AssignRuleSeats } from '../followUp/assignSeats'
 

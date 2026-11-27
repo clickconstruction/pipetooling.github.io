@@ -17,7 +17,7 @@
  * Every sentence keeps to `plainWords.ts` and marks its values with `val`. Pure; tested beside it. The screen is the
  * place card in `LienPayoffs.tsx`, the writes `lienPayoffCardIo.ts`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'

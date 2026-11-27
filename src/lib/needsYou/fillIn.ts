@@ -1,7 +1,7 @@
 import { NEEDS_YOU_RANK, type NeedsYouItem, type NeedsYouSeverity } from '../dashboardNeedsYou'
 import { needsYouWalkOrder } from '../dashboard/phoneOffice'
 import { needsYouActorOf, needsYouViewerActors } from '../needsYouActor'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /**
  * Fill them in (v2.5774, punch list #146, PR 2): the third view on Quickfill's Needs you

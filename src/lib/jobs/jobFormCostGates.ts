@@ -3,7 +3,7 @@
  * whether a labor line on the Costs tab opens on Jobs, and whether Delete must become Reassign. Lifted out of
  * `JobFormModal`, where the ten memos had no test; the form keeps the loads and hands their values in.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { mercuryCardTotalFromLines, tallyPartsTotalFromLines, type JobMercuryAllocLine, type JobTallyPartLine } from '../../../supabase/functions/_shared/jobMaterialsCostLines'
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { materialRowHasUserContent } from './jobFormRows'

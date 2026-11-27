@@ -6,7 +6,7 @@
  * regenerate after the push; the client is reached untyped for that reason alone.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { supabase } from '../supabase'
 import { ROLES } from '../userRoles'
 import { TRAINING_DUE_SOON_DAYS_DEFAULT, TRAINING_GOOD_FOR_MONTHS_DEFAULT, trainingChip, type CourseStanding, type TrainingColour, type TrainingPass, type TrainingPolicy } from './trainingState'

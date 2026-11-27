@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { DatabaseError, errorKindOf } from '../utils/errorHandling'
 

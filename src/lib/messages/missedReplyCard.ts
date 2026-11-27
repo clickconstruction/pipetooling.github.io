@@ -5,7 +5,7 @@
  * with what went or why nothing did (`missed_call_replies`). Pure: the words, the draft the card edits, what is wrong
  * with a draft, the JSON a save writes, and the list's rows. The reads and the two writes are `missedReplyCardIo.ts`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isOwnerOrDev } from '../gc/access'
 import { MISSED_LINE_WORDS, parseMissedReply, serializeMissedReply, type MissedLine, type MissedReplySettings } from '../quo/missedReply'
 import { lineWhen } from './thread'

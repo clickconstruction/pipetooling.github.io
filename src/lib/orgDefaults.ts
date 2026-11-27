@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * Org / role defaults (journey map Tier 5 X16, cluster C27; decision 19).

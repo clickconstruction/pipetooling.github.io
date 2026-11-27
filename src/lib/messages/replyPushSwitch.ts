@@ -10,7 +10,7 @@
  * (`notifyRule.ts`) waits for whoever has a reply before the office hears too. 0 is at once, so a team that shares one
  * number hears every reply together. `parseOfficeWait` reads what the owner typed; `officeWaitLine` says what it means.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { OFFICE_WAIT_MINUTES } from './notifyRule'
 
 export const REPLY_PUSH_TITLE = 'Reply push'

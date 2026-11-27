@@ -17,7 +17,7 @@
  * `dashboardClockStripScopeStorage.ts`.
  */
 
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 

@@ -9,7 +9,7 @@
  * and the punch list (`virtual:punch-list`), are handed in through `DoorSources`, so `doors.test.ts` can build the
  * whole index in node and hold it against `src/App.tsx`, the Settings groups and anchors, and the route guard.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { BILLS_SENT_PATH, canOpenBillsSent } from '../billing/billsSent'
 import { isAssistantLike, isSubcontractorLikeRole } from '../subcontractorLikeRole'
 import { isPathAllowedForRole } from '../layoutRouteAccess'

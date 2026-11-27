@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 /** Roles that can load full `JobWithDetails` (jobs_ledger + child embeds) for read-only Job details.

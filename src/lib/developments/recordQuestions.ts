@@ -6,7 +6,7 @@
  * *asked on BP418*, one direction. Pure; the read is `fetchRecordQuestions.ts`, the window
  * `components/developments/RecordQuestions.tsx`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_OFFICE_TEAM } from '../gc/access'
 import type { AskAbout } from './ask'
 import { requestIsOpen, type MemberRequest } from './overview'

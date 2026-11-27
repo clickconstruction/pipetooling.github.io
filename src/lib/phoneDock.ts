@@ -10,7 +10,7 @@
  * the code she reads across the counter is what she wants at her thumb; Quickfill is one tap
  * away under More.
  */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canAccessBanking } from './bankingAccess'
 import { canOpenRoadmap } from './roadmapVisibility'

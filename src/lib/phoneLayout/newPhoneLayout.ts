@@ -15,7 +15,7 @@
  *
  * Pure reads and writes over a storage handed in, so the tests need no browser.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 

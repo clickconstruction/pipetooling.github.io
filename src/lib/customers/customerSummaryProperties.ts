@@ -7,7 +7,7 @@
  * per property, typed in Edit customer's Properties. The sheet read only `customers.address`
  * until now, and had no door to the editor.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isAssistantLike, isSubcontractorLikeRole } from '../subcontractorLikeRole'
 
 /** The `customer_addresses` columns the sheet reads. */

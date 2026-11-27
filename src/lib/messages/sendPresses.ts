@@ -6,7 +6,7 @@
  * the box after a press.
  */
 import { canOpenMessages } from '../gc/access'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /** The word each press stands for, as it is typed in the box. */
 export const SEND_PRESS_TYPED = { photos: '/show', estimate: '/estimate', bill: '/bill' } as const

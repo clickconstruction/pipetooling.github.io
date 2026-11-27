@@ -10,7 +10,7 @@
  * loudly in dev and in CI (src/lib/helpGuideContent.test.ts runs it over the
  * real content directory).
  */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { ROLES } from './userRoles'
 
 export type HelpGuide = {

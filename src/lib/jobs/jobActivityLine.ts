@@ -1,5 +1,5 @@
 import type { JobThreadActivityItem } from '../../components/JobThreadNotesPanel'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { CUSTOMER_EVENT_TYPES } from '../jobActivityEvent'
 import { activityItemMatchesFilter, type JobActivityFilter } from '../jobActivityFilter'
 import { allReportFieldLinesForThread } from '../reportForViewFromJobLedgerRow'

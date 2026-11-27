@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 const SUPERINTENDENT_REPORT_LEGACY_NAME = 'Superintendent Report'
 const STATUS_REPORT_LABEL = 'Status Report'

@@ -4,7 +4,7 @@
  * Kept out of `bio.ts` so the kernel stays free of the app's role tables. A role arrives as the app's `UserRole` or as
  * the plain string a desk viewer or a users row carries; both are read the same way.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_OFFICE_TEAM, MESSAGES_TECH_TEAM } from '../gc/access'
 
 const has = (list: readonly UserRole[], role: string | null | undefined): boolean => role != null && (list as readonly string[]).includes(role)

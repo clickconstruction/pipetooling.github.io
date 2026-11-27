@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * Role lens for the guide browser (Settings → Guides + /help): supervising

@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { isAssistantLike } from './subcontractorLikeRole'
 import { canTagInJobNotes } from './jobs/noteTags'
 import { canAccessBanking } from './bankingAccess'

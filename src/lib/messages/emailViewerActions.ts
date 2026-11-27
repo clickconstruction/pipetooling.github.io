@@ -20,7 +20,7 @@
  * Share are the window's own and stay on every line. Pure: the
  * hook (`useEmailViewerThreadSlots`) and cut 4b's hook both ask here, so one place decides the row.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { whoMayDraft } from '../changeOrders/fromMessage'
 import { KIND_WORDS, type InvitationKind } from '../emailIn/invitation'

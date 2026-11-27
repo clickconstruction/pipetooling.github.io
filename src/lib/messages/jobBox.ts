@@ -5,7 +5,7 @@
  * The office team writes to a customer, as everywhere in Messages. A tech's door is R5's, on Job Mode, through
  * `jobModeMessagesOffered` below: the one place who may message a customer from a job is said.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { canMessageCustomersFromJobMode, GC_OFFICE_TEAM } from '../gc/access'
 import { jobKey } from './load'
 

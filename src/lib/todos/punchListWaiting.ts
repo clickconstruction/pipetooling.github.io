@@ -12,7 +12,7 @@
  *
  * Pure: the cards and the picks in, the rows out.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { ASK_WHO, ASK_WHO_LABEL, type AskWho, type CardAsk } from './punchListAsk'
 import { isOpenItem, type PickMap, type PickRecord } from './punchListView'
 import type { BoardItem } from './todoBoard'

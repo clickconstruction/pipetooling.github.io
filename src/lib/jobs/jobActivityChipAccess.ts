@@ -15,7 +15,7 @@
  * The server stays the authority: these decide which chips are drawn, never which lines are read.
  * Pure: no React, no supabase. The read is `hooks/useJobActivityFilterAccess.ts`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isOfficeRole } from '../doorRoles'
 import type { ActivityFilterAccess } from '../jobActivityFilter'
 

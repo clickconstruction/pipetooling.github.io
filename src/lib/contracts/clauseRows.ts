@@ -11,7 +11,7 @@
  *
  * Pure: `clausesIo.ts` reads the rows, this shapes them.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { canApproveClause } from '../gc/access'
 import type { ClauseBook, ClauseProposal } from './approval'
 import { clauseTrades, tradeKey, type Clause, type ClauseScope, type ContractPaper } from './assemble'

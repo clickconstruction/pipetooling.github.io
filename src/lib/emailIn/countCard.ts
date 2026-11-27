@@ -6,7 +6,7 @@
  * Your account → **Mail Quickfill counts** is each listed person's own: their labels, the words that say what is kept
  * and who sees it, and their own switch. Pure; the reads and writes are `countCardIo.ts`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { lineWhen } from '../messages/thread'
 import { cleanLabels, type WatchRow } from './countedBoxes'

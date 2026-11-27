@@ -19,7 +19,7 @@
  * `checkClearedIo.ts`. The readers are Payoffs (`lienPayoff.ts`), the Release of record tab
  * (`lienReleaseOfRecord.ts`) and the check pane (`lienPayoffCheck.ts`).
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'

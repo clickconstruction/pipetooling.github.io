@@ -15,7 +15,7 @@
  * books' words and lists `dev-controller`; a dev alone keeps the company owner account, the rate card, the markup
  * and Docsmit. The database side of each card is the key-scoped policy in `20261109002000_dev_gates_jobs_billing.sql`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { canSeeGcMoney } from '../gc/access'
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { isControllerOrDev } from '../doorRoles'

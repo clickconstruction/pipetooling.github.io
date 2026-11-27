@@ -3,7 +3,7 @@
  * that draws itself and by the Settings search row that leads to it, so a row never lands a person
  * on a tab where their card is not drawn.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isOwnerOrDev } from '../gc/access'
 
 /**

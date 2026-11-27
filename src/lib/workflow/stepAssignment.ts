@@ -18,7 +18,7 @@
  * turns them off afterwards keeps that choice through reassignments.
  */
 import { ROLES } from '../userRoles'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { activeRosterOnly, type ActiveRosterRow } from '../people/activeRoster'
 
 /** Every role a workflow step may be assigned to — the `.in('role', …)` list for roster reads. */

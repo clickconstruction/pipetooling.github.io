@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { directionsUrlForAddress } from './directionsUrl'
 

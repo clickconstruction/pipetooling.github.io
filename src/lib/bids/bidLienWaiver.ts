@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import {
   LIEN_WAIVER_FORM_SHORT_LABELS,
   buildLienWaiverFoot,

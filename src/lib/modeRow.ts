@@ -29,7 +29,7 @@
  * is the switch above, and only once someone unticks it.
  */
 
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import type { PageMode, PageModeWrite } from './pageMode'
 import { roleHomePath } from './roleGate'

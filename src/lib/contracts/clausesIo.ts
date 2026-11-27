@@ -6,7 +6,7 @@
  */
 import { supabase } from '../supabase'
 import { checkSupabaseError, withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_CLAUSE_APPROVE_TEAM, canApproveClause } from '../gc/access'
 import { clauseNeeds, type ClauseChange, type ClauseNeedRow } from './approval'
 import { settingsDefJson, type SettingsDef } from './paperSettings'

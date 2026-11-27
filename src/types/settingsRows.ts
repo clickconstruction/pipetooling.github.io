@@ -1,6 +1,6 @@
 /** Row shapes shared between Settings.tsx (state/loaders) and the extracted Settings tab
  * components (People, etc.). Kept here so tab components don't import from the page module. */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from './userRole'
 
 export type UserRow = {
   id: string

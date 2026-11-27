@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /**
  * Who opens the Document builder tab on Documents (punch list #404). A dev only for now, which is the owner's call of

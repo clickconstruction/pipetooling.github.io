@@ -6,7 +6,7 @@
  * rule keeps a draft with a customer on leave. One interface, so a smoke hands it a fake.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import type { Database } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
