@@ -103,7 +103,9 @@ Sometimes a lien is settled for less than the bills. The red line holds the butt
 
 ## Release a lien before its check clears
 
-A leader may decide a release goes out before the bank clears the check. A cashier's check is one case. The amber line holds the buttons. Press **Release it anyway…** and type why. The reason is saved with the release.
+A leader, a controller or a dev may decide a release goes out before the bank clears the check. A cashier's check is one case. The amber line holds the buttons. Press **Release it anyway…** and type why. The reason is saved with the release.
+
+Anyone else sees no press there. A grey line says who can release it. Ask one of them, or wait for the day the line names.
 
 ## Step 3, record it at the county
 

@@ -22,18 +22,18 @@ import { ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
 import { formatYmdMonthDay } from './billedExpectedPay'
-import type { CheckAnswer } from './checkCleared'
+import { EARLY_ON_CHECK_ROLES, canActBeforeCheckClears, type CheckAnswer } from './checkCleared'
 import type { LienPayoffRow, LienPayoffStepKey } from './lienPayoff'
 import { fundsConfirmedWords, type FundsConfirmed } from './lienPayoffFields'
 
 /** A release is owed within ten days of a written request (Tex. Prop. Code § 53.152(a)). */
 export const RELEASE_DUE_DAYS = 10
 
-/** Who may say the bank confirmed the funds: the owner's answer of 2026-11-25, *a leader, a controller or a dev*. */
-export const FUNDS_CONFIRM_ROLES: ReadonlyArray<UserRole> = ['dev', 'master_technician', 'controller']
+/** Who may say the bank confirmed the funds: the owner's answer of 2026-11-25, *a leader, a controller or a dev*. The one list is `checkCleared.ts`'s, shared with the early release (v2.8735). */
+export const FUNDS_CONFIRM_ROLES: ReadonlyArray<UserRole> = EARLY_ON_CHECK_ROLES
 
 export function canConfirmFunds(role: UserRole | string | null | undefined): boolean {
-  return typeof role === 'string' && (FUNDS_CONFIRM_ROLES as ReadonlyArray<string>).includes(role)
+  return canActBeforeCheckClears(role)
 }
 
 export type PayoffStopKey = 'money' | 'bank' | 'releases' | 'county' | 'copies'

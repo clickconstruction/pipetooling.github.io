@@ -19,6 +19,7 @@
  * `checkClearedIo.ts`. The readers are Payoffs (`lienPayoff.ts`), the Release of record tab
  * (`lienReleaseOfRecord.ts`) and the check pane (`lienPayoffCheck.ts`).
  */
+import type { UserRole } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
@@ -28,6 +29,19 @@ import { CHECK_CLEAR_DAYS, isCheckPayment } from './checkClearing'
 
 /** How far back the bank's check deposits are read, and how far a payment's day may sit from its deposit. */
 export const BANK_CHECK_WINDOW_DAYS = 60
+
+/**
+ * Who may act on a check before the bank has cleared it (punch list #437, call 4, the owner's answer of 2026-11-25:
+ * *a leader, a controller, or a dev*, and *the same three* for every early press on a held check). One list, read by
+ * the release tab's *Release it anyway…* on a check that has not cleared (v2.8735) and by Payoffs' *The bank
+ * confirmed the funds* (`canConfirmFunds`). A leader is the owner's role. The controller is named by itself: the
+ * assistant is not one of the three.
+ */
+export const EARLY_ON_CHECK_ROLES: ReadonlyArray<UserRole> = ['dev', 'master_technician', 'controller']
+
+export function canActBeforeCheckClears(role: UserRole | string | null | undefined): boolean {
+  return typeof role === 'string' && (EARLY_ON_CHECK_ROLES as ReadonlyArray<string>).includes(role)
+}
 
 /** One check deposit as the bank holds it. Days are in the company's calendar. */
 export type BankCheck = {
