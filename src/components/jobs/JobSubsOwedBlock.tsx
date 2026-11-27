@@ -14,6 +14,7 @@ import { useSubsOwed } from '../../hooks/useSubsOwed'
 import { buildJobOwedBlock, owedMoney, owedSettledWords, type JobOwedBlock, type OwedSheet } from '../../lib/people/subOwedBreakdown'
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import { sheetOwedToChip, TEAM_SHEET_RULE } from '../../lib/subWorkOrders/teamSheetRule'
+import { WE_OWE_NOTHING } from '../../lib/subWorkOrders/subPaymentsLedger'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { MoneyText } from '../Money'
 
@@ -75,7 +76,7 @@ export function JobSubsOwedView({ title, block, onOpenSheet, onOpenPerson, onSho
                 What we owe {p.name.split(' ')[0]} ›
               </button>
             ) : null}
-            <span style={{ ...num, marginLeft: 'auto' }}>{p.open > 0 ? <MoneyText text={`${owedMoney(p.open)} open`} /> : 'paid up'}</span>
+            <span style={{ ...num, marginLeft: 'auto' }}>{p.open > 0 ? <MoneyText text={`${owedMoney(p.open)} open`} /> : WE_OWE_NOTHING}</span>
           </div>
           {p.sheets.map(sheetRow)}
         </div>

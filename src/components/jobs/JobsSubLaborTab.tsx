@@ -70,7 +70,7 @@ import { isOfficeRole } from '../../lib/doorRoles'
 import type { SubPapersOpen } from './SubPapersWindow'
 import { OverToCreditWindow } from './SubSendingRepairWindows'
 import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
-import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { ledgerDayWords, paymentDay, WE_OWE_NOTHING } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { useSubPaperAnswers } from '../../hooks/useSubPaperAnswers'
 import { noteAnsweredWords, noteFlagWords, notesForSheet, paymentReceivedDay, receivedChipWords, waitingNotes } from '../../lib/subWorkOrders/subPaperAnswers'
 import { Money, MoneyText } from '../Money'
@@ -598,7 +598,7 @@ export default function JobsSubLaborTab({
                       {sub && sub.whyNot ? ` · ${sub.whyNot}` : ''}
                     </span>
                   </span>
-                  <span style={{ fontWeight: 700, color: sub && sub.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{sub && sub.owed > 0 ? <AmountSmallCents value={sub.owed} /> : sub?.crew ? 'payroll' : 'paid up'}</span>
+                  <span style={{ fontWeight: 700, color: sub && sub.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{sub && sub.owed > 0 ? <AmountSmallCents value={sub.owed} /> : sub?.crew ? 'payroll' : WE_OWE_NOTHING}</span>
                   <span aria-hidden style={{ color: 'var(--text-muted)' }}>{open ? '▾' : '▸'}</span>
                 </button>
                 {open
@@ -681,7 +681,7 @@ export default function JobsSubLaborTab({
                           {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
                           {sub && sub.teammates.length > 0 ? ` · with ${sub.teammates.join(', ')}` : ''}
                         </span>
-                        <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: sub && sub.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontWeight: 600 }}>{sub && sub.owed > 0 ? <>owed <AmountSmallCents value={sub.owed} /></> : sub?.crew ? 'payroll' : 'paid up'}</span>
+                        <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: sub && sub.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontWeight: 600 }}>{sub && sub.owed > 0 ? <>owed <AmountSmallCents value={sub.owed} /></> : sub?.crew ? 'payroll' : WE_OWE_NOTHING}</span>
                         {sub?.action.kind === 'pay' ? (
                           <button type="button" style={{ ...btnPay, padding: '0.2rem 0.6rem' }} onClick={() => payReady(sub)}>
                             Pay <AmountSmallCents value={sub.action.amount} />{sub.action.sheets > 1 ? ` · ${sub.action.sheets} sheets` : ''}
