@@ -1581,11 +1581,12 @@ Since v2.6706 a visit whose job embed came back empty — a superintendent reads
 My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Customer line says *Shows once you clock in here.* for no row and the failure's reason for a failed read, never *Loading…* for good.
 
 **The superintendent's line** (punch list #242, PR 4, **v2.6335**): for a superintendent whose current or next job is a project, the card draws **[`SuperintendentCard`](../src/components/jobMode/SuperintendentCard.tsx)** above the job's details — the headline (ahead or behind at this pace), the pace strip with the job's real days and stages, the office's target when one is set, the money when it leads, the proof and the one move with **Set the %** and **Open the checklist** — from the same read (`list_project_board`) and the same `projectPace` the office's Projects board stands on, so the two never disagree.
-Since **v2.8048** (punch list #406) the card's face has a name, **Job pace**, and reads hours and never money (`lib/jobMode/paceReading.ts`, `PaceReadingFace.tsx`).
+Since **v2.8048** (punch list #406) the card's face has a name, **Job pace**, and shows hours and never a dollar (`lib/jobMode/paceReading.ts`, `PaceReadingFace.tsx`).
 Since **v2.8122** the card also draws for his next stop when the Job Mode card has no job of its own, clocked in with no job linked or onto a bid, with one line, *Next stop: PLUM 1044 · Maple Court* (`lib/jobMode/paceNextStop.ts`).
 It draws **Hours used** and **Work done** as two bars on one scale, with the gap hatched on the hours bar.
 Its headlines are *Hours are ahead of the work.*, *On track.*, *The work is ahead of the hours.* and, when hours went in after the percent was last said, *Is 40% still right?* in amber with **Still 40%**.
-Money that leads is one grey line on the phone, and the word *points* is on no screen that reads the line.
+Since **v2.8720** (call 1, flipped) money that leads while the hours do not is the card's own warning: amber, with the headline *Money spent is ahead of the work.*, the hours' line kept under the bars, and the hours' warning winning when both lead.
+Money that leads is one grey line on the phone only on a card that cannot compare hours and work (no percent, no hours budget, or under 8 hours), and the word *points* is on no screen that reads the line.
 Since **v2.8120** a gap under a crew day still reads ahead or behind when it is a tenth of the hours budget or more (`hoursVerdict`), said in hours, *6 hours behind.*, so a small job cannot read on pace at 140% of its hours.
 
 Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
