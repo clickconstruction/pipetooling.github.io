@@ -123,7 +123,7 @@ The parent renders **`BidVersionPicker` above this tab** and **`BidsPricingCalcu
 | Lock and stamp | `revisedBidIds` 318, `pricedStampArm` 619 (v2.5043) | 2 | P0 |
 | Picker | `pricingSearchQuery` 366 | 1 | P1 |
 | Forms | `usePriceBookForms` since v2.8755 (18 values with `pricingFormMode` and `pricingCloneSourceId`, from 367–388, 435 and 436) | 20 | P5 |
-| Drawer | `priceBookSearchQuery` 389, `wbBookDrawerOpen` 393, `wbBooksExpanded` 394, `wbPriceDisplayMode` 395, `pendingBookOffer` 402, `applyingBookOffer` 403, `editingTemplateId` 426, `templateEntries` 427, `pricebookSwitchBusy` 710 | 9 | P4 (P2's book chip sets `wbBookDrawerOpen` + `wbBooksExpanded`, 3304–3305; the P5 entry form reads `wbPriceDisplayMode`) |
+| Drawer | `priceBookSearchQuery` 389, `wbBookDrawerOpen` 393, `wbBooksExpanded` 394, `wbPriceDisplayMode` 395, `pendingBookOffer` and `applyingBookOffer` (in `useBookEditOffer` since v2.8764), `editingTemplateId` 426, `templateEntries` 427, `pricebookSwitchBusy` 710 | 9 | P4 (P2's book chip sets `wbBookDrawerOpen` + `wbBooksExpanded`, 3304–3305; the P5 entry form reads `wbPriceDisplayMode`) |
 | Assign search | `pricingAssignmentSearches` 437, `assignMatchMode` 440, `pricingAssignmentDropdownOpen` 529 | 3 | P2 grid |
 | Modal payloads | `pricingBreakdownRow` 530 | 1 | P3 |
 | Solver, preview, drafts | `wbPreview` 565, `wbPreviewRestoredAt` 568, `wbPreviewVeto` 580, `wbLocks` 620, `wbMarginPct` 621, `wbTargetTotalInput` 631, `wbSolveLanding` 637, `wbSolveScope` 640 (v2.4202), `wbShowUnpricedOnly` 641, `wbShowNoCostOnly` 642, `wbApplying` 643, `wbPriceDrafts` 647, `wbCellDraft` 652, `wbJustSaved` 654, `savingUnitPriceOverride` 711, `solveMenuOpen` 744, `wbSolverOpen` 750, `wbCoverageOpen` 771 | 18 | P2 strip + grid |
@@ -137,7 +137,7 @@ The parent renders **`BidVersionPicker` above this tab** and **`BidsPricingCalcu
 | ~~Share / print~~ | the 5 values live in `useStarAwareShare` since v2.3970 | 0 | P7 |
 | ~~Quotes / RFQ / robot~~ | the 12 values live in `usePricingQuoteDesk` since v2.3945 | 0 | P6 |
 
-Refs (6): `bookOfferTokenRef` 406 and `freezingPricingRef` 409 (P4 / freeze chain), `pricedStampLatestRef` 625 and `bidDifficultyLatestRef` 1599 (each refreshed after every commit), `wbTargetTotalFocusedRef` 633, `solveMenuRef` 745. `marksNotThereToast` moved into `usePricingRowMarks` (v2.7717). The brush's two stroke refs moved into `useMarginBrush` (v2.4048).
+Refs (6): `bookOfferTokenRef` (in `useBookEditOffer` since v2.8764) and `freezingPricingRef` 409 (P4 / freeze chain), `pricedStampLatestRef` 625 and `bidDifficultyLatestRef` 1599 (each refreshed after every commit), `wbTargetTotalFocusedRef` 633, `solveMenuRef` 745. `marksNotThereToast` moved into `usePricingRowMarks` (v2.7717). The brush's two stroke refs moved into `useMarginBrush` (v2.4048).
 
 ### Region P0 — Pricing lock and the freeze chain (cross-cutting)
 
@@ -185,7 +185,8 @@ Refs (6): `bookOfferTokenRef` 406 and `freezingPricingRef` 409 (P4 / freeze chai
 ### Region P4 — The Price book drawer — extracted v2.3563
 
 - **Wiring:** `{wbBookDrawerOpen ? … : null}` 3930–3966 → [`BidsPriceBookDrawer`](../src/components/bids/BidsPriceBookDrawer.tsx) (342 lines) with grouped props (`books`, `entries`, `offer`, `doors`). It opens from the book chip in the book-match bar (the bar's `onOpenBook` at 3303–3308 calls `setWbBookDrawerOpen(true)`, `setWbBooksExpanded(false)` and `selectPanelVersion`).
-- **Stays in the tab:** the Escape listener + close-time reset (effect 410–421), the offer retire effect (430–433), the template-follow effect (906–915), `loadTemplateEntries` (878–895, `price_book_entries` SELECT with `fixture_types(name)`), `reloadPanelEntries` / `reloadPanelVersions` (897–903), `selectPanelVersion` (917–920), `onSelectPriceBookTemplate` (1540–1566, reuse rule = quirk 5), and **the v2.2444 door across**: `noteBookEditForOpenBid` (1266–1326) plans the offer after a book edit, `applyPendingBookOffer` (1333–1375) applies it. Offered once per edit, never automatically — a sent bid must not re-price because someone tidied the book.
+- **Out of the tab since v2.8764:** the book-edit offer is [`useBookEditOffer`](../src/hooks/useBookEditOffer.ts): `pendingBookOffer`, `applyingBookOffer`, `bookOfferTokenRef`, the offer retire effect, `noteBookEditForOpenBid` and `applyPendingBookOffer`, moved as they stood, with `retireBookOffer` for the drawer's own effect to call.
+- **Stays in the tab:** the Escape listener + close-time reset (effect 410–421, which retires an offer through the hook), the template-follow effect (906–915), `loadTemplateEntries` (878–895, `price_book_entries` SELECT with `fixture_types(name)`), `reloadPanelEntries` / `reloadPanelVersions` (897–903), `selectPanelVersion` (917–920), `onSelectPriceBookTemplate` (1540–1566, reuse rule = quirk 5). **The v2.2444 door across** is the hook's: `noteBookEditForOpenBid` plans the offer after a book edit, `applyPendingBookOffer` applies it. Offered once per edit, never automatically — a sent bid must not re-price because someone tidied the book.
 - **Derived:** `panelVersionId` (866) = `editingTemplateId` (the `templatesMode` ternary left in v2.3909, quirk 17); it gates the P5 entry form. `currentPriceBookTemplateId` (869–876) via `resolveCurrentPriceBookTemplateId`.
 
 ### Region P5 — Version form, delete-version, entry form — extracted v2.3564
