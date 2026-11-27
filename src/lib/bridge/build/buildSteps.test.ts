@@ -122,4 +122,31 @@ describe('buildBuildSteps (punch list #334, PR 1)', () => {
   it('holds every sentence to the plain-words rule', () => {
     for (const text of sentences(steps)) expect(plainWordsFailures(text), text).toEqual([])
   })
+
+  describe('the jobs that wait, with a reason (v2.8713, punch list #192 write A)', () => {
+    const emptyReads = { blocks: [], names: new Map<string, string>(), lifetimeHours: new Map<string, number>() }
+    const withWait = buildBuildSteps(buildBuildDesk({ ...input, reads: { ...emptyReads, waits: [{ jobId: '2087', reason: 'gc_not_ready', note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' }] } }))
+
+    it('leave the quiet list and its money, and wait behind a press of their own at the foot', () => {
+      const quiet = (st: BuildSteps) => st.groups[2].rows.map((r) => r.id)
+      expect(quiet(steps)).toContain('2087')
+      expect(quiet(withWait)).not.toContain('2087')
+      expect(withWait.groups[2].title).not.toBe(steps.groups[2].title)
+      expect(withWait.waits).toMatchObject({ label: 'Waiting, with a reason (1)', words: '1 job waits, $47.1k of sold work. Each stays out of the quiet list until someone lifts the wait.' })
+      expect(withWait.waits!.rows.map((r) => r.id)).toEqual(['2087'])
+      // The headline is the hours and the work done: a wait changes neither.
+      expect(withWait.headline).toBe(steps.headline)
+    })
+
+    it('show no press at the foot when no job waits', () => {
+      expect(steps.waits).toBeNull()
+      expect(buildBuildSteps(buildBuildDesk({ ...input, reads: { ...emptyReads, waits: [] } })).waits).toBeNull()
+    })
+
+    it('are said in plain words, and How this is counted says what a wait does', () => {
+      expect(plainWordsFailures(withWait.waits!.words)).toEqual([])
+      expect(withWait.counted).toContain('A quiet job marked as waiting stays out of the quiet list until someone lifts the wait.')
+      for (const sentence of sentences(withWait)) expect(plainWordsFailures(sentence), sentence).toEqual([])
+    })
+  })
 })

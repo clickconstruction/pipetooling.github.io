@@ -6,23 +6,26 @@ import type { Database } from '../../../types/database'
  * ids. The Schedule's blocks for the next BUILD_DESK_CREW_DAYS days with the
  * assignees' names, for the crew chips; and each job's lifetime approved
  * hours through `loadEarnedJobs`, the earned rule's denominator, so a moving
- * row can say how many hours it expects. The hours, the percent points and
- * the open jobs are on the page already. Read-only; nothing new on the server.
+ * row can say how many hours it expects. Since v2.8713 the waits that are not
+ * lifted too (`buildWaitsIo.ts`): a read the database refuses leaves them
+ * out, and the desk then offers no press to name one. The hours, the percent
+ * points and the open jobs are on the page already. Read-only.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { ymdAddDays } from '../../../utils/dateUtils'
 import { fetchAllRowsChunkedIn } from '../../supabasePaging'
 import { loadEarnedJobs } from '../loadBridgeData'
 import { BUILD_DESK_CREW_DAYS, type BuildDeskBlock, type BuildDeskReads } from './buildDesk'
+import { buildWaitsIo, type BuildWaitsIo } from './buildWaitsIo'
 
 type BlockRow = { job_id: string | null; work_date: string; assignee_user_id: string }
 type UserRow = { id: string; name: string | null }
 
-export async function loadBuildDeskReads(db: SupabaseClient<Database>, args: { jobIds: ReadonlyArray<string>; todayYmd: string; crewDays?: number }): Promise<BuildDeskReads> {
+export async function loadBuildDeskReads(db: SupabaseClient<Database>, args: { jobIds: ReadonlyArray<string>; todayYmd: string; crewDays?: number; waitsIo?: Pick<BuildWaitsIo, 'loadOpen'> }): Promise<BuildDeskReads> {
   const jobIds = [...new Set(args.jobIds)]
   const crewDays = args.crewDays ?? BUILD_DESK_CREW_DAYS
   const crewEnd = ymdAddDays(args.todayYmd, crewDays - 1)
-  const [blockRows, earned] = await Promise.all([
+  const [blockRows, earned, waits] = await Promise.all([
     jobIds.length
       ? fetchAllRowsChunkedIn<BlockRow, string>(
           jobIds,
@@ -34,6 +37,7 @@ export async function loadBuildDeskReads(db: SupabaseClient<Database>, args: { j
         )
       : Promise.resolve([] as BlockRow[]),
     jobIds.length ? loadEarnedJobs(db, jobIds) : Promise.resolve({ jobs: [], earnedJobs: [], lifetimeHoursAsOf: new Map<string, number>() }),
+    (args.waitsIo ?? buildWaitsIo).loadOpen(),
   ])
   const blocks: BuildDeskBlock[] = []
   for (const r of blockRows) if (r.job_id) blocks.push({ jobId: r.job_id, workDate: r.work_date, assigneeUserId: r.assignee_user_id })
@@ -52,5 +56,5 @@ export async function loadBuildDeskReads(db: SupabaseClient<Database>, args: { j
   for (const u of userRows) if (u.name) names.set(u.id, u.name)
   const lifetimeHours = new Map<string, number>()
   for (const j of earned.earnedJobs) lifetimeHours.set(j.id, j.lifetimeHours)
-  return { blocks, names, lifetimeHours }
+  return { blocks, names, lifetimeHours, ...(waits ? { waits } : {}) }
 }
