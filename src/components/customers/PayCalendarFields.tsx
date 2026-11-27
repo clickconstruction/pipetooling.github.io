@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { payCalendarFieldStyle, payCalendarLabelStyle } from './payCalendarFieldStyles'
-import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_DAYS_AFTER_DEFAULT, PAY_CALENDAR_DAYS_AFTER_MAX, PAY_CALENDAR_WORDS_MAX, ordinalDay, paysDaysAfter, showsHowTheyPay, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_DAYS_AFTER_DEFAULT, PAY_CALENDAR_DAYS_AFTER_MAX, PAY_CALENDAR_WORDS_MAX, ordinalDay, paysDaysAfter, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { showsHowTheyPay } from '../../lib/jobs/payTermsInDaysOffer'
 
 /**
  * The Pay calendar's own fields (punch list #323): the day bills must be in by, the day they pay

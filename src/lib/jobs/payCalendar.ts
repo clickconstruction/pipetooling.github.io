@@ -186,28 +186,6 @@ export function paysDaysAfter(cal: PayCalendar | null | undefined): cal is PayCa
   return cal != null && typeof cal.daysAfter === 'number' && cal.daysAfter >= 1
 }
 
-/**
- * Whether the window offers terms in days to someone setting a calendar. Off since v2.8714 (punch list #341,
- * call 4, answered 2026-11-25): no contract here pays a number of days after the bill, so the choice is
- * hidden until one does. Hidden, not taken out: everything PR 5 built still reads, shows and saves such
- * terms. Turn this on to bring the choice back.
- */
-export const PAY_CALENDAR_DAYS_AFTER_OFFERED = false
-
-/**
- * True when the fields draw the *How they pay* choice: it is offered, or the terms on the form are in days
- * or were while the fields were open. So terms already in days are never stuck out of sight, and a switch
- * to a set day can be switched back.
- */
-export function showsHowTheyPay({ days, hadDays, offered = PAY_CALENDAR_DAYS_AFTER_OFFERED }: { days: boolean; hadDays: boolean; offered?: boolean }): boolean {
-  return offered || days || hadDays
-}
-
-/** The kinds of terms a pay calendar holds, as the lines that introduce it say them: the second kind is named only where it can be picked. */
-export function payTermsKindsWords(offered: boolean = PAY_CALENDAR_DAYS_AFTER_OFFERED): string {
-  return offered ? 'a set day of the month, or a number of days after the bill' : 'a set day of the month'
-}
-
 /** What the terms are called where a line names them: a pay calendar, or pay terms when they are days after the bill. */
 export function payTermsNoun(cal: PayCalendar | null | undefined): 'pay calendar' | 'pay terms' {
   return paysDaysAfter(cal) ? 'pay terms' : 'pay calendar'
@@ -427,7 +405,7 @@ export function jobPayCalendarWords(read: PayCalendarRead, payerName: string | n
       title: 'This job reads the usual guess: the bill date plus how long they take to pay.',
     }
   }
-  return canSet ? { lead: null, press: 'Set a pay calendar…', tail: null, title: `For a job whose contract says when its payer pays: ${payTermsKindsWords()}` } : null
+  return canSet ? { lead: null, press: 'Set a pay calendar…', tail: null, title: 'For a job whose contract says when its payer pays: a set day of the month, or a number of days after the bill' } : null
 }
 
 /** The year and month whose cutoff a bill received on `receivedYmd` makes. */

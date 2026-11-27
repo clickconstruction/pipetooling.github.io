@@ -13,14 +13,12 @@ import { dispatchPayCalendarChanged, loadDevelopmentJobIds, loadPayCalendarJobs,
 import {
   JOB_NO_CALENDAR_WORDS,
   PAY_CALENDAR_CLAUSE_MAX,
-  PAY_CALENDAR_DAYS_AFTER_OFFERED,
   PAY_CALENDAR_DEFAULT,
   PAY_CALENDAR_WORDS_MAX,
   payCalendarPreview,
   payCalendarShort,
   payCalendarWords,
   paysDaysAfter,
-  payTermsKindsWords,
   normalizePayCalendar,
   recordFor,
   recordWords,
@@ -28,6 +26,7 @@ import {
   type PayCalendarReceipt,
   type PayCalendarRow,
 } from '../../lib/jobs/payCalendar'
+import { PAY_CALENDAR_DAYS_AFTER_OFFERED, payTermsKindsWords } from '../../lib/jobs/payTermsInDaysOffer'
 import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 import PayCalendarFields from './PayCalendarFields'
 import { payCalendarLabelStyle } from './payCalendarFieldStyles'

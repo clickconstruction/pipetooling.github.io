@@ -1,7 +1,7 @@
 ---
 name: "A job's own pay terms: the override is built, the door to it is hidden, and four kinds of terms have no home"
 number: 341
-group: ready
+group: close
 status: asked 2026-11-13 by the owner · read the same day from the code and from prod through the dev seat (reads only) · the owner's *Yes, build both* the same day · PR 1, the door, and PR 2, the mark, built the same day (v2.7151, v2.7153) · Taunya's *build the entire PR train* 2026-11-15 · PR 3, the job's own record, built that day (v2.7339) on the card's first pick for call 2 · PR 4, one bill's own due day, built that day (v2.7341, migration 20261115170000) as carded, call 3 unanswered · PR 5, a number of days after the bill, built that day (v2.7343, migration 20261115190000) as carded, call 4 unanswered · the train is built · the morning run's two reads built 2026-11-16 on the owner's ask of that day (v2.7452) and deployed that day at 10:52 AM Central on Taunya's go · call 4 answered 2026-11-25 (UTC) in the managing session: no big job pays a set number of days after the bill, and the terms in days choice can be hidden until a contract needs it; hidden 2026-11-27 (v2.8714)
 summary: >
   The owner asked what it would take to set one job's payment terms so they win over its GC's or its
@@ -269,8 +269,8 @@ Files PRs 1 to 3 touch: `payCalendar.ts`, `PayCalendarModal.tsx`, `PayCalendarLi
   big job pays this way it is never built, and nothing reads differently until someone picks it.
   Call 4 was answered on 2026-11-25: none does, and the choice can be hidden until a contract needs it.
   **Hidden 2026-11-27 (v2.8714):** the window and the estimator's pay terms open on **Bills must be
-  in by**. The choice is drawn only for terms already in days, and one switch in the kernel brings
-  it back.
+  in by**. The choice is drawn only for terms already in days, and one switch brings it back
+  (`lib/jobs/payTermsInDaysOffer.ts`, a file of its own so the edge's copy of the kernel is untouched).
 - **Left for a deploy:** the morning run (`messages-nudge-dispatch`) reads a bill's own day and
   terms in days in the code since v2.7452, built 2026-11-16 on the owner's ask of that day
   (`_shared/payTermsRead.ts`, each read soft alone). It is proved in tests alone: one made-up
