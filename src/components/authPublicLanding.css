@@ -362,6 +362,15 @@
     box-shadow 0.15s ease;
 }
 
+/* On a phone the card's two presses stand a fingertip tall (finding 303: each stood 40.8 px at 375 px, 4 under 44).
+   The words stay in the middle: the Google press is a flex row, and a button centres its own words. */
+@media (max-width: 640px) {
+  .auth-public-landing .auth-public-landing__signin-submit,
+  .auth-public-landing .auth-public-landing__signin-google {
+    min-height: 44px;
+  }
+}
+
 .auth-public-landing .auth-public-landing__signin-google:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #9ca3af;

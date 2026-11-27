@@ -20,6 +20,7 @@ import {
   subStatementCsvFileName,
   subStatementHtml,
   SUB_STATEMENT_CSV_HEAD,
+  weOweTodaySentence,
   weOweWords,
   filterLedger,
   ledgerDayWords,
@@ -317,6 +318,14 @@ describe('ledgerBySub', () => {
     expect([weOweWords(1500), weOweWords(0), weOweWords(-20)]).toEqual(['$1,500.00', 'settled', 'over by $20.00'])
   })
 
+  it('says what we owe a person today as a sentence that reads (finding 313: it read We owe … settled today.)', () => {
+    expect(weOweTodaySentence('Marco Estrada', 1300)).toBe('We owe Marco Estrada $1,300.00 today.')
+    expect(weOweTodaySentence('Marco Estrada', 0)).toBe('We owe Marco Estrada nothing today.')
+    expect(weOweTodaySentence('Marco Estrada', -20)).toBe('We owe Marco Estrada nothing today. They are paid over by $20.00.')
+    expect(weOweTodaySentence('', 0)).toBe('We owe them nothing today.')
+    for (const n of [1300, 0, -20]) expect(weOweTodaySentence('Marco Estrada', n)).not.toMatch(/settled|over by .* today/)
+  })
+
   it('a statement’s address is the person’s own id, read back against the people the ledger knows', () => {
     expect(ledgerSubParam('id:marco')).toBe('marco')
     expect(ledgerSubParam('two subs')).toBe('two subs')
@@ -377,6 +386,8 @@ describe('buildSubStatement', () => {
     expect(off.agrees).toBe(false)
     expect(off.words).toContain('People → Subs reads $900.00 for Balance due and these sheets come to $1,300.00.')
     expect(statementCheckWords(st, undefined)).toEqual({ agrees: null, words: 'We owe Marco Estrada $1,300.00 today.' })
+    // With nothing owed the sentence still reads (finding 313).
+    expect(statementCheckWords({ ...st, owedToday: 0 }, undefined).words).toBe('We owe Marco Estrada nothing today.')
   })
 
   it('a person the ledger does not know gets an empty statement', () => {

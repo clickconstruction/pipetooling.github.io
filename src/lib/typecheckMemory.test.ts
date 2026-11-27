@@ -19,12 +19,14 @@ const k = kernel as {
   MEMORY_MARK: string
   HOOK_FILE: string
   NEAR_CAP_SHARE: number
+  HEAP_REAL_SHARE: number
   COLLECT_ENV: string
   CARD: string
   collects: (env?: Record<string, string | undefined>) => boolean
   hookNodeArgs: (o: { hookPath: string; collect: boolean }) => string[]
   memoryLineSplitter: () => Splitter
   readMemoryReport: (raw: unknown) => Report | null
+  heapIsReal: (report: Report) => boolean
   heldMb: (report: Report) => number
   nearCap: (report: Report, capMb: number) => boolean
   wallWords: (ms: number) => string
@@ -134,16 +136,39 @@ describe('typecheckMemory: the words', () => {
     expect(k.wallWords(3_725_000)).toBe('1:02:05')
   })
 
-  it('a run that collected says what the program needs, against its cap', () => {
-    expect(k.memoryWords({ who: 'typecheck', label: 'tests-rest', report: largestPart, capMb: RUNNER_CAP, wallMs: 397_000 })).toBe(
-      "typecheck: tests-rest's tsc took 6:37, ended holding 8,578 MB of its 13,312 MB heap (64%) after a collection of 6.1 s, and held 9,085 MB resident at most.",
+  /** The deploy's `tsc -b` of the app part, cold, on 2026-11-27: it still held its program as it exited. */
+  const deployBuild: Report = { heapUsedMb: 7995, residentPeakMb: 9357, collected: true, collectMs: 4900 }
+  /** A cold `tsc -p` of the same part the same day, on a runner with a 13,568 MB cap: it had let its program go. */
+  const coldPart: Report = { heapUsedMb: 33, residentPeakMb: 8857, collected: true, collectMs: 100 }
+
+  it('the heap is the program\'s only when a collection ran and tsc still held its program', () => {
+    expect(k.HEAP_REAL_SHARE).toBe(0.25)
+    expect(k.heapIsReal(deployBuild)).toBe(true)
+    expect(k.heapIsReal(coldPart)).toBe(false)
+    // A warm part with this change's tests to check still held it: 3,492 MB of a 3,877 MB peak.
+    expect(k.heapIsReal({ heapUsedMb: 3492, residentPeakMb: 3877, collected: true, collectMs: 1300 })).toBe(true)
+    // A warm part that found nothing changed had let it go: 28 MB of a 3,520 MB peak.
+    expect(k.heapIsReal({ heapUsedMb: 28, residentPeakMb: 3520, collected: true, collectMs: 0 })).toBe(false)
+    // Not collected, the heap in use is partly what was not yet thrown away, whatever its size.
+    expect(k.heapIsReal({ ...deployBuild, collected: false })).toBe(false)
+  })
+
+  it('a run that still held its program says what the program needs, against its cap', () => {
+    expect(k.memoryWords({ who: 'build', label: 'app', report: deployBuild, capMb: RUNNER_CAP, wallMs: 349_000 })).toBe(
+      "build: app's tsc took 5:49, ended holding 7,995 MB of its 13,312 MB heap (60%) after a collection of 4.9 s, and held 9,357 MB resident at most.",
     )
   })
 
-  it('a run that did not collect says so, and a run with no label is plain tsc', () => {
+  it('a run that had let its program go says its peak alone, and never the 33 MB', () => {
+    const words = k.memoryWords({ who: 'typecheck', label: 'app', report: coldPart, capMb: 13568, wallMs: 335_000 })
+    expect(words).toBe("typecheck: app's tsc took 5:35 and held 8,857 MB resident at most, 65% of its 13,568 MB heap.")
+    expect(words).not.toMatch(/33 MB|collection|ended/)
+  })
+
+  it('a run that did not collect says its peak alone too, and a run with no label is plain tsc', () => {
     const warm: Report = { heapUsedMb: 3300, residentPeakMb: 3988, collected: false, collectMs: 0 }
     expect(k.memoryWords({ who: 'build', report: warm, capMb: 16384, wallMs: 41_000 })).toBe(
-      'build: tsc took 0:41, ended with 3,300 MB of its 16,384 MB heap in use (20%), not collected first, and held 3,988 MB resident at most.',
+      'build: tsc took 0:41 and held 3,988 MB resident at most, 24% of its 16,384 MB heap.',
     )
   })
 })

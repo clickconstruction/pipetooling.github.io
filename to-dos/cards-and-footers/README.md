@@ -23,7 +23,7 @@ summary: >
   front kept.
 next: The owner tries it: his own card on Settings → Your account, then a teammate's from People → Users. The photo save was walked live on 2026-11-24 on a ZZ Test person. Then the designer's two files, the owner's word on calls 1 to 10, and the three checks on a device in v2.6943's fragment.
 size: M as a train of six (S · S · S · S · S · S), built as three PRs; left: the designer's vector and photo dropped in (XS), then on a call each the footer with live words (S), Gmail set by the app (M), the letterhead (S)
-blocker: The owner's try of it. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer.
+blocker: The owner's try of it. For print at size, the wrench and hand as a vector and the pipe photo by itself, both from the designer. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 opinion: built as recommended, way A with the footer and the card together. Next the designer's two files, since the mark is a cut-out and the card front still carries the designer's own logo under the drawn one.
 ---
 

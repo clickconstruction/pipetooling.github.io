@@ -50,12 +50,15 @@ vi.mock('../../lib/map/olderPhotosIo', () => ({
 /** Google's canvas, stood in: it says what it was handed, and its presses stand for what the real one tells the canvas. */
 const google = vi.hoisted(() => ({ mounts: 0, throws: false, props: null as null | Record<string, unknown> }))
 vi.mock('./PaintedMapGoogleCanvas', async () => {
-  const { useEffect } = await import('react')
+  // A layout effect, not a passive one: it runs inside the commit that puts the stand-in on the page, so a
+  // test that awaits `findByTestId('google')` and then reads `google.mounts` never reads it a beat early.
+  // With `useEffect` the element was there before the count on a slow runner (0 where 1 was due, 2026-11-27).
+  const { useLayoutEffect } = await import('react')
   return {
     default: function GoogleStub(props: { mapTypeId: string; apiKey: string; openOn?: { center: { lat: number; lng: number }; zoom: number } | null; lines: unknown[]; places: Array<{ id: string }>; onUnavailable: (reason: string) => void; onCamera?: (v: { center: { lat: number; lng: number }; zoom: number }) => void; onLive?: (live: unknown) => void; onPlaceTap?: (id: string) => void }) {
       if (google.throws) throw new Error('made-up failure while drawing')
       google.props = props
-      useEffect(() => {
+      useLayoutEffect(() => {
         google.mounts += 1
       }, [])
       return (

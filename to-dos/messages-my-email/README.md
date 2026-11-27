@@ -257,7 +257,7 @@ Exists:
 - `SettingsAccountTab.tsx` (the signature card is the shape for the switch card, v2.6038);
   Settings → Phone and texts (`EmailReaderSettingsCard.tsx` for the owner's line).
 - `docs/MESSAGES_ARCHITECTURE.md`, `docs/EDGE_FUNCTIONS.md`, `to-dos/messages-estimator-mailbox/`
-  (#207), `to-dos/quickfill-email-station/` (#159).
+  (#207), the Quickfill Email station (#159, closed 2026-11-27; its card lives in git history at the deleting commit).
 
 New: `src/lib/myMail/` (the three kernels), the function `gmail-mine`, the migration, the tab's
 components under `src/components/messages/myMail/`, the two guides, the Evidence door.
