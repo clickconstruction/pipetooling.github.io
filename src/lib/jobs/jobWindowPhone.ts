@@ -158,3 +158,17 @@ export function pressPad(size: { width: number; height: number }): PressPad | nu
   const pad = { x: grow(size.width), y: grow(size.height) }
   return pad.x || pad.y ? pad : null
 }
+
+/**
+ * The pad as its stylesheet draws it (finding 340, measured 2026-11-27 on the Lien desk's band press and a site's
+ * materials screen). `pressPad` sizes the pad from the press's own edge, its border box. The pad is drawn as a placed
+ * `::after`, and a placed child is measured from inside the border. So on a press with a 1 px border the pad landed
+ * 1 px short over and 1 px under: a tap of 42 where 44 was meant.
+ *
+ * This adds the border back on each side that grows. `border` is the wider of the two borders on that axis, so a tap
+ * is never under the 44 it was sized for. A side that does not grow takes nothing.
+ */
+export function pressPadFromInside(pad: PressPad, border: { x: number; y: number }): PressPad {
+  const wide = (n: number) => (Number.isFinite(n) && n > 0 ? n : 0)
+  return { x: pad.x ? pad.x + wide(border.x) : 0, y: pad.y ? pad.y + wide(border.y) : 0 }
+}

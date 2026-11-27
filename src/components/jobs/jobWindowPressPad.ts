@@ -8,8 +8,11 @@
  * field or a select inside it (the pad would sit over them and take their taps), and a press that clips its own
  * overflow (a clipped pad is no pad). A native select or a checkbox cannot carry a `::after`, so the pad never
  * reaches them: those are sized where they are drawn.
+ *
+ * The pad is drawn from inside the press's border, so the border's width is added to it here (finding 340,
+ * `pressPadFromInside`): a press with a 1 px border took a tap of 42 where 44 was meant.
  */
-import { pressPad } from '../../lib/jobs/jobWindowPhone'
+import { pressPad, pressPadFromInside } from '../../lib/jobs/jobWindowPhone'
 
 export const PRESS_SELECTOR = 'button, a[href], [role="button"], summary'
 const SKIP_WITHIN = '[role="tablist"], [data-testid="job-window-head"], [data-press-pad-skip]'
@@ -19,13 +22,21 @@ const SETTLE_MS = 50
 
 const clips = (el: HTMLElement): boolean => /hidden|clip|scroll|auto/.test(getComputedStyle(el).overflow)
 
+/** The wider of a press's two borders on each axis, in px. A browser that cannot say answers none. */
+function borderOf(el: HTMLElement): { x: number; y: number } {
+  const cs = getComputedStyle(el)
+  const px = (v: string) => parseFloat(v) || 0
+  return { x: Math.max(px(cs.borderLeftWidth), px(cs.borderRightWidth)), y: Math.max(px(cs.borderTopWidth), px(cs.borderBottomWidth)) }
+}
+
 /** Marks every small press under `root` with its pad and clears the mark from the rest. Returns how many are padded. */
 export function padSmallPresses(root: HTMLElement): number {
   let padded = 0
   for (const el of Array.from(root.querySelectorAll<HTMLElement>(PRESS_SELECTOR))) {
     const r = el.getBoundingClientRect()
     const drawn = r.width > 0 && r.height > 0
-    const pad = drawn && !el.closest(SKIP_WITHIN) && !el.querySelector(INNER) && !clips(el) ? pressPad(r) : null
+    const sized = drawn && !el.closest(SKIP_WITHIN) && !el.querySelector(INNER) && !clips(el) ? pressPad(r) : null
+    const pad = sized ? pressPadFromInside(sized, borderOf(el)) : null
     if (pad) {
       el.setAttribute('data-press-pad', '')
       el.style.setProperty('--press-pad-x', `${pad.x}px`)
