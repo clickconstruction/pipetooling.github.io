@@ -21,6 +21,7 @@ import {
   type JobOverheadMethod,
 } from './jobDayLedger'
 import { buildOverheadAllocation, normalizeOverheadAllocationSettings, type OverheadAllocationSettings } from './overheadAllocation'
+import { laborAtBurden } from './burnAtBurden'
 
 /**
  * Job Summary ledger view (v2.2692): the pure layer between the page's P&L
@@ -436,6 +437,8 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
   settings?: OverheadAllocationSettings
   /** Each job's budget footing (v2.3300) — the `job_budgets` rows; a job with none burns against the assumption. */
   budgetByJobId?: ReadonlyMap<string, JobBudgetFooting>
+  /** The company's burden factor (punch list #448): the Burn column prices labor at it. The Labor column stays the wages paid. Omitted = 1. */
+  laborBurden?: number
 }): JobSummaryEnrichedRow<R>[] {
   const { rows, reportPctByJobId, ledger, method, settings } = args
   const targetMarginPct = args.targetMarginPct ?? 0
@@ -517,7 +520,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     // enters only the true-margin projection; field days come from the ledger.
     const burn = projectJobSummaryBurn({
       contractUsd,
-      spentUsd: laborUsd + subsUsd + partsUsd,
+      spentUsd: laborAtBurden(laborUsd, args.laborBurden) + subsUsd + partsUsd,
       pct,
       finished,
       fieldDays: ledger ? daysInWindow : null,

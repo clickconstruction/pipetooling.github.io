@@ -32,6 +32,7 @@ import { useBidVsActual } from '../../hooks/useBidVsActual'
 import { pricedMarginDetailWords, pricedMarginPctWords, pricedVsDirectWords } from '../../lib/bids/pricedMargin'
 import { useBidVsActualBurnInputs } from '../../hooks/useBidVsActualBurnInputs'
 import { bidVsActualDirectWords, bidVsActualJobVerdict } from '../../lib/bids/bidVsActualBurn'
+import { useLaborBurdenFactor } from '../../hooks/useLaborBurdenFactor'
 import type { CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { BidVsActualRowDetail } from './BidVsActualRowDetail'
 import { BidsForecastLens } from './BidsForecastLens'
@@ -126,6 +127,8 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
   // v2.5046 (Burn against the bid, piece 2): each linked job's dollar burn, read and built as its
   // Costs tab reads and builds it. Only while the lens is open, and only for the roles that read wages.
   const bvaBurn = useBidVsActualBurnInputs(lens === 'bid-vs-actual' && showDollars, bva.jobs.map((j) => j.id))
+  // Punch list #448: the burn's labor at the burden, as each job's Costs tab prices it.
+  const laborBurden = useLaborBurdenFactor(lens === 'bid-vs-actual' && showDollars)
   const bvaVerdicts = useMemo(() => {
     const budgetByJob = new Map(bva.budgets.map((b) => [b.job_id, b]))
     const bidNumberById = new Map<string, string | null>(rows.map((r) => [r.bidId, r.bidNumber]))
@@ -134,10 +137,10 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
     for (const r of bvaRows) {
       const inputs = bvaBurn.inputsByJob.get(r.jobId)
       if (inputs === undefined) continue
-      out.set(r.jobId, inputs === 'error' ? 'error' : bidVsActualJobVerdict({ inputs, budgetRow: budgetRowLikeOf(budgetByJob.get(r.jobId)), status: r.jobStatus, bidNumber: bidNumberById.get(r.bidId) ?? null, todayYmd }))
+      out.set(r.jobId, inputs === 'error' ? 'error' : bidVsActualJobVerdict({ inputs, budgetRow: budgetRowLikeOf(budgetByJob.get(r.jobId)), status: r.jobStatus, bidNumber: bidNumberById.get(r.bidId) ?? null, todayYmd, laborBurden }))
     }
     return out
-  }, [bvaRows, bvaBurn.inputsByJob, bva.budgets, bva.bidsById, rows, todayYmd])
+  }, [bvaRows, bvaBurn.inputsByJob, bva.budgets, bva.bidsById, rows, todayYmd, laborBurden])
 
   const outcomeCounts = useMemo(() => {
     const counts: Record<PursuitOutcome, number> = { unsent: 0, open: 0, won: 0, lost: 0 }

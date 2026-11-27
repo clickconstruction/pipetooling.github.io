@@ -39,7 +39,7 @@ describe('releaseTargets and the pick', () => {
 })
 
 describe('releaseMoneyGate', () => {
-  const gate = (over: Partial<Parameters<typeof releaseMoneyGate>[0]> = {}) => releaseMoneyGate({ open: 0, payments: [], todayYmd: TODAY, anywayReason: '', bank: [], ...over })
+  const gate = (over: Partial<Parameters<typeof releaseMoneyGate>[0]> = {}) => releaseMoneyGate({ open: 0, payments: [], todayYmd: TODAY, anywayReason: '', mayReleaseEarly: true, bank: [], ...over })
 
   it('holds the release while the bills still owe', () => {
     const g = gate({ open: 1455.5 })
@@ -91,6 +91,29 @@ describe('releaseMoneyGate', () => {
     expect(plainSentence(g.say)).toBe('Paid Nov 24 by check 1184. Check 1184 is at the bank. The bank says it clears Dec 2. The release goes out anyway.')
   })
 
+  it('only a leader, a controller or a dev lets it go before the check clears (punch list #437, call 4)', () => {
+    // Anyone else: the typed reason lifts nothing, the tab says who can, and the words about the check are the same.
+    const typed = gate({ payments: [check()], bank: [bank()], anywayReason: 'a cashier’s check', mayReleaseEarly: false })
+    expect(typed).toMatchObject({ hold: true, tone: 'amber', why: 'check', anyway: 'not_yours' })
+    expect(plainSentence(typed.say)).toBe('Paid Nov 24 by check 1184. Check 1184 is at the bank. The bank says it clears Dec 2. The release waits until then.')
+    expect(gate({ payments: [check()], bank: [bank()], mayReleaseEarly: false })).toMatchObject({ hold: true, anyway: 'not_yours' })
+    // While the bank is being asked, and when its record could not be read, the same holds.
+    expect(gate({ payments: [check()], bank: undefined, anywayReason: 'x', mayReleaseEarly: false })).toMatchObject({ hold: true, anyway: 'not_yours' })
+    expect(gate({ payments: [check()], bank: null, anywayReason: 'x', mayReleaseEarly: false })).toMatchObject({ hold: true, anyway: 'not_yours' })
+    // One of the three: the press is offered, and the reason lifts the hold.
+    expect(gate({ payments: [check()], bank: [bank()] })).toMatchObject({ hold: true, anyway: 'offered' })
+    expect(gate({ payments: [check()], bank: [bank()], anywayReason: 'a cashier’s check' })).toMatchObject({ hold: false, anyway: 'offered' })
+  })
+
+  it('leaves money still open as it was: anyone on the tab may release it with a reason', () => {
+    expect(gate({ open: 1455.5, mayReleaseEarly: false })).toMatchObject({ hold: true, why: 'open', anyway: 'offered' })
+    expect(gate({ open: 1455.5, anywayReason: 'settled for less', mayReleaseEarly: false })).toMatchObject({ hold: false, why: 'open', anyway: 'offered' })
+    // Nothing holds a release on cleared money, cash or confirmed funds, so there is no press to offer.
+    expect(gate({ mayReleaseEarly: false }).anyway).toBeNull()
+    expect(gate({ payments: [check({ payment_type: 'Cash', reference_number: null })], mayReleaseEarly: false })).toMatchObject({ hold: false, anyway: null })
+    expect(gate({ payments: [check()], bank: [bank()], funds: { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'the funds are good' }, mayReleaseEarly: false })).toMatchObject({ hold: false, anyway: null })
+  })
+
   it('holds while the bank is being asked, and when the bank could not be read', () => {
     const asking = gate({ payments: [check()], bank: undefined })
     expect(asking).toMatchObject({ hold: true, tone: 'amber', why: 'check' })
@@ -111,6 +134,7 @@ describe('releaseMoneyGate', () => {
   it('keeps every sentence to plain words', () => {
     for (const g of [gate({ open: 9 }), gate({ open: 9, anywayReason: 'x' }), gate({ payments: [check()] }), gate({ payments: [check()], bank: [bank()] }), gate({ payments: [check()], bank: [bank()], anywayReason: 'x' }), gate({ payments: [check()], bank: undefined }), gate({ payments: [check()], bank: null }), gate()]) expect(plainWordsFailures(plainSentence(g.say))).toEqual([])
     expect(plainWordsFailures(RELEASE_OF_RECORD_WORDS.saved)).toEqual([])
+    expect(plainWordsFailures(RELEASE_OF_RECORD_WORDS.anywayCheckWho)).toEqual([])
   })
 })
 
@@ -154,7 +178,7 @@ describe('the funds confirmed (punch list #435, piece 4)', () => {
   const FUNDS = { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'the funds are good' }
 
   it('lets the release go before the bank’s day on a confirmation, and says whose word it rests on', () => {
-    const g = releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank()], funds: FUNDS })
+    const g = releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', mayReleaseEarly: true, bank: [bank()], funds: FUNDS })
     expect(g.hold).toBe(false)
     expect(g.tone).toBe('green')
     expect(g.why).toBeNull()
@@ -163,9 +187,9 @@ describe('the funds confirmed (punch list #435, piece 4)', () => {
   })
 
   it('still holds on a check that came back, and while the bank is being asked', () => {
-    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })], funds: FUNDS }).hold).toBe(true)
-    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: undefined, funds: FUNDS }).hold).toBe(true)
-    expect(releaseMoneyGate({ open: 1455.5, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank()], funds: FUNDS }).hold).toBe(true)
+    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', mayReleaseEarly: true, bank: [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })], funds: FUNDS }).hold).toBe(true)
+    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', mayReleaseEarly: true, bank: undefined, funds: FUNDS }).hold).toBe(true)
+    expect(releaseMoneyGate({ open: 1455.5, payments: [check()], todayYmd: TODAY, anywayReason: '', mayReleaseEarly: true, bank: [bank()], funds: FUNDS }).hold).toBe(true)
   })
 
   it('saves the confirmation on the release, and nothing when there is none', () => {

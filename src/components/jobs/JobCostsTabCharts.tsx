@@ -8,6 +8,7 @@ import { useJobBaseline } from '../../hooks/useJobBaseline'
 import { useJobBudget } from '../../hooks/useJobBudget'
 import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
+import { useLaborBurdenFactor } from '../../hooks/useLaborBurdenFactor'
 import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
@@ -107,6 +108,8 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
   const { settings: lineBudgetSettings } = useLineBudgetSettings()
   const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
+  // Punch list #448: the burn prices labor at the burden, as the budget does. Where the money went keeps the wages paid.
+  const laborBurden = useLaborBurdenFactor(includeTeamLabor)
   // v2.5043: the margin the linked bid was priced at, beside the direct margin at completion.
   const priced = useBidPricedMargin(job.bid_id ?? null, includeTeamLabor)
   // The card nicknames the packet prints beside each charge (v2.5749); off when there is nothing to print.
@@ -141,14 +144,14 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     if (!inputs) return null
     // A billed or paid job with no % anywhere is done — earned, at-completion and time left all read off 100.
     const burnInputs = inputs.fallbackPercent == null && finished ? { ...inputs, fallbackPercent: 100 } : inputs
-    const burn = buildBurnForVerdict(burnInputs, overheadState.overhead, resolved)
+    const burn = buildBurnForVerdict(burnInputs, overheadState.overhead, resolved, laborBurden)
     // The report the burn model read: the newest dated % when a REPORT set it; null when the
     // office's hand-set is newer (v2.3372) so the verdict reads "(set on the job)".
     const newest = newestPercentEvent(inputs.valueEvents)
     const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
-    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced, budgetRow: budget.row as (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null })
+    const verdict = buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced, budgetRow: budget.row as (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null, laborBurden })
     return { burn, verdict }
-  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job, finished, priced, budget.row])
+  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job, finished, priced, budget.row, laborBurden])
   const verdict = built?.verdict ?? null
 
   const linkedBid = job.linkedBid ? { id: job.linkedBid.id, bid_number: job.linkedBid.bid_number, project_name: job.linkedBid.project_name } : null
@@ -255,10 +258,10 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
             </span>
             <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-faint)', transform: chartOpen ? 'rotate(90deg)' : undefined }}>›</span>
           </button>
-          {chartOpen ? <div style={{ marginTop: '0.6rem' }}><JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /></div> : null}
+          {chartOpen ? <div style={{ marginTop: '0.6rem' }}><JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} laborBurden={laborBurden} mode="chart" /></div> : null}
         </div>
       ) : includeTeamLabor ? (
-        <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" />
+        <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} laborBurden={laborBurden} mode="chart" />
       ) : null}
       <div>
         <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit' }} data-testid="costs-detail-toggle">
@@ -266,7 +269,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
         </button>
         {detailOpen ? (
           <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.6rem' }}>
-            {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="detail" /> : null}
+            {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} laborBurden={laborBurden} mode="detail" /> : null}
             <JobChargesTimelineStandalone job={job} includeTeamLabor={includeTeamLabor} inputsState={inputsState} overheadState={overheadState} />
           </div>
         ) : null}

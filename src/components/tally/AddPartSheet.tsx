@@ -12,7 +12,7 @@ import { ADD_PART_MAX, QUANTITY_CHIPS, addAnotherLabel, addPartChoices, addPartD
 import { matchOnHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import type { Container } from '../../lib/materials/onSite'
 import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
-import { Sheet } from './OnSiteSheet'
+import { Sheet, useOnSiteSheetFit } from './OnSiteSheet'
 
 /** A part of the parts book, as the sheet's search lists it. */
 export type OnSitePart = { id: string; name: string; manufacturer: string | null }
@@ -36,6 +36,8 @@ export function Stepper({ n, max, onChange, autoSelect = false }: { n: number; m
     field.current?.select()
   }, [autoSelect])
   const stepBtn: CSSProperties = { ...btn, width: 56, height: 56, padding: 0, fontSize: '1.5rem', borderRadius: 12 }
+  // With the keys up the field stands as tall as its − and + (finding 310): loose, its own padding made the row 69 px.
+  const fieldTall = useOnSiteSheetFit().stepperField
   // What is in the field while it is typed in; null when it shows `n`. Clearing the field used to put the 1 back at
   // once (v2.7252), so 25 could not be typed over it. A press of − or +, a quick number or leaving the field shows `n`.
   const [typed, setTyped] = useState<string | null>(null)
@@ -43,7 +45,7 @@ export function Stepper({ n, max, onChange, autoSelect = false }: { n: number; m
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.9rem' }}>
       <button type="button" aria-label="One fewer" style={{ ...stepBtn, ...dis(n <= 1) }} disabled={n <= 1} onClick={() => onChange(Math.max(1, n - 1))}>−</button>
-      <input ref={field} type="number" inputMode="numeric" value={typed ?? n} min={1} max={max} aria-label="How many" onChange={(e) => { setTyped(stepperKeeps(e.target.value, max)); const v = stepperTyped(e.target.value, max); if (v != null) onChange(v) }} onBlur={() => setTyped(null)} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56 }} />
+      <input ref={field} type="number" inputMode="numeric" value={typed ?? n} min={1} max={max} aria-label="How many" onChange={(e) => { setTyped(stepperKeeps(e.target.value, max)); const v = stepperTyped(e.target.value, max); if (v != null) onChange(v) }} onBlur={() => setTyped(null)} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56, ...(fieldTall ? { height: fieldTall, paddingTop: 0, paddingBottom: 0, boxSizing: 'border-box' } : null) }} />
       <button type="button" aria-label="One more" style={{ ...stepBtn, ...dis(n >= max) }} disabled={n >= max} onClick={() => onChange(Math.min(max, n + 1))}>+</button>
     </div>
   )

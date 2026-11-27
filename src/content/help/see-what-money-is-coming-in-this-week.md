@@ -30,7 +30,7 @@ Every chip shows who pays, how much, and a small tag that says what kind of mone
 ## What the tags mean
 
 - *✓ Landed* in green is money in the bank or in Stripe.
-- *At the bank* is a deposit Mercury still holds as pending. The chip sits on the day it should post.
+- *At the bank* is a deposit Mercury still holds as pending. The chip sits on the day it should post. For a check, the chip's line also says the day the bank says it clears. That day is the bank's own, and it is often later than the posting.
 - *In the drawer* is a check typed in but not yet seen at the bank. Drawer checks wait on the shelf above the days.
 - *They say it's sent* is a customer who said they paid. The chip sits on the day the money should arrive.
 - *Their word* is a promise to pay by that day.

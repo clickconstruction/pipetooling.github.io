@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { from, getSession, rpc } = vi.hoisted(() => ({ from: vi.fn(), getSession: vi.fn(), rpc: vi.fn() }))
 vi.mock('../supabase', () => ({ supabase: { from, rpc, auth: { getSession } } }))
 
-import { loadBuilderLookups, loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits, recordCallAnswer, recordLookupCheck } from './permitMarketIo'
+import { loadBuilderLookupOf, loadBuilderLookups, loadBuildersOfCities, loadCallAnswers, loadMarketBids, loadMarketPermits, recordCallAnswer, recordLookupCheck } from './permitMarketIo'
 
 type Answer = { data: unknown[] | null; error: { code: string; message: string } | null; status: number; count?: number | null }
 
@@ -168,6 +168,45 @@ describe('what was looked up about the builders', () => {
     expect(await loadBuilderLookups()).toBeNull()
     from.mockImplementation(() => table(() => ({ data: null, error: { code: '42501', message: 'permission denied for table builder_lookups' }, status: 403 })))
     await expect(loadBuilderLookups()).rejects.toThrow(/read what was looked up about the builders|read the checks on what was looked up/)
+  })
+
+  /** A chain awaited as it stands, as a read with no range is: it records what was asked and answers once. */
+  function whole(answer: Answer, log: Array<Record<string, unknown>>) {
+    const asked: Record<string, unknown> = {}
+    const chain: Record<string, unknown> = {}
+    for (const name of ['select', 'eq', 'in', 'order']) {
+      chain[name] = (...args: unknown[]) => {
+        asked[name] = [...((asked[name] as unknown[]) ?? []), args]
+        return chain
+      }
+    }
+    chain.then = (ok: (v: Answer) => unknown, no?: (e: unknown) => unknown) => {
+      log.push({ ...asked })
+      return Promise.resolve(answer).then(ok, no)
+    }
+    return chain
+  }
+
+  it('reads one name’s facts, then the presses on those facts alone (the builder’s sheet, v2.8732)', async () => {
+    const logs: Record<string, Array<Record<string, unknown>>> = { builder_lookups: [], builder_lookup_checks: [] }
+    from.mockImplementation((name: string) => whole({ data: name === 'builder_lookups' ? facts : checks, error: null, status: 200 }, logs[name]!))
+    expect(await loadBuilderLookupOf('ridgewaybuilders')).toEqual({ rows: facts, checks })
+    expect(logs.builder_lookups?.[0]?.select).toEqual([['id, builder_key, fact, value, detail, source_url, looked_up_on, looked_up_by, looked_up_how, city, created_at']])
+    expect(logs.builder_lookups?.[0]?.eq).toEqual([['builder_key', 'ridgewaybuilders']])
+    expect(logs.builder_lookups?.[0]?.order).toEqual([['created_at', { ascending: true }], ['id']])
+    expect(logs.builder_lookup_checks?.[0]?.in).toEqual([['lookup_id', ['f1']]])
+    expect(logs.builder_lookup_checks?.[0]?.order).toEqual([['said_at', { ascending: true }], ['id']])
+  })
+
+  it('asks for no presses on a name nobody looked up, reads as none before the tables are there, and says why on a refusal', async () => {
+    const logs: Record<string, Array<Record<string, unknown>>> = { builder_lookups: [], builder_lookup_checks: [] }
+    from.mockImplementation((name: string) => whole({ data: [], error: null, status: 200 }, logs[name]!))
+    expect(await loadBuilderLookupOf('tallpinebuilders')).toEqual({ rows: [], checks: [] })
+    expect(logs.builder_lookup_checks).toHaveLength(0)
+    from.mockImplementation(() => whole({ data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.builder_lookups' in the schema cache" }, status: 404 }, []))
+    expect(await loadBuilderLookupOf('tallpinebuilders')).toBeNull()
+    from.mockImplementation(() => whole({ data: null, error: { code: '42501', message: 'permission denied for table builder_lookups' }, status: 403 }, []))
+    await expect(loadBuilderLookupOf('tallpinebuilders')).rejects.toThrow(/read what was looked up about this builder/)
   })
 
   it('writes a press on a fact as the person signed in', async () => {

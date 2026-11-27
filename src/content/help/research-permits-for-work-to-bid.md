@@ -183,7 +183,7 @@ The list waits when the app cannot read the permits. The red line says why, and 
 
 ## Check who to ask for
 
-**Ask for** sits on each row of **Call this week**. The block holds what was looked up about the company. Up to three facts show, one on a line.
+**Ask for** sits on each row of **Call this week**. The same block sits at the top of the builder's sheet. The block holds what was looked up about the company. Up to three facts show, one on a line.
 
 - **What it is** says the kind of company. The five kinds are builder, owner, design firm, permit service and trade.
 - **Office** is the office phone.
@@ -195,7 +195,7 @@ A fact in grey was looked up and not checked. {{chip:gray|Looked up, not checked
 
 Press **Checked** when a fact holds. You check the phone by calling it. You check the person by asking for them. The fact turns bold, like the facts from the permits. Your name and the day go on the line.
 
-Press **Wrong** when a fact does not hold. The fact leaves the row for everyone, and the line says who marked it. Press **Put back** to undo a slip. Press **Not right** on a checked fact that has gone stale.
+Press **Wrong** when a fact does not hold. The fact leaves the row and the sheet for everyone, and the line says who marked it. Press **Put back** to undo a slip. Press **Not right** on a checked fact that has gone stale.
 
 A looked-up kind also tags the name. The tag is an outline until someone checks the kind. A checked builder moves up with the names that have a building word. A checked design firm, permit service or trade waits behind the other companies.
 

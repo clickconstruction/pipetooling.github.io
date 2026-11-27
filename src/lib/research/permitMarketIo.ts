@@ -186,6 +186,44 @@ export async function loadBuilderLookups(): Promise<BuilderLookupReads | null> {
   }
 }
 
+/**
+ * One name's looked-up facts and the presses on them, for the Ask for block on the builder's
+ * sheet (punch list #405, v2.8732): the same rows the call list reads, held to the one name, so
+ * the sheet folds them with the same kernel (`foldLookups`). A name holds a few rows. Null before
+ * the tables are on the database, and the name then reads as not looked up.
+ */
+export async function loadBuilderLookupOf(builderKey: string): Promise<BuilderLookupReads | null> {
+  try {
+    const rows =
+      (await withSupabaseRetry(
+        async () =>
+          (await supabase
+            .from('builder_lookups' as never)
+            .select(LOOKUP_COLUMNS)
+            .eq('builder_key', builderKey)
+            .order('created_at', { ascending: true })
+            .order('id')) as unknown as SupabaseClientResult<LookupRow[]>,
+        'read what was looked up about this builder',
+      )) ?? []
+    if (rows.length === 0) return { rows: [], checks: [] }
+    const checks =
+      (await withSupabaseRetry(
+        async () =>
+          (await supabase
+            .from('builder_lookup_checks' as never)
+            .select(LOOKUP_CHECK_COLUMNS)
+            .in('lookup_id', rows.map((r) => r.id))
+            .order('said_at', { ascending: true })
+            .order('id')) as unknown as SupabaseClientResult<LookupCheckRow[]>,
+        'read the checks on what was looked up',
+      )) ?? []
+    return { rows, checks }
+  } catch (e) {
+    if (missingTable(e)) return null
+    throw e
+  }
+}
+
 /** One press on a looked-up fact (checked, wrong, or back), appended as the person signed in. The newest press on a fact stands. */
 export async function recordLookupCheck(input: { lookupId: string; verdict: LookupVerdict }): Promise<void> {
   const { data: session } = await supabase.auth.getSession()

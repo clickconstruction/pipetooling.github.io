@@ -19,6 +19,7 @@
  * `checkClearedIo.ts`. The readers are Payoffs (`lienPayoff.ts`), the Release of record tab
  * (`lienReleaseOfRecord.ts`) and the check pane (`lienPayoffCheck.ts`).
  */
+import type { UserRole } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
@@ -28,6 +29,19 @@ import { CHECK_CLEAR_DAYS, isCheckPayment } from './checkClearing'
 
 /** How far back the bank's check deposits are read, and how far a payment's day may sit from its deposit. */
 export const BANK_CHECK_WINDOW_DAYS = 60
+
+/**
+ * Who may act on a check before the bank has cleared it (punch list #437, call 4, the owner's answer of 2026-11-25:
+ * *a leader, a controller, or a dev*, and *the same three* for every early press on a held check). One list, read by
+ * the release tab's *Release it anyway…* on a check that has not cleared (v2.8735) and by Payoffs' *The bank
+ * confirmed the funds* (`canConfirmFunds`). A leader is the owner's role. The controller is named by itself: the
+ * assistant is not one of the three.
+ */
+export const EARLY_ON_CHECK_ROLES: ReadonlyArray<UserRole> = ['dev', 'master_technician', 'controller']
+
+export function canActBeforeCheckClears(role: UserRole | string | null | undefined): boolean {
+  return typeof role === 'string' && (EARLY_ON_CHECK_ROLES as ReadonlyArray<string>).includes(role)
+}
 
 /** One check deposit as the bank holds it. Days are in the company's calendar. */
 export type BankCheck = {
@@ -52,18 +66,34 @@ export const BANK_CHECK_COLUMNS = 'id, amount, status, posted_at, created_at, ch
 
 export type BankCheckRow = { id: string; amount: number | string | null; status: string | null; posted_at: string | null; created_at: string | null; check_number: string | null; bank_day: string | null; failure_reason: string | null }
 
+const rowYmd = (iso: string | null | undefined): string | null => (iso ? calendarYmdInAppTzFromIso(String(iso)) || null : null)
+
+/** The two columns that carry what the bank says of a check, for a read that already has the rest of the row. */
+export const BANK_CHECK_FACT_COLUMNS = 'check_number:raw->>checkNumber, bank_day:raw->>estimatedDeliveryDate'
+
+/**
+ * What the bank itself says of a check, read off its row (punch list #437, piece 2): the day it posted the deposit,
+ * the day it names for the check to clear, the number it read off the check, and its words when the deposit
+ * failed. A row that carries none of them answers all four empty. Each instant is read as its day in the
+ * company's calendar, never its UTC date. `bankCheckFromRow` and Money in's pending deposits both read these.
+ */
+export function bankCheckFacts(row: Partial<Pick<BankCheckRow, 'posted_at' | 'check_number' | 'bank_day' | 'failure_reason'>>): Pick<BankCheck, 'postedYmd' | 'bankDayYmd' | 'checkNumber' | 'failureReason'> {
+  return {
+    postedYmd: rowYmd(row.posted_at),
+    bankDayYmd: rowYmd(row.bank_day),
+    checkNumber: (row.check_number ?? '').trim(),
+    failureReason: (row.failure_reason ?? '').trim() || null,
+  }
+}
+
 /** The bank's row as a `BankCheck`: each instant read as its day in the company's calendar, never its UTC date. */
 export function bankCheckFromRow(row: BankCheckRow): BankCheck {
-  const ymd = (iso: string | null): string | null => (iso ? calendarYmdInAppTzFromIso(String(iso)) || null : null)
   return {
     id: row.id,
     amount: Math.round((Number(row.amount) || 0) * 100) / 100,
     status: row.status,
-    depositedYmd: ymd(row.created_at) ?? '',
-    postedYmd: ymd(row.posted_at),
-    bankDayYmd: ymd(row.bank_day),
-    checkNumber: (row.check_number ?? '').trim(),
-    failureReason: (row.failure_reason ?? '').trim() || null,
+    depositedYmd: rowYmd(row.created_at) ?? '',
+    ...bankCheckFacts(row),
   }
 }
 

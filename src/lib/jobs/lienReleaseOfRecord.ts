@@ -11,7 +11,9 @@
  *     its save, and says what is open. A reason typed under *Release it anyway* lifts the hold and is saved on the
  *     release: a lien settled for less is a real case, and the app does not judge it. Since punch list #437,
  *     piece 1, a check the bank has not cleared holds the tab the same way (`checkCleared.ts`), and the same
- *     typed reason lifts it. The owner's rule of 2026-11-24: a release waits until the check clears. Since punch
+ *     typed reason lifts it. The owner's rule of 2026-11-24: a release waits until the check clears. Since
+ *     v2.8735 (punch list #437, call 4) only a leader, a controller or a dev lifts that one: anyone else reads who
+ *     can, gets no press, and a reason they typed while money was open does not carry over to the check. Since punch
  *     list #435, piece 4, a leader's, a controller's or a dev's word that the bank confirmed the funds, kept on the
  *     affidavit row (`lienPayoffFields.ts`), lets the release go before the bank's day, and the release saved then
  *     carries that word (`releasedOnConfirmedFunds`).
@@ -45,6 +47,8 @@ export const RELEASE_OF_RECORD_WORDS = {
   anywayExample: 'settled for less on Nov 24, per the owner',
   anywayCheckLabel: 'Why it is released before the check clears',
   anywayCheckExample: 'a cashier’s check, per the owner',
+  /** Said in place of the press to someone who may not release before a check clears (punch list #437, call 4). */
+  anywayCheckWho: 'A leader, a controller or a dev can release it before the check clears.',
   asking: 'Asking the bank about it.',
   bankUnread: 'The bank’s record could not be read. Open this tab again.',
   saved: 'This release is saved. Sign it before a notary. Then record it at the county.',
@@ -89,6 +93,12 @@ export type ReleaseMoneyGate = {
   say: string
   /** What holds it or held it: money still open, or a check that has not cleared. Null when nothing does. */
   why: 'open' | 'check' | null
+  /**
+   * *Release it anyway…* on this tab: `offered` while a typed reason lifts or has lifted the hold, `not_yours` when a
+   * check holds it and this person is not one of the three who may release before it clears, and null when nothing
+   * holds the release.
+   */
+  anyway: 'offered' | 'not_yours' | null
 }
 
 /** True when the tab needs the bank's check deposits: the bills read paid, last by a check of the last sixty days. */
@@ -103,27 +113,30 @@ export function releaseNeedsBank(open: number, payments: ReadonlyArray<LienPayof
  * while they are being read and `null` when the read failed. Either holds a release that rests on a recent check,
  * so a slow or a failed read never lets one out early.
  */
-export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string; bank?: ReadonlyArray<BankCheck> | null; funds?: FundsConfirmed | null }): ReleaseMoneyGate {
+export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string; /** This person may release before a check clears: a leader, a controller or a dev (`canActBeforeCheckClears`). It changes nothing while money is still open. */ mayReleaseEarly: boolean; bank?: ReadonlyArray<BankCheck> | null; funds?: FundsConfirmed | null }): ReleaseMoneyGate {
   const open = Math.round((Number(input.open) || 0) * 100) / 100
   const anyway = input.anywayReason.trim().length > 0
   if (open > 0.004) {
     const money = val('money', moneyWords(open))
     return anyway
-      ? { hold: false, tone: 'amber', say: `${money} is still open on this job’s bills. The release goes out anyway.`, why: 'open' }
-      : { hold: true, tone: 'red', say: `${money} is still open on this job’s bills. Record the payment first.`, why: 'open' }
+      ? { hold: false, tone: 'amber', say: `${money} is still open on this job’s bills. The release goes out anyway.`, why: 'open', anyway: 'offered' }
+      : { hold: true, tone: 'red', say: `${money} is still open on this job’s bills. Record the payment first.`, why: 'open', anyway: 'offered' }
   }
   const paid = lastPayment(input.payments)
-  if (!paid) return { hold: false, tone: 'green', say: 'The bills read paid.', why: null }
+  if (!paid) return { hold: false, tone: 'green', say: 'The bills read paid.', why: null, anyway: null }
   const ymd = (paid.paid_on ?? '').slice(0, 10)
   const way = payWayWords(paid)
   const said = `Paid ${val('day', formatYmdMonthDay(ymd))}${way ? ` by ${val('way', way)}` : ''}.`
+  // A check that has not cleared: the typed reason lifts the hold for the three who may release early, and for no one else.
   const held = (words: string, waits: string, tone: 'red' | 'amber'): ReleaseMoneyGate =>
-    anyway ? { hold: false, tone: 'amber', say: `${said} ${words} The release goes out anyway.`, why: 'check' } : { hold: true, tone, say: [said, words, waits].filter(Boolean).join(' '), why: 'check' }
+    anyway && input.mayReleaseEarly
+      ? { hold: false, tone: 'amber', say: `${said} ${words} The release goes out anyway.`, why: 'check', anyway: 'offered' }
+      : { hold: true, tone, say: [said, words, waits].filter(Boolean).join(' '), why: 'check', anyway: input.mayReleaseEarly ? 'offered' : 'not_yours' }
   if (!input.bank && releaseNeedsBank(open, input.payments, input.todayYmd)) return held(input.bank === null ? RELEASE_OF_RECORD_WORDS.bankUnread : RELEASE_OF_RECORD_WORDS.asking, '', 'amber')
   const answer = paymentCheckAnswer(paid, input.bank ?? [], input.todayYmd)
-  if (answer.cleared) return { hold: false, tone: 'green', say: said, why: null }
+  if (answer.cleared) return { hold: false, tone: 'green', say: said, why: null, anyway: null }
   // The bank confirmed the funds, on a leader's, a controller's or a dev's word (#435, piece 4): the release may go, unless the check came back.
-  if (input.funds && answer.state !== 'came_back' && answer.state !== 'unread') return { hold: false, tone: 'green', say: `${said} ${fundsConfirmedWords(input.funds)}`, why: null }
+  if (input.funds && answer.state !== 'came_back' && answer.state !== 'unread') return { hold: false, tone: 'green', say: `${said} ${fundsConfirmedWords(input.funds)}`, why: null, anyway: null }
   const words = checkAnswerWords(answer, checkName(paid.reference_number))
   return held(words.say, `The release waits ${words.wait}.`, words.tone === 'red' ? 'red' : 'amber')
 }

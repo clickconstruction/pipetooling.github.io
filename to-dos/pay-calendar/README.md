@@ -14,7 +14,7 @@ summary: >
   cutoff in front of whoever is about to bill: send by Nov 30 to be due Dec 10, after that Jan 10.
 next: walk v2.7127 (#7913, merged 2026-11-13) live. The two emails (the payment forecast and Money waiting) are parked at Grace's word of 2026-11-13 to land what is open before building more; they need the calendar kernel on the edge and two deploys. After them, the Needs you line and the pay application's line that PR 5 left. The pay calendar's save ran on the live site on a test customer on 2026-11-13; the accepted day's save, and a calendar on a payer with bills, have not.
 size: L as a train of seven (M · M · S · M · S · M · S); PRs 1 to 3 carry most of the worth
-blocker: none for what is built. The second half of PR 6 is edge kernel copies and deploys, and its Bridge part waits for #318.
+blocker: none for what is built. The second half of PR 6 is edge kernel copies and deploys, and its Bridge part waits for #318 (closed 2026-11-27 with all of it built; its card lives in git history at the deleting commit).
 opinion: build — the cutoff and the due day are facts the app has never had, and the second pass took the wishful part out of the forecast
 ---
 

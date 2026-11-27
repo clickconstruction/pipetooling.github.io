@@ -14,10 +14,12 @@
  *  - a job's labor budget: `JobBudgetCard.tsx` prices typed hours at that company rate;
  *  - the superintendent scoreboard: the database's `superintendent_scores` reads the factor;
  *  - the team scores, field: `src/lib/scorecard/fieldScore.ts` multiplies the hours' wages by it;
- *  - the team scores, estimator: `src/lib/scorecard/scorecardReads.ts` takes team labor at it off a finished job.
+ *  - the team scores, estimator: `src/lib/scorecard/scorecardReads.ts` takes team labor at it off a finished job;
+ *  - a job's burn, since punch list #448: `src/lib/jobs/burnAtBurden.ts` prices the burn's team labor at it, on
+ *    the Costs tab, Job Summary's Burn column, the Pipeline's burn card and Bid vs actual.
  *
- * It does not reach a job's burn, the Job Summary, Crew P&L, the pay stubs, the overhead pool or the job day ledger:
- * none of their kernels reads the factor or the company rate.
+ * It does not reach the Costs tab's Where the money went, Job Summary's Labor column, Crew P&L, the pay stubs, the
+ * overhead pool or the job day ledger: none of their kernels reads the factor or the company rate.
  *
  * The comment over the key in `appSettingsKeys.ts` still reads *taxes, insurance, the truck*. That file is copied to
  * the edge functions (`supabase/functions/_shared/gcKernels`), so one changed word there would leave every function
@@ -54,10 +56,11 @@ export const LABOR_BURDEN_WORDS = {
     'The superintendents’ scoreboard. The team’s clock hours are costed at this number.',
     'Team scores, the field score. The hours’ wages are multiplied by it.',
     'Team scores, the estimator’s score. A finished job’s team labor is taken off at it.',
+    'A job’s burn. What a job has spent, its cost at completion and its margin count labor at this number.',
   ],
   notHead: 'Where it does not',
   not: [
-    'What a job has cost so far. A job’s burn reads wages as paid.',
+    'A job’s Where the money went. Its Team labor line is the wages as paid.',
     'Job Summary’s Labor column.',
     'Crew P&L.',
     'Pay stubs. Nobody’s pay changes with it.',

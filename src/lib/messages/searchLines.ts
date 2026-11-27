@@ -88,6 +88,17 @@ export function withQuery(search: URLSearchParams, q: string): URLSearchParams {
   return next
 }
 
+/**
+ * What the search list draws (finding 323, a look in the iOS Simulator on 2026-11-27). `found` is null until the page
+ * holds a view to search. A read that failed is the list's news only then: with a view held, the lines that match
+ * still draw, since a re-read that failed behind them took nothing off the screen.
+ */
+export type SearchListShows = 'problem' | 'reading' | 'none' | 'hits'
+export function searchListShows(found: LineSearch | null, problem: string | null): SearchListShows {
+  if (!found) return problem ? 'problem' : 'reading'
+  return found.hits.length === 0 ? 'none' : 'hits'
+}
+
 export const SEARCH_WORDS = {
   label: 'Search every message',
   placeholder: 'Search any words in every message',
