@@ -4,9 +4,9 @@
 -- refusal of the guard in words (another person's file, the wrong direction, the other way round, twice, itself); a
 -- link withdrawn with a reason and never changed again; who may read and add (a dev; an estimator nothing); the dev
 -- seat refused a link that touches a counsel-only record; a payload with no link answering as it always did; and,
--- since 20261127075633, that anon holds nothing on the table and the signed-in role SELECT alone, so a statement sent
--- straight at the table is refused for want of the privilege in the same words whatever it names, for a dev too,
--- while the door, the guard and the HR agent's key work as they did.
+-- since 20261127075633 and 20261127163949, that anon holds nothing on the table and the signed-in role SELECT alone,
+-- so a statement sent straight at the table is refused for want of the privilege in the same words whatever it names,
+-- for a dev too, while the door, the guard and the HR agent's key work as they did.
 -- Made-up people and words. Fixtures made as postgres; the doors run as signed-in users through RLS, inside one
 -- transaction that rolls back. Raises on the first failed assertion; ends with "person_file_amendments PASSED".
 -- See scripts/pgtest-person-file-amendments.sh. Never against prod.
@@ -195,7 +195,7 @@ SET LOCAL ROLE authenticated;
 
 -- ── an estimator adds nothing ────────────────────────────────────────────────────────────────────
 SELECT pfa.as_user('00000000-0000-0000-0000-0000000969d2');
--- Before 20261127075633 these four answered four ways (the row policy's words, already stands, not on any file, the
+-- Before 20261127163949 these four answered four ways (the row policy's words, already stands, not on any file, the
 -- one person's file), so anyone signed in could ask the guard where an id stood. Now the privilege refuses first.
 SELECT pfa.same('an estimator who names a pair the guard would pass is refused for want of the privilege',
   pfa.refusal($q$INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kind, to_id, how) VALUES ('00000000-0000-0000-0000-0000000969b1', 'hr_entry', '00000000-0000-0000-0000-0000000969e4', 'hr_entry', '00000000-0000-0000-0000-0000000969e1', 'corrects')$q$),
@@ -235,8 +235,8 @@ RESET ROLE;
 
 -- ── the table's privileges (20261127075633) ──────────────────────────────────────────────────────
 -- The table's own migration never took away what a new table is given by default, so anon and the signed-in role
--- each held every privilege, and the guard answers before the row policy. Since 20261127075633 anon holds nothing
--- and the signed-in role SELECT alone: the tab writes through the door since v2.8730.
+-- each held every privilege, and the guard answers before the row policy. Since 20261127075633 anon holds nothing,
+-- and since 20261127163949 the signed-in role SELECT alone: the tab writes through the door since v2.8730.
 SELECT pfa.same('anon holds nothing on the links',
   has_table_privilege('anon', 'public.person_file_amendments', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, 'false');
 SELECT pfa.same('the signed-in role may read the links and may write none',
@@ -249,7 +249,7 @@ SELECT pfa.same('the HR agent''s key reads and adds, as before',
   (has_table_privilege('hr_agent', 'public.person_file_amendments', 'SELECT') AND has_table_privilege('hr_agent', 'public.person_file_amendments', 'INSERT'))::text
   || ' ' || has_table_privilege('hr_agent', 'public.person_file_amendments', 'UPDATE, DELETE, TRUNCATE')::text, 'true false');
 
--- With no sign-in: one refusal, in the same words, whatever the insert names. Before the file these four answered
+-- With no sign-in: one refusal, in the same words, whatever the insert names. Before 20261127075633 these four answered
 -- four ways (already stands, the policy's words, not on any file, the one person's file).
 SELECT set_config('pfa.links_before', pfa.links('00000000-0000-0000-0000-0000000969b1'), true);
 SELECT set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
