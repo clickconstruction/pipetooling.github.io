@@ -577,9 +577,16 @@ export function overPaidWords(over: number): string {
   return over > 0 ? `over by ${money(over)} on a sheet` : ''
 }
 
+/**
+ * The one word for a sub we owe nothing, on every screen that names one: the Ledger, the Roster's Balance due and
+ * a job's Subs tab (finding 314, a walk of 2026-11-27: the Ledger read *settled* and the Roster *paid up* for the
+ * same sub). To change the word, change it here.
+ */
+export const WE_OWE_NOTHING = 'settled'
+
 /** `$1,200.00` · `settled` · `over by $20.00`: what we owe a person. */
 export function weOweWords(n: number): string {
-  if (n === 0) return 'settled'
+  if (n === 0) return WE_OWE_NOTHING
   return n < 0 ? `over by ${money(n)}` : money(n)
 }
 
